@@ -8,7 +8,7 @@
 #   claude --plugin-url https://github.com/<owner>/<repo>/releases/latest/download/aind.zip
 #
 # Prereqs: a PUBLIC GitHub repo with this committed and an 'origin' remote; `gh` authenticated
-# with admin on the repo (for Pages); `git`, `gh`, `jq` installed. Run from the repo root.
+# with admin on the repo (for Pages); `git` and `gh` installed. Run from the repo root.
 #
 # Note: the published zip is a SNAPSHOT of HEAD — re-run after changes. Bump the version in
 # .claude-plugin/plugin.json for a clean new release tag (otherwise the asset is re-uploaded to
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 die(){ echo "deploy: $*" >&2; exit 1; }
-for c in git gh jq; do command -v "$c" >/dev/null 2>&1 || die "missing required command: $c"; done
+for c in git gh; do command -v "$c" >/dev/null 2>&1 || die "missing required command: $c"; done
 
 [[ -f .claude-plugin/plugin.json ]] || die "run from the repo root (.claude-plugin/plugin.json not found)"
 git rev-parse HEAD >/dev/null 2>&1 || die "no commits yet — commit the plugin first"
@@ -32,7 +32,8 @@ SLUG="$(gh repo view --json nameWithOwner -q .nameWithOwner)" \
 OWNER="${SLUG%%/*}"; NAME="${SLUG##*/}"
 OWNER_LC="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-VERSION="$(jq -r '.version // empty' .claude-plugin/plugin.json)"
+# Read "version" without requiring jq (deploy needs no JSON tooling — the plugin runtime does).
+VERSION="$(sed -n -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' .claude-plugin/plugin.json | head -n1)"
 [[ -n "$VERSION" ]] || die "no \"version\" in .claude-plugin/plugin.json"
 TAG="v$VERSION"
 ZIP_LATEST="https://github.com/${SLUG}/releases/latest/download/aind.zip"
