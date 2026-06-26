@@ -1,0 +1,4 @@
+# Let Git normalize text files automatically...
+* text=auto
+# ...but ALWAYS keep shell scripts LF: CRLF breaks bash on checkout and inside the deployed zip.
+*.sh text eol=lf
