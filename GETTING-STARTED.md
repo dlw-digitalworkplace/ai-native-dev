@@ -106,7 +106,7 @@ threads are resolved. Merge, then `/aind:approve-plan`.
 
 `deploy.sh` publishes the plugin so it can be loaded remotely (the `--plugin-url` above). It
 builds a root-structured `aind.zip` from `HEAD`, uploads it as a **Release asset**, and publishes
-`aind-flow.html` as the **GitHub Pages** site.
+the diagram (`docs/index.html`) as the **GitHub Pages** site.
 
 ```bash
 ./deploy.sh        # prereqs: public repo committed+pushed, gh authed (admin for Pages), git + gh

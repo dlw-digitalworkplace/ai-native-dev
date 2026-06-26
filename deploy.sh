@@ -2,7 +2,7 @@
 # deploy.sh — publish the AIND plugin to GitHub (no marketplace).
 #   1. builds a root-structured plugin zip from the committed HEAD (git archive),
 #   2. uploads it as a GitHub Release asset — stable URL: releases/latest/download/aind.zip,
-#   3. publishes aind-flow.html as the GitHub Pages site (this branch, /docs/index.html).
+#   3. publishes the diagram (docs/index.html) as the GitHub Pages site (this branch, /docs).
 #
 # Load the plugin remotely afterwards (no local clone needed):
 #   claude --plugin-url https://github.com/<owner>/<repo>/releases/latest/download/aind.zip
@@ -22,7 +22,7 @@ for c in git gh; do command -v "$c" >/dev/null 2>&1 || die "missing required com
 [[ -f .claude-plugin/plugin.json ]] || die "run from the repo root (.claude-plugin/plugin.json not found)"
 git rev-parse HEAD >/dev/null 2>&1 || die "no commits yet — commit the plugin first"
 
-# Released zip must match committed state; the docs/ update below is the only change we make.
+# Released zip must match committed state.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   die "working tree has uncommitted changes — commit them first so the release matches HEAD"
 fi
@@ -42,13 +42,8 @@ PAGES_URL="https://${OWNER_LC}.github.io/${NAME}/"
 echo "deploy: repo=$SLUG  branch=$BRANCH  version=$VERSION"
 
 # --- 1. Publish the diagram via Pages (this branch, /docs/index.html) ---
-mkdir -p docs
-cp aind-flow.html docs/index.html
-git add docs/index.html
-if ! git diff --cached --quiet -- docs/index.html; then
-  git commit -q -m "deploy: publish aind-flow.html to Pages (docs/index.html)"
-  echo "deploy: committed docs/index.html"
-fi
+# docs/index.html is a tracked source file (the canonical diagram); just make sure it's pushed.
+[[ -f docs/index.html ]] || die "docs/index.html not found — Pages serves the diagram from there"
 git push -q origin "$BRANCH"
 
 # Enable Pages from this branch /docs if not already configured (idempotent).

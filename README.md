@@ -6,7 +6,7 @@ loop — implemented as a reusable **Claude Code plugin**.
 
 This README covers **what it is** and **where it stands**. To set it up and use it, see
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
-`design-log.md`, with `aind-flow.html` as the diagram.
+`design-log.md`, with the flow diagram in `docs/index.html`.
 
 > **Scope today:** the **plan phase** (intake → planning → plan review) runs locally via Claude
 > Code, by hand (v0 manual scope, D6). The build phase, dreaming phase, and unattended automation
@@ -92,4 +92,4 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
 - **`design-log.md`** — decisions D1–D18 with rationale.
-- **`aind-flow.html`** — visual diagram (also served via GitHub Pages once deployed).
+- **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).

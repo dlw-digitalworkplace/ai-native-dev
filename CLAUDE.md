@@ -21,7 +21,7 @@ and layers its own `.claude/` (rules, edited rubric, project skills) on top.
   D5 (plan PR + resolvable assumption threads), D6 (manual/local v0 scope; automation descoped),
   D10 (separate plan PR, `/plans/<id>/plan.md`), D11 (two-layer hybrid rubric), D13 (merge-then-tag),
   D16 (dreaming phase), D17 (AIND-LINKS), D18 (onboarding agent).
-- **`aind-flow.html`** — visual diagram.
+- **`docs/index.html`** — visual diagram (published via GitHub Pages).
 - **`README.md`** / **`GETTING-STARTED.md`** — install + per-project setup walkthrough.
 
 ## Repo layout
@@ -125,8 +125,8 @@ agents/     (empty) — build-phase cold subagents land here next
   (not direct exec) so the plugin runs even when a zip/clone drops the executable bit. Keep new
   calls in that form.
 - **Publishing (`deploy.sh`):** publishes to a public GitHub repo for remote loading — a
-  root-structured `aind.zip` from `HEAD` (`git archive`) as a **Release asset**, and
-  `aind-flow.html` to **Pages** (`<branch>/docs/index.html`). Load with
+  root-structured `aind.zip` from `HEAD` (`git archive`) as a **Release asset**, and the diagram
+  `docs/index.html` to **Pages** (served from `<branch>/docs`). Load with
   `claude --plugin-url …/releases/latest/download/aind.zip`. The zip is a snapshot — re-deploy
   after changes; bump `plugin.json` `version` for a new release tag. `aind.zip` is gitignored.
 
