@@ -73,26 +73,6 @@ the edited rubric, "how to run the app" skills) lives in the project's own `.cla
 > The plugin scripts must be executable in a fresh clone. After committing, set the bit once:
 > `git update-index --chmod=+x scripts/*.sh hooks/*.sh`.
 
-## Publish & load remotely (no local clone)
-
-`deploy.sh` publishes the plugin to a **public** GitHub repo so it can be loaded without a local
-copy. It builds a root-structured `aind.zip` from `HEAD` (via `git archive`) and uploads it as a
-**Release asset**, and publishes `aind-flow.html` as the **GitHub Pages** site.
-
-```bash
-./deploy.sh        # prereqs: public repo committed+pushed, gh authed (admin for Pages), git/gh/jq
-```
-
-Then on any machine — no clone needed:
-
-```bash
-claude --plugin-url https://github.com/<owner>/<repo>/releases/latest/download/aind.zip
-```
-
-The zip is a **snapshot of the last deploy** — re-run `./deploy.sh` after changes (bump the
-`version` in `.claude-plugin/plugin.json` for a fresh release tag). The diagram is served at
-`https://<owner>.github.io/<repo>/`.
-
 ## Plan-phase usage
 
 > Plugin commands are **namespaced** with the plugin name (`aind`). Type `/aind` in the
