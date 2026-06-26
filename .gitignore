@@ -1,0 +1,5 @@
+# Build artifact produced by deploy.sh (uploaded as a Release asset, not committed)
+aind.zip
+
+# Project-side secret (never in this repo; listed defensively)
+.claude/aind.env

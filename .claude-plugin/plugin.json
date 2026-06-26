@@ -1,0 +1,8 @@
+{
+  "name": "aind",
+  "version": "0.1.0",
+  "description": "AI-Native Dev flow: plan-phase agents (intake, planner) plus shared ADO/GitHub mechanics. Implements the design in design-doc.md / design-log.md (D1-D17).",
+  "author": {
+    "name": "Robin Agten"
+  }
+}

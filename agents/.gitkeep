@@ -1,0 +1,2 @@
+# Build-phase cold subagents land here (reviewer, test-writer, e2e, dreamer).
+# Empty in the plan-phase iteration — see design-doc.md §5 and the plan's "Out of scope".
