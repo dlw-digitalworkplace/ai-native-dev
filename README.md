@@ -1,27 +1,69 @@
 # AI-Native Dev (AIND)
 
-The **design** of an AI-native dev flow (`design-doc.md`, `design-log.md`, `aind-flow.html`)
-**and** its implementation as a reusable **Claude Code plugin**. This iteration ships the
-**plan phase** — intake, planning, and plan review.
+An AI-native development flow — a multi-agent pipeline that carries an Azure DevOps (ADO) user
+story from readiness check → implementation plan → build → review, plus a continuous-improvement
+loop — implemented as a reusable **Claude Code plugin**.
 
-## What's here
+This README covers **what it is** and **where it stands**. To set it up and use it, see
+**[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
+`design-log.md`, with `aind-flow.html` as the diagram.
+
+> **Scope today:** the **plan phase** (intake → planning → plan review) runs locally via Claude
+> Code, by hand (v0 manual scope, D6). The build phase, dreaming phase, and unattended automation
+> are designed but not yet built — see [Implementation status](#implementation-status).
+
+## What it does
+
+A **user story** is the unit of work. The flow moves it through phases, each with one or more
+agents:
+
+- **Onboarding** (one-time, pre-flow): reads an existing codebase and drafts the project's
+  `.claude/` config (rules, skills, rubric copy).
+- **Plan phase:** an **intake** agent scores the story against a readiness rubric; a **planner**
+  turns an approved story into an implementation plan delivered as a GitHub PR; a human
+  reviews and approves it.
+- **Build phase** *(designed, not built)*: test-writer → coder → reviewer turn the plan into
+  merged code behind objective and review gates.
+- **Dreaming phase** *(designed, not built)*: a cold "dreamer" learns from the flow's exhaust
+  and proposes config improvements.
+
+State is tracked by a single `AIND status - <state>` tag on the ADO work item; the GitHub PRs
+own the fine-grained iteration.
+
+## Concepts
+
+- **Framework vs. project split.** Flow-mechanical pieces (commands, agents, skills, hooks, the
+  seed rubric) ship in this plugin and are reused across projects. Project-specific config
+  (domain rules, the edited rubric, "how to run the app" skills) lives in each project's own
+  `.claude/`.
+- **Agents suggest, humans decide.** Intake, the planner, the onboarder, and the dreamer all
+  *propose* — a human ratifies (a verdict, a plan merge, a config change).
+- **Cold vs. warm.** Independent checks (reviewer, test-writer, dreamer) run *cold* — a separate
+  invocation re-grounded from artifacts only — so they can't rubber-stamp the work they review.
+  Entry/authoring agents run *warm* (in-session).
+- **Config layer vs. the flow.** Agents may shape the `.claude` config; they never change the
+  flow itself (the status model, the gates, the structural decisions).
+- **Deterministic mechanics are scripted.** Agents make judgments; all ADO/GitHub side-effects
+  (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
+  (e.g. a hook requires every ADO comment to be signed by its agent).
+
+Rationale for every choice is in `design-log.md` (decisions **D1–D18**).
+
+## Repository layout
 
 ```
 .claude-plugin/plugin.json   Plugin manifest (name: aind)
-commands/                    /onboard, /intake, /plan, /approve-plan  (human entry points)
+commands/                    onboard, intake, plan, approve-plan  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/                     Bash mechanics over `az` + `gh` (the deterministic layer)
+scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       PreToolUse hook that enforces signed ADO comments
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      (empty — build-phase cold subagents land here next)
 project-template/            What a project copies into its own .claude/
-deploy.sh                    Publish to GitHub (Release asset zip + Pages diagram)
-design-doc.md, design-log.md The design (D1–D18)
+deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
+design-doc.md, design-log.md The design and the decisions (D1–D18)
+GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
-
-**Framework vs project split:** flow-mechanical pieces (commands, agents, skills, hooks, seed
-rubric) ship in this plugin and are reused across projects. Project-specific config (rules,
-the edited rubric, "how to run the app" skills) lives in the project's own `.claude/`.
 
 ## Implementation status
 
@@ -45,59 +87,9 @@ the edited rubric, "how to run the app" skills) lives in the project's own `.cla
 | Dreaming | Lessons-learned emission | ⬜ | — | Out of scope this iteration (D16). |
 | Dreaming | Dreamer agent (cold) | ⬜ | — | Out of scope this iteration (D16). |
 
-## Prerequisites (one-time)
+## Docs
 
-1. **ADO auth:** a PAT with Work Items (r/w) + Code (r/w) in `AZURE_DEVOPS_EXT_PAT`.
-2. **GitHub:** `gh` authenticated with access to the target repo.
-3. **Tools:** `az` (+ `azure-devops` extension), `gh`, `git`, `curl`, `jq`, `bash`.
-4. **Azure Boards ↔ GitHub integration** connected (enables `AB#<id>` native linking, D17).
-5. **Branch protection** on the integration branch: *require conversation resolution before
-   merging* (so assumption threads gate the plan-PR merge, D5).
-
-## Set up a project
-
-1. Install the plugin (during development, load locally):
-   ```bash
-   claude --plugin-dir /path/to/ai-native-dev
-   ```
-2. **Bootstrap the config** — from the project root, run `/aind:onboard`. It reads the
-   codebase, discovers domains, and drafts `.claude/` (per-domain rules, `CLAUDE.md`, project
-   skills, a rubric copy), then reports prerequisites. **Review and edit the drafts**, then
-   commit. *(Or do it by hand: copy `project-template/CLAUDE.md` + `project-template/rules`
-   and `rubric/intake-rubric.seed.md` → your project's `.claude/`.)*
-3. Copy `project-template/aind.env.sample` → `.claude/aind.env`, fill it in, gitignore it.
-4. Run the commands below from the project checkout — the AIND scripts auto-load
-   `.claude/aind.env` (walk-up from the working directory), so no manual `source` is needed.
-   *(An already-set environment wins, so CI or a parent shell can still override it.)*
-
-> The plugin scripts must be executable in a fresh clone. After committing, set the bit once:
-> `git update-index --chmod=+x scripts/*.sh hooks/*.sh`.
-
-## Plan-phase usage
-
-> Plugin commands are **namespaced** with the plugin name (`aind`). Type `/aind` in the
-> session to list them — bare `/onboard` will not resolve.
-
-| Command | Phase | Effect |
-|---|---|---|
-| `/aind:onboard`           | setup | One-time: discover domains, draft `.claude/` config + skills from the codebase, report prerequisites. |
-| `/aind:intake <id>`       | 0 | Score the story; signed verdict comment; tag → `Intake approved`/`Intake declined`. |
-| `/aind:plan <id>`         | 1 | Write `plans/<id>/plan.md`; open plan PR (AB#, AIND-LINKS); assumptions as resolvable threads; tag → `Plan ready for review`. |
-| `/aind:approve-plan <id>` | 2 | After human approves+merges the plan PR: tag → `Ready for implementation`. |
-
-**New to this?** See [GETTING-STARTED.md](GETTING-STARTED.md) for a full walkthrough on a real
-project (loading the plugin, the onboard-first flow, auth/config, and troubleshooting).
-
-## End-to-end verification
-
-See the approved plan for the full checklist. In short: create an ADO story tagged
-`AIND status - Ready for intake`, run `/intake` (declined → fix → approved), confirm the
-signed comment and single status tag; run `/plan`, confirm the plan PR with the `AIND-LINKS`
-block, native `AB#` link, and a resolvable thread per assumption; confirm branch protection
-blocks merge until threads resolve; merge and run `/approve-plan`.
-
-## Out of scope (next)
-
-Build phase (coder/polish + cold reviewer/test-writer/E2E subagents), the dreaming phase, and
-the GitHub Actions automation + service-identity layer (descoped per D6). The layout above
-absorbs these without rework.
+- **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
+- **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
+- **`design-log.md`** — decisions D1–D18 with rationale.
+- **`aind-flow.html`** — visual diagram (also served via GitHub Pages once deployed).
