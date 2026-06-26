@@ -1,7 +1,7 @@
 {
   "name": "aind",
   "version": "0.1.0",
-  "description": "AI-Native Dev flow: plan-phase agents (intake, planner) plus shared ADO/GitHub mechanics. Implements the design in design-doc.md / design-log.md (D1-D17).",
+  "description": "AI-Native Dev flow for Azure DevOps + GitHub. Plan-phase agents — onboarding, intake (readiness scoring), and planning (delivers an implementation plan as a GitHub PR) — plus the shared, scripted ADO/GitHub mechanics they rely on.",
   "author": {
     "name": "Robin Agten"
   }
