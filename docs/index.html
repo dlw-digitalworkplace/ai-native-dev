@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native Dev Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#0f1620;
+    --surface:#161f2b;
+    --surface-2:#1d2836;
+    --line:#2b3a4d;
+    --line-soft:#223044;
+    --text:#dde6f0;
+    --text-dim:#8da3bd;
+    --text-faint:#5e718a;
+    --plan:#5b8def;
+    --build:#8ea8c9;
+    --cold:#3fb6c4;
+    --warm:#e0a458;
+    --gate:#d98555;
+    --human:#cf7d8e;
+    --terminal:#6fcf97;
+    --dream:#a98bd8;
+    --shadow:0 18px 50px -12px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ground);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    font-weight:450;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  /* faint blueprint grid on the ground */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(var(--line-soft) 1px,transparent 1px),
+      linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+    background-size:46px 46px;
+    opacity:.20;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 35% 30%,#000 30%,transparent 85%);
+            mask-image:radial-gradient(ellipse 90% 80% at 35% 30%,#000 30%,transparent 85%);
+  }
+
+  .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column}
+
+  /* ---- header ---- */
+  header{
+    padding:18px 30px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    background:linear-gradient(180deg,rgba(22,31,43,.7),rgba(15,22,32,0));
+  }
+  .titlewrap{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--cold);font-weight:500;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:clamp(20px,2.4vw,30px);letter-spacing:-.015em;line-height:1.02;
+  }
+  h1 .dim{color:var(--text-dim);font-weight:400}
+  .sub{font-size:13px;color:var(--text-dim);max-width:62ch}
+
+  /* persistent status chip — the signature element */
+  .statuswrap{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0}
+  .statuswrap .lbl{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--text-faint);
+  }
+  .tag{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;
+    padding:7px 14px;border-radius:7px;white-space:nowrap;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--text-dim);
+    display:flex;align-items:center;gap:9px;transition:all .35s cubic-bezier(.4,0,.2,1);
+  }
+  .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);transition:all .35s;box-shadow:0 0 0 0 transparent}
+  .tag.live{border-color:var(--accent,var(--cold));color:var(--text)}
+  .tag.live .dot{background:var(--accent,var(--cold));box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,var(--cold)) 22%,transparent)}
+  .tag .pfx{color:var(--text-faint)}
+
+  /* ---- main split ---- */
+  .main{flex:1;display:flex;min-height:0}
+
+  /* canvas / chart */
+  .canvas{
+    flex:1;min-width:0;position:relative;overflow:auto;
+    padding:30px 26px 60px;
+  }
+  .canvas-inner{min-width:680px;max-width:1180px;margin:0 auto}
+  svg{width:100%;height:auto;display:block;overflow:visible}
+
+  /* node styling in svg */
+  .node{cursor:pointer}
+  .node .box{
+    transition:transform .18s ease, filter .18s ease;
+    transform-box:fill-box;transform-origin:center;
+  }
+  .node:hover .box{filter:brightness(1.16);transform:scale(1.018)}
+  .node.sel .box{filter:brightness(1.05)}
+  .node.sel .ring{opacity:1}
+  .ring{opacity:0;transition:opacity .18s ease}
+  .node text{font-family:'Inter',sans-serif;fill:var(--text);pointer-events:none;font-weight:500}
+  .node .role{font-family:'IBM Plex Mono',monospace;font-weight:400;fill:var(--text-dim);font-size:9.5px;letter-spacing:.04em}
+  .node .ttl{font-size:13px;font-weight:600;letter-spacing:-.01em}
+  .edge{stroke:#7d93ad;stroke-width:2.4;fill:none}
+  .edge.loop{stroke-dasharray:6 5;stroke-width:2.2}
+  .edge.rework{stroke:var(--gate)}          /* rejection / send-back paths */
+  .edge.fail{stroke:var(--warm)}            /* fail / retry paths */
+  .edge.dream{stroke:var(--dream);stroke-dasharray:2 6;stroke-width:2.1;stroke-linecap:round}  /* lessons feeding the dreamer */
+  .edgelabel{font-family:'IBM Plex Mono',monospace;font-size:10.5px;fill:var(--text);letter-spacing:.02em;font-weight:500}
+  .edgelabel.rework{fill:var(--gate)}
+  .edgelabel.fail{fill:var(--warm)}
+  .edgelabel.dream{fill:var(--dream)}
+  .gatelabel{font-family:'IBM Plex Mono',monospace;font-size:8.5px;fill:var(--text-dim);letter-spacing:.03em}
+  .phaseband text{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:500}
+
+  /* legend */
+  .legend{
+    display:flex;flex-wrap:wrap;gap:5px 18px;margin:26px auto 0;max-width:1180px;
+    padding:14px 16px;border:1px solid var(--line-soft);border-radius:10px;
+    background:rgba(22,31,43,.5);
+  }
+  .legend .grp{display:flex;align-items:center;gap:7px}
+  .legend .sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+  .legend .sw.diamond{border-radius:2px;transform:rotate(45deg);width:10px;height:10px}
+  .legend .k{font-size:11.5px;color:var(--text-dim)}
+  .legend .k b{color:var(--text);font-weight:600}
+  .legend .div{width:1px;align-self:stretch;background:var(--line-soft)}
+
+  /* ---- detail panel ---- */
+  .panel{
+    width:392px;flex-shrink:0;border-left:1px solid var(--line);
+    background:linear-gradient(180deg,var(--surface),var(--ground));
+    display:flex;flex-direction:column;
+    transition:margin-right .34s cubic-bezier(.4,0,.2,1);
+  }
+  .panel.closed{margin-right:-393px}
+  .panel-scroll{overflow-y:auto;padding:26px 26px 40px;height:100%}
+  .panel .kicker{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;font-weight:500;display:flex;align-items:center;gap:8px;
+    color:var(--accent,var(--cold));margin-bottom:12px;
+  }
+  .panel .kicker::before{content:"";width:22px;height:2px;background:var(--accent,var(--cold));border-radius:2px}
+  .panel h2{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:23px;
+    letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;
+  }
+  .panel .meta{
+    display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 18px;
+  }
+  .pill{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;
+    padding:4px 9px;border-radius:20px;border:1px solid var(--line);
+    color:var(--text-dim);letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;
+  }
+  .pill .pdot{width:6px;height:6px;border-radius:50%}
+  .panel .body{font-size:13.5px;color:var(--text);line-height:1.62}
+  .panel .body p{margin-bottom:13px}
+  .panel .body p:last-child{margin-bottom:0}
+  .panel .body strong{color:#fff;font-weight:600}
+  .panel .body em{color:var(--cold);font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:12px}
+
+  .sechead{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-faint);font-weight:500;
+    margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--line-soft);
+  }
+  .statusrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:12px}
+  .statusrow .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .statusrow .pfx{color:var(--text-faint)}
+  .statusrow.none{color:var(--text-faint);font-style:italic;font-family:'Inter',sans-serif;font-size:12.5px}
+
+  .declist{display:flex;flex-direction:column;gap:7px}
+  .dec{
+    display:flex;gap:11px;padding:10px 12px;border:1px solid var(--line-soft);
+    border-radius:8px;background:rgba(29,40,54,.5);align-items:baseline;
+  }
+  .dec .id{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--plan);flex-shrink:0;width:30px}
+  .dec .txt{font-size:12px;color:var(--text-dim);line-height:1.5}
+
+  .rellist{display:flex;flex-wrap:wrap;gap:6px}
+  .rel{
+    cursor:pointer;font-size:11.5px;padding:6px 11px;border-radius:7px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--text-dim);
+    transition:all .15s ease;display:inline-flex;align-items:center;gap:6px;
+  }
+  .rel:hover{border-color:var(--cold);color:var(--text);transform:translateY(-1px)}
+  .rel .arr{color:var(--text-faint);font-family:'IBM Plex Mono',monospace}
+
+  .empty{
+    height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px;gap:14px;
+  }
+  .empty .glyph{font-family:'IBM Plex Mono',monospace;font-size:34px;color:var(--line);font-weight:600}
+  .empty h3{font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:17px;color:var(--text-dim)}
+  .empty p{font-size:13px;color:var(--text-faint);max-width:30ch}
+
+  .closebtn{
+    position:absolute;top:18px;right:18px;z-index:5;width:30px;height:30px;
+    border:1px solid var(--line);background:var(--surface-2);border-radius:7px;
+    color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;
+    display:flex;align-items:center;justify-content:center;transition:all .15s;
+  }
+  .closebtn:hover{color:var(--text);border-color:var(--cold)}
+
+  .scopebanner{
+    margin:0 auto 18px;max-width:1180px;display:flex;gap:11px;align-items:flex-start;
+    padding:11px 15px;border:1px solid color-mix(in srgb,var(--warm) 35%,var(--line));
+    border-radius:9px;background:color-mix(in srgb,var(--warm) 7%,transparent);
+  }
+  .scopebanner .ic{font-family:'IBM Plex Mono',monospace;color:var(--warm);font-weight:600;font-size:13px;flex-shrink:0;margin-top:1px}
+  .scopebanner .t{font-size:12.5px;color:var(--text-dim);line-height:1.55}
+  .scopebanner .t b{color:var(--warm);font-weight:600}
+
+  /* scrollbars */
+  .canvas::-webkit-scrollbar,.panel-scroll::-webkit-scrollbar{width:10px;height:10px}
+  .canvas::-webkit-scrollbar-thumb,.panel-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid var(--ground)}
+  .canvas::-webkit-scrollbar-track,.panel-scroll::-webkit-scrollbar-track{background:transparent}
+
+  .hint{
+    position:absolute;bottom:18px;left:26px;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);
+    letter-spacing:.04em;display:flex;align-items:center;gap:8px;
+    padding:7px 14px;border:1px solid var(--line-soft);border-radius:20px;
+    background:rgba(22,31,43,.85);backdrop-filter:blur(4px);pointer-events:none;
+    transition:opacity .4s;
+  }
+  .hint .pulse{width:6px;height:6px;border-radius:50%;background:var(--cold);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  @media (max-width:1080px){
+    .panel{position:fixed;right:0;top:0;height:100vh;z-index:30;box-shadow:var(--shadow);width:min(392px,90vw)}
+    .panel.closed{margin-right:calc(-1 * min(393px,90vw))}
+  }
+  @media (max-width:680px){
+    header{flex-direction:column;align-items:flex-start;gap:14px}
+    .statuswrap{align-items:flex-start}
+    .legend{font-size:10px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="titlewrap">
+      <div class="eyebrow">AI-Native Dev Flow · Plan + Build + Dream</div>
+      <h1>One story, <span class="dim">two phases, three gates</span> — plus a dreaming loop</h1>
+      <div class="sub">An agentic pipeline on Azure DevOps + Claude Code + GitHub, with a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
+    </div>
+    <div class="statuswrap">
+      <div class="lbl">AIND status tag</div>
+      <div class="tag" id="statusTag"><span class="dot"></span><span class="pfx">AIND status —</span> <span id="statusText">idle</span></div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="canvas" id="canvas">
+      <div class="scopebanner">
+        <span class="ic">▲</span>
+        <span class="t"><b>Current scope: manual execution only.</b> The flow runs from the Claude Code CLI under a developer's own credentials. Unattended automation (GitHub Actions, service identity) and the automated E2E path are designed but descoped for now.</span>
+      </div>
+      <div class="canvas-inner" id="chartHost"></div>
+      <!-- legend injected after svg -->
+      <div class="legend" id="legend"></div>
+      <div class="hint" id="hint"><span class="pulse"></span> Tap a block for details</div>
+    </div>
+
+    <aside class="panel closed" id="panel">
+      <button class="closebtn" id="closeBtn" aria-label="Close details">×</button>
+      <div class="panel-scroll" id="panelScroll">
+        <div class="empty" id="emptyState">
+          <div class="glyph">{ }</div>
+          <h3>Nothing selected</h3>
+          <p>Pick any node in the flow to inspect its role, agent temperature, and governing decisions.</p>
+        </div>
+        <div id="detail" style="display:none"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA MODEL — every node, grounded in the design docs
+   ============================================================ */
+const PHASE = {
+  plan:   {name:'Plan phase',   color:'var(--plan)'},
+  build:  {name:'Build phase',  color:'var(--build)'},
+  dream:  {name:'Dreaming phase',color:'var(--dream)'},
+  terminal:{name:'',            color:'var(--terminal)'}
+};
+const TEMP = {
+  human:{label:'Human',      color:'var(--human)'},
+  warm: {label:'Warm agent', color:'var(--warm)'},
+  cold: {label:'Cold agent', color:'var(--cold)'},
+  auto: {label:'Automated',  color:'var(--plan)'},
+  ci:   {label:'CI / gate',  color:'var(--gate)'},
+  dream:{label:'Dreamer (cold)',color:'var(--dream)'},
+  term: {label:'Terminal',   color:'var(--terminal)'}
+};
+
+// status palette per state (matches the chip accent)
+const STATUS = {
+  'Ready for intake':        'var(--plan)',
+  'Intake declined':         'var(--gate)',
+  'Intake approved':         'var(--plan)',
+  'Generating plan':         'var(--plan)',
+  'Plan ready for review':   'var(--plan)',
+  'Ready for implementation':'var(--build)',
+  'In implementation':       'var(--build)',
+  'Needs attention':         'var(--gate)',
+  'Implementation complete': 'var(--terminal)',
+  'No per-story tag — cross-story': 'var(--dream)'
+};
+
+const NODES = {
+  story:{
+    kind:'terminal', phase:'terminal', temp:'human', shape:'round',
+    title:'Story created', role:'entry',
+    status:'Ready for intake',
+    body:`<p>A <strong>user story</strong> is the unit of work, authored by a developer or tech lead in Azure DevOps. It carries a title, intent, and acceptance criteria.</p><p>The human submits it for scoring by setting <em>AIND status — Ready for intake</em>. This is the single entry point to the whole flow.</p>`,
+    decisions:[['D1','Intake runs first; the story gate is unskippable.']],
+    related:['intake']
+  },
+  intake:{
+    kind:'gate', phase:'plan', temp:'auto', shape:'rect',
+    title:'Intake agent', role:'scores the story · GATE 1',
+    status:'Ready for intake',
+    body:`<p><strong>The first of three gates</strong>, and the only unskippable one. The intake agent scores the story against a readiness rubric and records its reasoning as comments on the work item.</p><p>It <strong>suggests</strong> fixes but never edits the story — the human owns the story text. The rubric at <em>.claude/intake-rubric.md</em> is two-layer (baked-in core + per-project extensions) and hybrid: objective criteria are pass/fail, judgment criteria are advisory comments.</p><p>Outcome: <em>Intake approved</em> or <em>Intake declined</em>.</p>`,
+    decisions:[['D2','Intake agent scores; suggests but does not author.'],['D11','Two-layer hybrid readiness rubric.']],
+    related:['story','editstory','planner']
+  },
+  editstory:{
+    kind:'rework', phase:'plan', temp:'human', shape:'rect',
+    title:'Human edits story', role:'rework loop',
+    status:'Intake declined',
+    body:`<p>A declined story returns to its author. The human revises it against the intake agent's comments and resubmits as <em>Ready for intake</em>.</p><p>The gate is unskippable by design: a fixed story always passes back through intake before any planning cost is spent.</p>`,
+    decisions:[['D1','Bad story → edit & re-intake (route by root cause).']],
+    related:['intake']
+  },
+  planner:{
+    kind:'proc', phase:'plan', temp:'auto', shape:'rect',
+    title:'Planner agent', role:'drafts the implementation plan',
+    status:'Generating plan',
+    body:`<p>On <em>Intake approved</em>, the planner turns the story into an implementation plan — markdown at <em>/plans/&lt;id&gt;/plan.md</em> — and opens it as its own GitHub PR. Status is <em>Generating plan</em> while it works.</p><p>It never blocks waiting for an answer. Where it hits a genuine choice it proceeds on a reasonable assumption and records each assumption / open question <strong>both</strong> under a heading in the plan <strong>and</strong> as an individual resolvable PR review thread — so none can be silently skipped before merge.</p><p>It also records two orthogonal testing recommendations: whether the story warrants spec-level tests (D8) and a live/E2E test (D9).</p><p>Opening the plan PR also establishes the <strong>artifact links</strong> (D17): the PR is native-linked to the work item (Azure Boards ↔ GitHub integration) and carries an <em>AIND-LINKS</em> block in its body. The work-item ID is the join value; branch names are never assumed.</p>`,
+    decisions:[['D5','Plan reviewed as a GitHub PR; assumptions as resolvable threads.'],['D10','Separate plan-PR, merged to the integration branch first.'],['D17','Establishes the work-item↔plan↔PR links.']],
+    related:['intake','planpr','planrev']
+  },
+  planpr:{
+    kind:'artifact', phase:'plan', temp:'auto', shape:'rect',
+    title:'Plan opened as GitHub PR', role:'review surface',
+    status:'Plan ready for review',
+    body:`<p>The plan PR is the review surface — inline comments, request-changes, revision diffs. Once it is open, status becomes <em>Plan ready for review</em>.</p><p>It is a <strong>separate</strong> PR that merges to the project's integration branch <strong>before any code branch exists</strong>. This is what makes "the merged spec" a frozen, immutable artifact the build phase's cold agents can re-ground from. The merged plan stays in the repo as living documentation.</p><p>The PR is native-linked to the ADO work item and carries an <em>AIND-LINKS</em> block in its body (work-item URL + plan path), so later agents can navigate back from the PR (D17).</p>`,
+    decisions:[['D10','Separate plan-PR merged first; frozen spec; living docs.'],['D17','Native link + AIND-LINKS block in the PR body.']],
+    related:['planner','planrev']
+  },
+  planrev:{
+    kind:'gate', phase:'plan', temp:'human', shape:'diamond',
+    title:'Human reviews plan', role:'plan gate · GATE 2',
+    status:'Plan ready for review',
+    body:`<p><strong>The second gate</strong>, and a human one. The reviewer works through the plan PR — including every assumption / open-question thread, which the branch's "require conversation resolution" rule forces them to clear before merge.</p><p>Three outcomes route by root cause: a <strong>plan gap</strong> → the planner revises in the same PR (status unchanged); a <strong>story problem</strong> surfaced by the plan → close the PR, reroute to intake; <strong>approval</strong> → merge and set <em>Ready for implementation</em>, which also ratifies the two testing recommendations.</p>`,
+    decisions:[['D1','Route by root cause; story problem → close PR, re-intake.'],['D5','Assumption threads must resolve before merge.']],
+    related:['planpr','reroute','planner','readyimpl']
+  },
+  reroute:{
+    kind:'rework', phase:'plan', temp:'human', shape:'rect',
+    title:'Close PR · reroute to intake', role:'story problem',
+    status:'Ready for intake',
+    body:`<p>Sometimes the act of planning reveals the <strong>story itself</strong> was wrong — not just the plan. The human closes the stale plan PR and sends the item all the way back to <em>Ready for intake</em> so the story can be fixed and re-scored.</p><p>This is distinct from a plan gap, which is fixed inside the PR without moving the status.</p>`,
+    decisions:[['D1','Story problem at review → back to intake + close stale PR.']],
+    related:['planrev','intake']
+  },
+  readyimpl:{
+    kind:'milestone', phase:'plan', temp:'human', shape:'round',
+    title:'Ready for implementation', role:'plan phase complete',
+    status:'Ready for implementation',
+    body:`<p>The plan is approved and merged; the plan phase is done. The human sets <em>Ready for implementation</em> and the build phase may begin.</p><p>This single human action also <strong>ratifies the planner's two testing recommendations</strong> — whether spec-level tests and a live/E2E test run in the build phase.</p>`,
+    decisions:[['D8','Spec-test recommendation ratified here.'],['D9','Live-test recommendation ratified here.']],
+    related:['planrev','testq']
+  },
+  testq:{
+    kind:'branch', phase:'build', temp:'auto', shape:'diamond',
+    title:'Plan calls for spec tests?', role:'planner-gated',
+    status:'In implementation',
+    body:`<p>The build phase opens; status becomes <em>In implementation</em> and stays there through everything below (coarse/fine split — the tag tracks the phase, the PR owns the iteration).</p><p>If the plan called for spec-level tests, the optional test-writer step runs first. If not, the flow skips straight to the coder.</p>`,
+    decisions:[['D4','Coarse tag vs. fine PR iteration.'],['D8','Optional, planner-gated test-first step.']],
+    related:['readyimpl','testwriter','coder']
+  },
+  testwriter:{
+    kind:'proc', phase:'build', temp:'cold', shape:'rect',
+    title:'Test-writer drafts behavioral tests', role:'cold · independent',
+    status:'In implementation',
+    body:`<p>A <strong>cold</strong> agent — separate invocation, re-grounded only from the merged spec & plan, never the coder's context. It writes <strong>failing behavioral / acceptance-level tests</strong>: input→expected-behavior, tied to the ACs, agnostic to internal structure.</p><p>It deliberately does <strong>not</strong> write unit tests — those presuppose implementation seams that don't exist yet, and writing them from the spec alone would mean silently designing the code.</p><p>The suite lands on the <strong>same branch</strong> as the upcoming code (not a separate test-PR), as the first commits.</p>`,
+    decisions:[['D8','Cold test-writer; behavioral level; no unit tests.'],['D14','Suite on the same branch as the code.']],
+    related:['testq','testrev','coder']
+  },
+  testrev:{
+    kind:'gate', phase:'build', temp:'human', shape:'rect',
+    title:'Human reviews test suite', role:'before any code',
+    status:'In implementation',
+    body:`<p>A human reviews the behavioral suite <strong>before implementation starts</strong>, at the test-only state of the branch. This review lives inside the implementation phase — no separate PR, no new status.</p><p>Reviewing behavioral (not unit) tests is what makes this possible: you can meaningfully review tests for code that doesn't exist yet only when they assert behavior, not internal seams.</p>`,
+    decisions:[['D8','Suite reviewed pre-impl, inside the phase.'],['D14','Reviewed at the test-only commit on the branch.']],
+    related:['testwriter','coder']
+  },
+  coder:{
+    kind:'proc', phase:'build', temp:'warm', shape:'rect',
+    title:'Coding agent implements spec', role:'warm · builds the code',
+    status:'In implementation',
+    body:`<p>The coder implements the spec — against a red behavioral suite where one exists — and writes its own <strong>unit-level tests</strong> for the seams it creates (warm and cheap: it's testing structure it is actively building).</p><p>If it cannot get the behavioral suite green after its retry cap, it stops and raises <em>Needs attention</em> rather than looping. A merge conflict from concurrent work gets one automated rebase attempt before the same escalation.</p>`,
+    decisions:[['D7','Coder implements; warm unit tests.'],['D8','Coder writes units; cold writer wrote behavior.'],['D12','Stuck → Needs attention (one rebase try for conflicts).']],
+    related:['testrev','polish','stuck']
+  },
+  polish:{
+    kind:'proc', phase:'build', temp:'warm', shape:'rect',
+    title:'Polish agent cleans up', role:'warm · in-context',
+    status:'In implementation',
+    body:`<p>An in-context (warm) pass for code style, formatting, and self-consistency, working from the coder's own context.</p><p>Note the asymmetry: polish is warm <strong>by design</strong> — it is the coder tidying work it already understands — so it is explicitly <strong>not</strong> an independent check. That job belongs to the cold reviewer.</p>`,
+    decisions:[['D7','Warm polish is not an independent check; the reviewer is.']],
+    related:['coder','codepr']
+  },
+  codepr:{
+    kind:'artifact', phase:'build', temp:'auto', shape:'rect',
+    title:'Coder opens code PR', role:'implementation surface',
+    status:'In implementation',
+    body:`<p>The coder opens a GitHub PR for the code. It carries the whole red→green history — the behavioral suite as the first commits, implementation on top.</p><p>Opening the PR triggers CI.</p><p>Like the plan PR, it is native-linked to the work item and carries an <em>AIND-LINKS</em> block — here also including the plan-PR URL — so the cold reviewer and E2E agent can resolve the spec and work item from the PR alone (D17).</p>`,
+    decisions:[['D14','One PR carries red→green; tests + code together.'],['D17','Native link + AIND-LINKS block (incl. plan-PR URL).']],
+    related:['polish','ci']
+  },
+  ci:{
+    kind:'gate', phase:'build', temp:'ci', shape:'diamond',
+    title:'CI gates', role:'objective checks',
+    status:'In implementation',
+    body:`<p>CI runs the objective gates: build, lint, coverage, security, and the test suite — the cold writer's behavioral tests plus the coder's unit tests. (Until the testing strategy was defined, CI's test gate had nothing behind it.)</p><p>A failure routes back to the coder like any other. A pass moves to the live-test question.</p>`,
+    decisions:[['D8','CI test gate now runs behavioral + unit suites.']],
+    related:['codepr','coder','e2eq']
+  },
+  e2eq:{
+    kind:'branch', phase:'build', temp:'auto', shape:'diamond',
+    title:'Plan calls for live tests?', role:'planner-gated',
+    status:'In implementation',
+    body:`<p>If the plan called for a live/end-to-end test, a pre-merge blocking gate runs on the code PR. If not, the flow goes straight to code review.</p><p>The two test recommendations are orthogonal — a backend story might get spec tests but no live test; a UI change the reverse.</p>`,
+    decisions:[['D9','Optional, planner-gated, pre-merge live gate.']],
+    related:['ci','e2e','review']
+  },
+  e2e:{
+    kind:'gate', phase:'build', temp:'cold', shape:'rect',
+    title:'E2E gate: agent or manual', role:'live test · pre-merge',
+    status:'In implementation',
+    body:`<p>The running application is exercised through user-visible scenarios tied to the ACs; a failure blocks merge. How the gate is cleared is left per-project because running the app is inherently per-repo.</p><p><strong>In current scope only the manual path is available:</strong> a developer runs the app locally and signals the pass in the PR. The automated cold-E2E-agent path is deferred — it needs the descoped automation layer and a deployment/preview story.</p>`,
+    decisions:[['D9','Cold E2E agent OR manual developer pass.'],['D15','Manual path now; automated path deferred.']],
+    related:['e2eq','coder','review']
+  },
+  review:{
+    kind:'gate', phase:'build', temp:'cold', shape:'diamond',
+    title:'Reviewer agent reviews diff', role:'code gate · GATE 3',
+    status:'In implementation',
+    body:`<p><strong>The third gate.</strong> A <strong>cold</strong> reviewer — separate invocation, re-grounded only from the PR diff, merged spec, and project rules, never the coder's transcript. Independence is enforced structurally, not by instruction.</p><p>Where a behavioral suite exists, conformance is partly enforced by red→green, so the reviewer refocuses on what tests can't express — coding style, auth, logging, and other cross-cutting concerns — plus spec edge cases the suite missed. It also flags any unexplained change to the behavioral test files.</p><p>Given only the PR, it resolves the spec and work item by reading the <em>AIND-LINKS</em> block in the PR body — no ADO round-trip needed. If a stored link and a derived guess disagree, the stored link wins and it flags the mismatch (D17).</p>`,
+    decisions:[['D7','Cold reviewer; structural independence.'],['D8','Reviewer refocuses on cross-cutting concerns.'],['D14','Flags unexplained test-file changes.'],['D17','Resolves spec/work item via AIND-LINKS.']],
+    related:['e2e','fix','escalate','merged']
+  },
+  fix:{
+    kind:'proc', phase:'build', temp:'warm', shape:'rect',
+    title:'Coder fixes or rebuts', role:'in-thread iteration',
+    status:'In implementation',
+    body:`<p>A reviewer pass is: the reviewer comments, and the coder either fixes the issue or pushes back in the thread. They iterate for <strong>up to three reviewer passes</strong>.</p><p>The loop exits as soon as the reviewer has no open comments — so the cap only bites on a genuine deadlock, not on normal iteration. None of this moves the tag; it all lives in the PR.</p>`,
+    decisions:[['D7','≤3 reviewer passes; exits early on approval.'],['D4','Iteration lives in the PR, not the tag.']],
+    related:['review','escalate']
+  },
+  escalate:{
+    kind:'rework', phase:'build', temp:'human', shape:'rect',
+    title:'Human posts verdict', role:'tiebreaker',
+    status:'In implementation',
+    body:`<p>If comments remain open after the third pass, the item escalates to a human, who reads the PR threads — the disagreement is visible there, not synthesized — and posts a verdict.</p><p>The coder executes that verdict, one final reviewer pass follows, then the PR merges. This is a <strong>disagreement</strong> tiebreak: it deliberately does <strong>not</strong> move the tag, unlike a stuck-state.</p>`,
+    decisions:[['D7','Human verdict breaks a deadlock; coder executes.']],
+    related:['review','fix','merged']
+  },
+  stuck:{
+    kind:'stuck', phase:'build', temp:'ci', shape:'rect',
+    title:'Needs attention', role:'stuck-state · halts',
+    status:'Needs attention',
+    body:`<p>The one state for an agent that has <strong>stopped and cannot proceed</strong> — planner can't plan, coder can't get tests green, or an unresolvable merge conflict — after exhausting its retry cap.</p><p>It sets <em>Needs attention</em>, posts what it tried and why it's stuck, and waits. A human resolves the blocker and re-triggers the phase it came from. This is distinct from the reviewer disagreement tiebreak, which keeps working and never moves the tag.</p>`,
+    decisions:[['D12','One generalized stuck-state protocol; returns to origin phase.']],
+    related:['coder','review']
+  },
+  merged:{
+    kind:'terminal', phase:'terminal', temp:'term', shape:'round',
+    title:'PR merged', role:'build phase complete',
+    status:'Implementation complete',
+    body:`<p>The terminal state. In current (manual) scope a human merges the code PR after reviewer approval, and a single CLI command writes the terminal tag as part of the same step — <strong>merge first, then tag</strong>, so a failed tag-write leaves the item recoverable rather than falsely complete.</p><p>Status becomes <em>Implementation complete</em>. Auto-merge and an Action-driven tag-write are deferred to the automation phase.</p>`,
+    decisions:[['D13','Human-gated merge + CLI tag-write; merge-then-tag.']],
+    related:['review','escalate','emithub']
+  },
+
+  /* ---- DREAMING PHASE (non-linear, cross-story) ---- */
+  emithub:{
+    kind:'artifact', phase:'dream', temp:'warm', shape:'rect',
+    title:'Lessons-learned records', role:'warm emission · every agent',
+    status:'No per-story tag — cross-story',
+    body:`<p>Every automated agent — intake, planner, test-writer, coder, polish, reviewer, E2E — ends its session by emitting a structured <strong>lessons-learned record</strong>: what it tried, where it iterated and why, and what it would do differently.</p><p>This emission is deliberately <strong>warm</strong> — the agent reflecting on its own run, the only party that knows <em>why</em> it did what it did. Warm self-report is fine here because emission only contributes raw signal; it does not <strong>decide</strong> anything. (That is the same reason warm self-grading is forbidden for <em>gating</em> but allowed for <em>emission</em>.)</p><p>These records accumulate across many stories and are the raw material the dreamer synthesises.</p>`,
+    decisions:[['D16','Warm per-agent emission; raw signal only.']],
+    related:['dreamer','planner','coder','review']
+  },
+  dreamer:{
+    kind:'proc', phase:'dream', temp:'dream', shape:'rect',
+    title:'Dreamer synthesises lessons', role:'cold · cross-story',
+    status:'No per-story tag — cross-story',
+    body:`<p>On a regular cadence, a <strong>cold dreamer agent</strong> reviews the accumulated lessons-learned records and proposes improvements. It is <strong>cold</strong> — a separate invocation re-grounded only from the emitted lessons plus artifacts, never any agent's running context — the same re-grounding contract as the reviewer, test-writer, and E2E agent.</p><p>The phase's shape is <strong>reflect-warm / synthesise-cold</strong>: warmth where it is cheap (an agent reporting its own run), independence where it counts (deciding whether a lesson is a real, recurring pattern or a one-off). The dreamer's coldness is what keeps the synthesis of those warm reports honest.</p><p><strong>Cadence</strong> is left open at the framework level — e.g. every X <em>Implementation complete</em> items; the exact number is a tuning detail, like the retry-cap N.</p>`,
+    decisions:[['D16','Cold dreamer; reflect-warm / synthesise-cold; cadence left open.']],
+    related:['emithub','dreampr','parklot']
+  },
+  dreampr:{
+    kind:'artifact', phase:'dream', temp:'dream', shape:'rect',
+    title:'PR against .claude', role:'one dream cycle = one PR',
+    status:'No per-story tag — cross-story',
+    body:`<p>Every improvement the dreamer proposes lands as a <strong>GitHub PR against <em>.claude</em></strong> — <strong>one dream cycle is one PR</strong>. Each proposed change is individually reviewable, rejectable, auditable, and revertible (the same property D5 gives plan assumptions).</p><p>The dreamer's authority is <strong>hard-bounded to the agent-config / "learned behavior" layer</strong>: skills, agent prompts, the intake rubric, project rules. It may <strong>never</strong> propose changes to the flow itself — the status model, the gates, and the structural decisions D1–D15 are out of bounds. Improving <em>how</em> an agent does its job is in scope; redesigning <em>the job</em> is not.</p>`,
+    decisions:[['D16','PR against .claude; one cycle = one PR; authority bounded to config.']],
+    related:['dreamer','dreamdecide']
+  },
+  dreamdecide:{
+    kind:'gate', phase:'dream', temp:'human', shape:'diamond',
+    title:'Human accepts or rejects', role:'dream gate · permanent',
+    status:'No per-story tag — cross-story',
+    body:`<p>A human reviews the dreamer's PR and <strong>accepts or rejects</strong> it. The dreamer <strong>proposes</strong>; the human <strong>disposes</strong>.</p><p>This human gate is <strong>permanent</strong> — not a manual-scope limitation to be lifted once automation arrives, but the same <em>agent-suggests / human-decides</em> pattern as intake (D2) and merge (D13), applied to the <strong>highest-blast-radius write in the whole system</strong>. The dreamer modifies the very files every other agent reads on every run, so a bad lesson merged unreviewed would silently degrade all future work rather than break one story. An accepted PR updates <em>.claude</em>; the improved agents are used by all subsequent runs.</p>`,
+    decisions:[['D16','Permanent human accept/reject gate; highest blast radius.']],
+    related:['dreampr','dreamer']
+  },
+  parklot:{
+    kind:'rework', phase:'dream', temp:'human', shape:'rect',
+    title:'Parking-lot note for a human', role:'structural problem',
+    status:'No per-story tag — cross-story',
+    body:`<p>If the dreamer detects what looks like a <strong>structural</strong> problem — a recurring failure that no amount of prompt-tuning seems to fix — it may <strong>raise it as a parking-lot note for a human to consider</strong>, but it must <strong>not</strong> encode such a change as a mergeable diff.</p><p>This is the escape valve that keeps the authority boundary honest: a self-improving agent that could rewrite its own gates is exactly the failure the boundary exists to design out. Structural change stays a human decision, fed back into the design log (D1–D16), not the dreamer's PR.</p>`,
+    decisions:[['D16','Structural problems → human parking-lot note, never a diff.']],
+    related:['dreamer','dreamdecide']
+  }
+};
+
+/* ============================================================
+   LAYOUT — positions on a vertical flow grid
+   columns: main spine ~x=300; side rework ~x=70/95; branches offset
+   ============================================================ */
+const W = 940;
+// lane reference: phase rail ~28 | far-left loop lanes 70-150 | left nodes ~200 | spine 480 | right nodes ~770
+const SPINE = 480;
+const L = {
+  story:      {x:SPINE,y:34,  w:196,h:46},
+  intake:     {x:SPINE,y:122, w:216,h:58},
+  editstory:  {x:775, y:126, w:178,h:50, align:'r'},
+  planner:    {x:SPINE,y:228, w:216,h:64},
+  planpr:     {x:SPINE,y:332, w:216,h:54},
+  planrev:    {x:SPINE,y:432, w:168,h:88, diamond:true},
+  reroute:    {x:205, y:506, w:178,h:58, align:'l'},
+  readyimpl:  {x:SPINE,y:560, w:220,h:50},
+  testq:      {x:SPINE,y:652, w:182,h:90, diamond:true},
+  testwriter: {x:205, y:665, w:196,h:64, align:'l'},
+  testrev:    {x:205, y:752, w:196,h:50, align:'l'},
+  coder:      {x:SPINE,y:782, w:216,h:66},
+  polish:     {x:SPINE,y:884, w:216,h:52},
+  stuck:      {x:775, y:783, w:172,h:64, align:'r'},
+  codepr:     {x:SPINE,y:980, w:216,h:50},
+  ci:         {x:SPINE,y:1074,w:168,h:88, diamond:true},
+  e2eq:       {x:SPINE,y:1200,w:182,h:90, diamond:true},
+  e2e:        {x:205, y:1213,w:196,h:64, align:'l'},
+  review:     {x:SPINE,y:1332,w:176,h:94, diamond:true},
+  fix:        {x:190, y:1346,w:188,h:52, align:'l'},
+  escalate:   {x:775, y:1348,w:172,h:62, align:'r'},
+  merged:     {x:SPINE,y:1470,w:200,h:48},
+  // ---- dreaming phase: a horizontal row below the build spine (non-linear) ----
+  emithub:    {x:120, y:1640,w:188,h:66, align:'c'},
+  dreamer:    {x:368, y:1640,w:188,h:66, align:'c'},
+  dreampr:    {x:606, y:1640,w:176,h:66, align:'c'},
+  dreamdecide:{x:830, y:1636,w:178,h:96, diamond:true},
+  parklot:    {x:368, y:1762,w:200,h:60, align:'c'}
+};
+const CANVAS_H = 1850;
+
+/* edges: [from,to, type, label, side, cat]
+   type: 'flow' normal, 'loop' dashed back-edge
+   cat:  undefined = forward (steel), 'rework' = rejection/send-back (rust), 'fail' = fail/retry (amber)
+   route: how the edge is drawn (see renderEdge). lane: explicit x for vertical-travel loops. */
+const EDGES = [
+  // ---- main spine (straight vertical, all clear) ----
+  ['story','intake',{route:'V'}],
+  ['intake','planner',{route:'V',label:'ready'}],
+  ['planner','planpr',{route:'V'}],
+  ['planpr','planrev',{route:'V'}],
+  ['planrev','readyimpl',{route:'V',label:'approve'}],
+  ['readyimpl','testq',{route:'V'}],
+  ['testq','coder',{route:'V',label:'no'}],          // spec-tests? no -> straight to coder
+  ['coder','polish',{route:'V'}],
+  ['polish','codepr',{route:'V'}],
+  ['codepr','ci',{route:'V'}],
+  ['ci','e2eq',{route:'V',label:'pass'}],
+  ['e2eq','review',{route:'V',label:'no'}],           // live? no -> straight to reviewer
+  ['review','merged',{route:'V',label:'approve'}],
+
+  // ---- forward side-trips to LEFT nodes (out, down, back) using a left re-join lane ----
+  ['testq','testwriter',{route:'toLeft',label:'yes'}],   // diamond -> left node
+  ['testwriter','testrev',{route:'leftStack'}],          // left node -> left node (straight down)
+  ['testrev','coder',{route:'fromLeft',lane:340,enterY:798}],       // enters coder left-upper
+  ['e2eq','e2e',{route:'toLeft',label:'yes'}],
+  ['e2e','review',{route:'downToReviewTop',label:'pass'}],
+
+  // ---- forward side-trips to RIGHT nodes ----
+  ['review','escalate',{route:'toRight',label:'3× no',cat:'rework'}],
+
+  // ---- REWORK loops (rust) ----
+  ['intake','editstory',{route:'toRightLevel',cat:'rework'}],     // decline: across to edit (right)
+  ['editstory','intake',{route:'fromRightLevel',cat:'rework',label:'redo'}], // back, offset row
+  ['planrev','reroute',{route:'toLeftDrop',cat:'rework'}],
+  ['reroute','intake',{route:'loopUpLeft',cat:'rework',lane:30}],   // far-left lane 30
+  ['planrev','planner',{route:'loopUp',cat:'rework',lane:325,label:'plan gap'}], // mid-left lane
+  ['escalate','review',{route:'fromRightLevel',cat:'rework'}],      // verdict path back (offset)
+  ['escalate','merged',{route:'loopDownRight',cat:'rework',lane:905,label:'verdict'}],
+
+  // ---- reviewer iteration (review <-> fix), level pair, offset rows ----
+  ['review','fix',{route:'toLeftLevel',label:'comments'}],
+  ['fix','review',{route:'fromLeftLevel'}],
+
+  // ---- FAIL loops (amber) ----
+  ['coder','stuck',{route:'toRightLevel',cat:'fail',label:'stuck'}],
+  ['stuck','coder',{route:'fromRightLevel',cat:'fail',label:'resolved'}],
+  ['ci','coder',{route:'loopUpLeft',cat:'fail',lane:80,enterY:834,label:'fail'}],   // inner lane -> bottom entry
+  ['e2e','coder',{route:'loopUpLeft',cat:'fail',lane:55,enterY:816,label:'fail'}],   // outer lane -> middle entry
+
+  // ---- DREAMING PHASE (purple) ----
+  // build phase hands its exhaust down into the emission hub
+  ['merged','emithub',{route:'spineToDreamHub',cat:'dream',label:'session ends'}],
+  // dashed "lessons" feeders: representative agents emit upward-in-flow into the hub
+  ['planner','emithub',{route:'dreamFeed',cat:'dream',lane:-38}],
+  ['coder','emithub',{route:'dreamFeed',cat:'dream',lane:-30}],
+  ['review','emithub',{route:'dreamFeed',cat:'dream',lane:-22}],
+  // the dreaming row itself (left to right)
+  ['emithub','dreamer',{route:'H',label:'on cadence'}],
+  ['dreamer','dreampr',{route:'H'}],
+  ['dreampr','dreamdecide',{route:'H',label:'propose'}],
+  // structural problems peel off downward to a human note
+  ['dreamer','parklot',{route:'dreamDrop',cat:'rework',label:'structural?'}]
+
+];
+
+/* ============================================================
+   RENDER SVG
+   ============================================================ */
+function shapeColor(n){
+  // node fill tone derived from temp; gates/branches get gate edge
+  return TEMP[n.temp].color;
+}
+function buildSVG(){
+  const host = document.getElementById('chartHost');
+  const PADX = 56; // horizontal breathing room so side nodes/labels don't clip
+  let s = `<svg viewBox="${-PADX} 0 ${W+PADX*2} ${CANVAS_H}" role="img" aria-label="AI-native dev flow chart">`;
+  // defs
+  s += `<defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="9.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1,1 L11,6 L1,11 z" fill="#7d93ad"/></marker>
+    <marker id="arrow-rework" viewBox="0 0 12 12" refX="9.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1,1 L11,6 L1,11 z" fill="var(--gate)"/></marker>
+    <marker id="arrow-fail" viewBox="0 0 12 12" refX="9.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1,1 L11,6 L1,11 z" fill="var(--warm)"/></marker>
+    <marker id="arrow-dream" viewBox="0 0 12 12" refX="9.5" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M1,1 L11,6 L1,11 z" fill="var(--dream)"/></marker>
+  </defs>`;
+
+  // phase swimlanes — full-width tinted bands BEHIND everything (can't be crossed)
+  s += phaseBand('PLAN PHASE', 100, 522, 'var(--plan)');
+  s += phaseBand('BUILD PHASE', 600, 1518, 'var(--build)');
+  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1596, 1836, 'var(--dream)');
+
+  // edges (under nodes, over the bands)
+  EDGES.forEach(e=> s += renderEdge(e));
+
+  // nodes
+  for(const id in L){ s += renderNode(id); }
+
+  s += `</svg>`;
+  host.innerHTML = s;
+
+  // attach listeners
+  document.querySelectorAll('.node').forEach(g=>{
+    g.addEventListener('click',()=> select(g.dataset.id));
+    g.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();select(g.dataset.id);} });
+  });
+}
+
+function phaseBand(label,y1,y2,color){
+  const PADX=56;
+  const x0=-PADX+6, bw=W+PADX*2-12, h=y2-y1;
+  return `<g class="phaseband">
+    <rect x="${x0}" y="${y1}" width="${bw}" height="${h}" rx="14" fill="${color}" opacity="0.045"/>
+    <rect x="${x0}" y="${y1}" width="4" height="${h}" rx="2" fill="${color}" opacity="0.5"/>
+    <text x="${x0+18}" y="${y1+22}" fill="${color}" opacity="0.7" font-weight="600">${label}</text>
+  </g>`;
+}
+
+function anchor(id,dir){
+  const n=L[id];
+  const cx=n.x, cy=n.y+n.h/2;
+  // for diamonds use point tips
+  if(n.diamond){
+    const hw=n.w/2, hh=n.h/2, mx=n.x, my=n.y+hh;
+    if(dir==='down')return{x:mx,y:n.y+n.h};
+    if(dir==='up')return{x:mx,y:n.y};
+    if(dir==='left')return{x:n.x-hw,y:my};
+    if(dir==='right')return{x:n.x+hw,y:my};
+  }
+  if(dir==='down')return{x:n.x,y:n.y+n.h};
+  if(dir==='up')return{x:n.x,y:n.y};
+  if(dir==='left')return{x:n.x-n.w/2,y:cy};
+  if(dir==='right')return{x:n.x+n.w/2,y:cy};
+  return{x:n.x,y:cy};
+}
+
+// Orthogonal edge router.
+// Forward spine edges are straight verticals. Side-trips and loops use explicit lanes
+// (x columns) that sit in node-free gutters; every vertical leg has a unique lane so
+// no two loop lines ever overlap, and horizontal legs attach at node edges (empty rows).
+function diamondSide(n,dir){ // anchor on a node (rect or diamond) at a given side
+  const cy=n.y+n.h/2, hw=n.w/2, hh=n.h/2;
+  if(n.diamond){
+    if(dir==='down')return{x:n.x,y:n.y+n.h};
+    if(dir==='up')return{x:n.x,y:n.y};
+    if(dir==='left')return{x:n.x-hw,y:cy};
+    if(dir==='right')return{x:n.x+hw,y:cy};
+  }
+  if(dir==='down')return{x:n.x,y:n.y+n.h};
+  if(dir==='up')return{x:n.x,y:n.y};
+  if(dir==='left')return{x:n.x-hw,y:cy};
+  if(dir==='right')return{x:n.x+hw,y:cy};
+}
+
+function renderEdge(e){
+  const [from,to,opt]=e;
+  const r=opt.route, cat=opt.cat, label=opt.label;
+  const isLoop = (r==='loopUpLeft'||r==='loopUp'||r==='loopDownRight'||r==='fromLeftLevel'||r==='fromRightLevel');
+  let cls='edge'+(isLoop?' loop':'')+(cat?(' '+cat):'');
+  const mk = cat==='rework'?'url(#arrow-rework)':cat==='fail'?'url(#arrow-fail)':cat==='dream'?'url(#arrow-dream)':'url(#arrow)';
+  const A=L[from], B=L[to];
+  let path='', lx=0, ly=0;
+  const ROWOFF=11; // vertical separation for the two directions of a level pair
+
+  if(r==='V'){ // straight vertical spine
+    const a=diamondSide(A,'down'), b=diamondSide(B,'up');
+    path=`M${a.x},${a.y} L${b.x},${b.y}`; lx=a.x; ly=a.y+(b.y-a.y)*0.38;
+
+  }else if(r==='toLeft'){ // spine/diamond -> left node: straight if level, else out-drop-in
+    const a=diamondSide(A,'left'), b=diamondSide(B,'right');
+    if(Math.abs(a.y-b.y)<2){ // level: clean straight line
+      path=`M${a.x},${a.y} L${b.x},${b.y}`; lx=(a.x+b.x)/2; ly=a.y-10;
+    }else{
+      const vx=Math.min(a.x-24, b.x+40);
+      path=`M${a.x},${a.y} L${vx},${a.y} L${vx},${b.y} L${b.x},${b.y}`;
+      lx=(a.x+vx)/2; ly=a.y-10;
+    }
+
+  }else if(r==='leftStack'){ // left node -> left node straight down (same x column)
+    const a=diamondSide(A,'down'), b=diamondSide(B,'up');
+    path=`M${a.x},${a.y} L${b.x},${b.y}`; lx=a.x; ly=a.y+(b.y-a.y)*0.38;
+
+  }else if(r==='downToReviewTop'){ // e2e (left) -> review diamond top-left, avoiding the fix pair
+    const a=diamondSide(A,'down'); // exit e2e bottom
+    const B0=L[to];
+    // enter point on review's upper-left edge, near the top vertex
+    const ey=B0.y+14; const ex=B0.x - (B0.w/2)*((ey-B0.y)/(B0.h/2));
+    const midY=A.y+A.h+34; // drop below e2e, above everything
+    path=`M${a.x},${a.y} L${a.x},${midY} L${ex},${midY} L${ex},${ey}`;
+    lx=(a.x+ex)/2; ly=midY-8;
+
+  }else if(r==='fromLeft'){ // left node -> spine: out right into a mid-left lane, down/up, into spine LEFT
+    const a=diamondSide(A,'right'), b=diamondSide(B,'left');
+    const lane=opt.lane;
+    const by = opt.enterY!=null ? opt.enterY : b.y;
+    path=`M${a.x},${a.y} L${lane},${a.y} L${lane},${by} L${b.x},${by}`;
+    lx=lane; ly=(a.y+by)/2;
+
+  }else if(r==='toRight'){ // spine/diamond -> right node: out right, into right node LEFT
+    const a=diamondSide(A,'right'), b=diamondSide(B,'left');
+    const vx=Math.max(a.x+24, b.x-40);
+    path=`M${a.x},${a.y} L${vx},${a.y} L${vx},${b.y} L${b.x},${b.y}`;
+    lx=(a.x+vx)/2; ly=a.y-10;
+
+  }else if(r==='toLeftDrop'){ // diamond -> lower-left node: out left, drop, into node RIGHT
+    const a=diamondSide(A,'left'); const b=diamondSide(B,'right');
+    const vx=b.x + (a.x-b.x)*0.45; // vertical leg sits in the gap between node and diamond
+    path=`M${a.x},${a.y} L${vx},${a.y} L${vx},${b.y} L${b.x},${b.y}`;
+    // label in the open gap LEFT of the vertical drop, vertically centred on the drop
+    lx=vx-24; ly=(a.y+b.y)/2 + 4;
+
+  }else if(r==='toLeftLevel'){ // spine/diamond -> left node, same row: straight line, UPPER part
+    const sep=Math.round(Math.min(A.h,B.h)*0.22)||10;
+    const ax=A.x-A.w/2, bx=B.x+B.w/2;
+    const y=(A.y+A.h/2 + B.y+B.h/2)/2 - sep;
+    path=`M${ax},${y} L${bx},${y}`;
+    lx=bx + (ax-bx)*0.30; ly=y-19;
+
+  }else if(r==='fromLeftLevel'){ // left node -> spine, same row: straight line, LOWER part
+    const sep=Math.round(Math.min(A.h,B.h)*0.22)||10;
+    const ax=A.x+A.w/2, bx=B.x-B.w/2;
+    const y=(A.y+A.h/2 + B.y+B.h/2)/2 + sep;
+    path=`M${ax},${y} L${bx},${y}`;
+    lx=(ax+bx)/2; ly=y+13;
+
+  }else if(r==='toRightLevel'){ // spine -> right node, same row: straight line in UPPER part of gap
+    const sep=Math.round(Math.min(A.h,B.h)*0.22)||10; // offset above centre
+    const ay=A.y+A.h/2 - sep, by=B.y+B.h/2 - sep;
+    const ax=A.x+A.w/2, bx=B.x-B.w/2;
+    const y=(ay+by)/2;
+    path=`M${ax},${y} L${bx},${y}`;
+    lx=(ax+bx)/2; ly=y-7;
+
+  }else if(r==='fromRightLevel'){ // right node -> spine, same row: straight line in LOWER part of gap
+    const sep=Math.round(Math.min(A.h,B.h)*0.22)||10; // offset below centre
+    const ay=A.y+A.h/2 + sep, by=B.y+B.h/2 + sep;
+    const ax=A.x-A.w/2, bx=B.x+B.w/2;
+    const y=(ay+by)/2;
+    path=`M${ax},${y} L${bx},${y}`;
+    lx=(ax+bx)/2; ly=y+13;
+
+  }else if(r==='loopUpLeft'){ // long loop up a far-left lane: out left, up lane, into target LEFT
+    const a=diamondSide(A,'left'), b=diamondSide(B,'left');
+    const lane=opt.lane;
+    const by = opt.enterY!=null ? opt.enterY : b.y; // optional staggered entry on target's left edge
+    path=`M${a.x},${a.y} L${lane},${a.y} L${lane},${by} L${b.x},${by}`;
+    lx=lane; ly=(a.y+by)/2;
+
+  }else if(r==='loopUp'){ // loop up a mid lane (plan gap): exit on upper-left EDGE, up lane, into target LEFT
+    const b=diamondSide(B,'left');
+    // point on the source diamond's upper-left edge (between top and left vertices)
+    let ex, ey;
+    if(A.diamond){ const f=0.55; ey=A.y + (A.h/2)*f; ex=A.x - (A.w/2)*f; }
+    else { ex=A.x-A.w/2; ey=A.y+A.h*0.3; }
+    const lane=opt.lane;
+    path=`M${ex},${ey} L${lane},${ey} L${lane},${b.y} L${b.x},${b.y}`;
+    lx=lane; ly=(ey+b.y)/2;
+
+  }else if(r==='loopDownRight'){ // loop down a far-right lane: out right, down lane, into target RIGHT
+    const a=diamondSide(A,'right'), b=diamondSide(B,'right');
+    const lane=opt.lane;
+    path=`M${a.x},${a.y} L${lane},${a.y} L${lane},${b.y} L${b.x},${b.y}`;
+    lx=lane; ly=(a.y+b.y)/2;
+
+  }else if(r==='H'){ // straight horizontal between adjacent dreaming-row nodes
+    const a=diamondSide(A,'right'), b=diamondSide(B,'left');
+    path=`M${a.x},${a.y} L${b.x},${b.y}`;
+    lx=(a.x+b.x)/2; ly=a.y-9;
+
+  }else if(r==='spineToDreamHub'){ // merged (spine) drops straight into emithub's TOP
+    const a=diamondSide(A,'down'); const b=diamondSide(B,'up');
+    const turnY=b.y-30;              // drop to just above the hub, then slide across to its centre
+    path=`M${a.x},${a.y} L${a.x},${turnY} L${b.x},${turnY} L${b.x},${b.y}`;
+    lx=(a.x+b.x)/2; ly=turnY-9;
+
+  }else if(r==='dreamFeed'){ // dashed lessons feeder: agent (spine, left edge) runs down a far-left lane into emithub's LEFT side
+    const a=diamondSide(A,'left'); const b=diamondSide(B,'left');
+    const lane=opt.lane!=null?opt.lane:-30;     // far-left gutter (negative x, in the PADX margin)
+    const enterY=b.y - 14 + (opt.lane!=null?(opt.lane+30):0); // fan the three entries across emithub's left edge
+    path=`M${a.x},${a.y} L${lane},${a.y} L${lane},${enterY} L${b.x},${enterY}`;
+    lx=lane; ly=a.y-9;
+
+  }else if(r==='dreamDrop'){ // dreamer drops straight down to the parking-lot note
+    const a=diamondSide(A,'down'); const b=diamondSide(B,'up');
+    path=`M${a.x},${a.y} L${b.x},${b.y}`;
+    lx=a.x+4; ly=(a.y+b.y)/2;
+  }
+
+  let out=`<path class="${cls}" d="${path}" marker-end="${mk}"/>`;
+  if(label){
+    const w=label.length*6.4+12;
+    const lcls='edgelabel'+(cat?(' '+cat):'');
+    out+=`<g><rect x="${lx-w/2}" y="${ly-8.5}" width="${w}" height="17" rx="4" fill="var(--ground)"/><text class="${lcls}" x="${lx}" y="${ly+3.5}" text-anchor="middle">${label}</text></g>`;
+  }
+  return out;
+}
+
+function renderNode(id){
+  const n=NODES[id], p=L[id];
+  const col=shapeColor(n);
+  const tier=TEMP[n.temp];
+  let inner='';
+  const tcol = 'var(--text)';
+
+  if(p.diamond){
+    // diamond (gate/branch)
+    const cx=p.x, cy=p.y+p.h/2, hw=p.w/2, hh=p.h/2;
+    const pts=`${cx},${p.y} ${cx+hw},${cy} ${cx},${p.y+p.h} ${cx-hw},${cy}`;
+    inner=`<polygon class="box" points="${pts}" fill="var(--surface-2)" stroke="${col}" stroke-width="1.6"/>
+      <polygon class="ring" points="${cx},${p.y-5} ${cx+hw+5},${cy} ${cx},${p.y+p.h+5} ${cx-hw-5},${cy}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0"/>`;
+    const lines=wrap(n.title, 18);
+    const startY = cy - (lines.length-1)*7;
+    let tx='';
+    lines.forEach((ln,i)=> tx+=`<text class="ttl" x="${cx}" y="${startY+i*14+1}" text-anchor="middle">${esc(ln)}</text>`);
+    inner+=tx;
+  } else {
+    const round = (n.shape==='round');
+    const rx = round? p.h/2 : 11;
+    const align = p.align||'c';
+    const tx = align==='l'? p.x - p.w/2 : (align==='r'? p.x - p.w/2 : p.x);
+    const x0=p.x-p.w/2;
+    inner=`<rect class="box" x="${x0}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${rx}" fill="var(--surface-2)" stroke="${col}" stroke-width="1.6"/>
+      <rect class="ring" x="${x0-5}" y="${p.y-5}" width="${p.w+10}" height="${p.h+10}" rx="${rx+4}" fill="none" stroke="${col}" stroke-width="1.4" opacity="0"/>`;
+    // role (mono, dim) + title
+    const cxText = p.x;
+    const hasRole = !!n.role;
+    if(n.shape==='round'){
+      inner+=`<text class="ttl" x="${cxText}" y="${p.y+p.h/2+4.5}" text-anchor="middle">${esc(n.title)}</text>`;
+    } else {
+      const titleLines=wrap(n.title, Math.floor((p.w-22)/7.0));
+      const blockH = (titleLines.length*15) + (hasRole?13:0);
+      let startY = p.y + (p.h-blockH)/2 + 12;
+      if(hasRole){
+        inner+=`<text class="role" x="${cxText}" y="${startY-1}" text-anchor="middle">${esc(n.role)}</text>`;
+        startY+=14;
+      }
+      titleLines.forEach((ln,i)=> inner+=`<text class="ttl" x="${cxText}" y="${startY+i*15}" text-anchor="middle">${esc(ln)}</text>`);
+    }
+  }
+  return `<g class="node" data-id="${id}" tabindex="0" role="button" aria-label="${esc(n.title)}">${inner}</g>`;
+}
+
+function wrap(str,max){
+  const words=str.split(' ');const lines=[];let cur='';
+  words.forEach(w=>{ if((cur+' '+w).trim().length>max){ if(cur)lines.push(cur); cur=w; } else cur=(cur+' '+w).trim(); });
+  if(cur)lines.push(cur); return lines.length?lines:[str];
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+function buildLegend(){
+  const el=document.getElementById('legend');
+  el.innerHTML=`
+    <div class="grp"><span class="sw" style="background:var(--cold)"></span><span class="k"><b>Cold agent</b> · re-grounds from artifacts only</span></div>
+    <div class="grp"><span class="sw" style="background:var(--warm)"></span><span class="k"><b>Warm agent</b> · shares the coder's context</span></div>
+    <div class="grp"><span class="sw" style="background:var(--dream)"></span><span class="k"><b>Dreamer</b> · cold, cross-story</span></div>
+    <div class="grp"><span class="sw" style="background:var(--human)"></span><span class="k"><b>Human</b></span></div>
+    <div class="div"></div>
+    <div class="grp"><span class="sw diamond" style="background:transparent;border:1.5px solid var(--gate)"></span><span class="k"><b>Gate / branch</b></span></div>
+    <div class="grp"><span class="sw" style="background:transparent;border:1.5px solid var(--terminal);border-radius:50%"></span><span class="k"><b>Milestone</b></span></div>
+    <div class="div"></div>
+    <div class="grp"><svg width="26" height="10"><line x1="1" y1="5" x2="20" y2="5" stroke="#7d93ad" stroke-width="2.4"/><path d="M19,1 L25,5 L19,9 z" fill="#7d93ad"/></svg><span class="k"><b>Forward</b></span></div>
+    <div class="grp"><svg width="26" height="10"><line x1="1" y1="5" x2="20" y2="5" stroke="var(--gate)" stroke-width="2.2" stroke-dasharray="6 5"/><path d="M19,1 L25,5 L19,9 z" fill="var(--gate)"/></svg><span class="k"><b>Send back</b> · rejected</span></div>
+    <div class="grp"><svg width="26" height="10"><line x1="1" y1="5" x2="20" y2="5" stroke="var(--warm)" stroke-width="2.2" stroke-dasharray="6 5"/><path d="M19,1 L25,5 L19,9 z" fill="var(--warm)"/></svg><span class="k"><b>Fail / retry</b></span></div>
+    <div class="grp"><svg width="26" height="10"><line x1="1" y1="5" x2="20" y2="5" stroke="var(--dream)" stroke-width="2.1" stroke-dasharray="2 6" stroke-linecap="round"/><path d="M19,1 L25,5 L19,9 z" fill="var(--dream)"/></svg><span class="k"><b>Lessons</b> · feeds the dreamer</span></div>`;
+}
+
+/* ============================================================
+   SELECTION + PANEL
+   ============================================================ */
+let current=null;
+function select(id){
+  const n=NODES[id]; if(!n)return;
+  current=id;
+  document.querySelectorAll('.node').forEach(g=>g.classList.toggle('sel',g.dataset.id===id));
+  // hide hint
+  const hint=document.getElementById('hint'); if(hint)hint.style.opacity='0';
+
+  // accent for panel based on temp
+  const accent = TEMP[n.temp].color;
+  const panel=document.getElementById('panel');
+  panel.style.setProperty('--accent',accent);
+  panel.classList.remove('closed');
+
+  // update status chip
+  setStatus(n.status);
+
+  // build detail
+  const tier=TEMP[n.temp];
+  let html='';
+  html+=`<div class="kicker">${PHASE[n.phase].name|| (n.phase==='terminal'?'Milestone':'')|| 'Step'} ${roleTag(n)}</div>`;
+  html+=`<h2>${esc(n.title)}</h2>`;
+  // meta pills
+  html+=`<div class="meta">`;
+  html+=`<span class="pill"><span class="pdot" style="background:${tier.color}"></span>${tier.label}</span>`;
+  if(n.phase==='dream') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--dream) 50%,var(--line));color:var(--dream)">Cross-story</span>`;
+  if(n.kind==='gate') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--gate) 50%,var(--line));color:var(--gate)">Gate</span>`;
+  if(n.kind==='branch') html+=`<span class="pill">Branch</span>`;
+  if(n.kind==='stuck') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--gate) 50%,var(--line));color:var(--gate)">Halt</span>`;
+  if(n.kind==='terminal'||n.kind==='milestone') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--terminal) 45%,var(--line));color:var(--terminal)">Milestone</span>`;
+  html+=`</div>`;
+
+  html+=`<div class="body">${n.body}</div>`;
+
+  // status
+  html+=`<div class="sechead">${n.phase==='dream'?'Status':'AIND status here'}</div>`;
+  html+=statusRow(n.status);
+
+  // decisions
+  if(n.decisions&&n.decisions.length){
+    html+=`<div class="sechead">Governing decisions</div><div class="declist">`;
+    n.decisions.forEach(d=> html+=`<div class="dec"><span class="id">${d[0]}</span><span class="txt">${esc(d[1])}</span></div>`);
+    html+=`</div>`;
+  }
+
+  // related
+  if(n.related&&n.related.length){
+    html+=`<div class="sechead">Connected steps</div><div class="rellist">`;
+    n.related.forEach(r=>{ if(NODES[r]) html+=`<span class="rel" data-go="${r}"><span class="arr">→</span>${esc(NODES[r].title)}</span>`; });
+    html+=`</div>`;
+  }
+
+  document.getElementById('emptyState').style.display='none';
+  const det=document.getElementById('detail');
+  det.style.display='block';
+  det.innerHTML=html;
+  det.querySelectorAll('.rel').forEach(r=> r.addEventListener('click',()=>select(r.dataset.go)));
+  document.getElementById('panelScroll').scrollTop=0;
+}
+
+function roleTag(n){ return n.role? `· ${esc(n.role)}`:''; }
+
+function statusRow(st){
+  const c=STATUS[st]||'var(--text-faint)';
+  // dreaming-phase nodes don't move the per-story AIND tag — drop the prefix
+  if(st && st.startsWith('No per-story tag')){
+    return `<div class="statusrow"><span class="dot" style="background:${c}"></span>${esc(st)}</div>`;
+  }
+  return `<div class="statusrow"><span class="dot" style="background:${c}"></span><span class="pfx">AIND status —</span> ${esc(st)}</div>`;
+}
+
+function setStatus(st){
+  const tag=document.getElementById('statusTag');
+  const txt=document.getElementById('statusText');
+  const pfx=tag.querySelector('.pfx');
+  const c=STATUS[st]||'var(--cold)';
+  tag.style.setProperty('--accent',c);
+  tag.classList.add('live');
+  // dreaming-phase nodes have no per-story tag: hide the "AIND status —" prefix and show the cross-story note
+  if(st && st.startsWith('No per-story tag')){
+    if(pfx) pfx.style.display='none';
+    txt.textContent='no per-story tag · cross-story';
+  }else{
+    if(pfx) pfx.style.display='';
+    txt.textContent=st;
+  }
+}
+
+document.getElementById('closeBtn').addEventListener('click',()=>{
+  document.getElementById('panel').classList.add('closed');
+  document.querySelectorAll('.node').forEach(g=>g.classList.remove('sel'));
+  current=null;
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ document.getElementById('panel').classList.add('closed'); document.querySelectorAll('.node').forEach(g=>g.classList.remove('sel')); current=null; }});
+
+/* init */
+buildSVG();
+buildLegend();
+</script>
+</body>
+</html>
