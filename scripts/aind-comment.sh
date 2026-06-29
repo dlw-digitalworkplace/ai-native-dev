@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # aind-comment.sh <work-item-id> <agent-name> [message]
 # Posts a comment to an ADO work item, ALWAYS appending an agent signature
-# (design: every agent post is signed by the agent name; mitigates the D6
+# (design: every agent post is signed by the agent name; mitigates the current
 # "everything under the developer's identity" limitation).
 #
 # The message may be passed as the 3rd arg OR piped on stdin (preferred for

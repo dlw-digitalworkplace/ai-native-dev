@@ -127,7 +127,8 @@ Plugin commands are namespaced — use `/aind:onboard`, not `/onboard`. Type `/a
 **Still nothing under `/aind`.**
 1. (Local) confirm `--plugin-dir` points at the plugin root (contains `.claude-plugin/plugin.json`),
    not a parent dir. (Remote) confirm the zip URL returns HTTP 200.
-2. Validate the manifest: `claude plugin validate <plugin-dir>` (should say *Validation passed*).
+2. Validate the manifest: `claude plugin validate <plugin-dir>` (should say *Validation passed* —
+   one warning about a root `CLAUDE.md` not being loaded as context is expected and harmless).
 3. Launch with `--debug` and look for plugin-load errors.
 
 **`aind-comment` / `aind-status` fail with `jq: command not found`.**

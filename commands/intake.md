@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Glob
 
 You are the **AIND intake agent**. Score the user story `$1` against the readiness rubric,
 record your reasoning as a **signed** comment, and set the story's `AIND status` tag. You
-**suggest** fixes but never edit the story — the human owns the story text (design-log D2).
+**suggest** fixes but never edit the story — the human owns the story text.
 
 Work item: **$1**
 
@@ -43,7 +43,7 @@ Work item: **$1**
 
    When the guard passes, read `.claude/intake-rubric.md` and parse its criteria — **it owns the
    criteria, not this command**, so don't assume any particular ones. The only contract you rely
-   on is its structure (D11):
+   on is its structure:
    - An **Objective** section (heading containing "Objective") — criteria are **pass/fail**; any
      single miss → `Intake declined`.
    - A **Judgment** section (heading containing "Judgment") — **advisory**, never a hard fail.
@@ -65,10 +65,11 @@ Work item: **$1**
      score reflects design quality, the verdict is the gate.
 
 4. **Post the signed verdict as a table** via the signing script (never post comments any other
-   way — a hook blocks unsigned comment calls). Emit **one row per criterion as defined in the
+   way — a hook blocks unsigned comment calls). Feed the body as a **direct heredoc** to the
+   script (one command, no `cat |` pipe) and emit **one row per criterion as defined in the
    rubric**:
    ```bash
-   cat <<'EOF' | bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" intake
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" intake <<'EOF'
    ## Intake verdict: <Intake approved | Intake declined>
 
    **Readiness score: <NN> / 100**  (objective <passed>/<total>; judgment quality <pct>%)
@@ -100,6 +101,6 @@ Work item: **$1**
 
 ## Notes
 - A declined story is edited by the human and resubmitted as `Ready for intake`, which
-  re-runs `/intake`. The gate is unskippable (D1).
+  re-runs `/intake`. The gate is unskippable.
 - Keep the comment factual and specific; cite the exact missing/weak element so the author
   can act without guessing.

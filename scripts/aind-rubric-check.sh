@@ -13,7 +13,7 @@
 #
 # A "criterion" is a markdown table data row (not the header/separator) or a `-`/`*` list item
 # appearing under a heading whose text contains "Objective" or "Judgment" (case-insensitive) —
-# the rubric<->command contract (design-log D11).
+# the rubric<->command contract.
 
 set -u
 

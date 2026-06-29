@@ -16,8 +16,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 It checks: required tools (`az`, `gh`, `git`, `curl`, `jq`, the azure-devops extension),
 authentication (`gh`, `AZURE_DEVOPS_EXT_PAT`), the AIND env vars, and best-effort
 connectivity to the GitHub repo and ADO org. Two prerequisites can't be auto-verified and are
-listed as `[MANUAL]`: the Azure Boards ↔ GitHub integration (D17) and the integration
-branch's "require conversation resolution" rule (D5).
+listed as `[MANUAL]`: the Azure Boards ↔ GitHub integration and the integration
+branch's "require conversation resolution" rule.
 
 Config in `.claude/aind.env` is **auto-loaded** (walk-up from the working directory), so the
 env-var and connectivity checks are meaningful without sourcing anything by hand. An

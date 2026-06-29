@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # aind-status.sh <work-item-id> <new-state>
-# Atomically swaps the AIND status tag (design-log D4 invariant: exactly one
+# Atomically swaps the AIND status tag (invariant: exactly one
 # `AIND status - <state>` tag per item). Preserves all non-AIND tags; removes any
 # existing AIND-status tag — robustly, regardless of casing / spacing / a trailing CR —
 # and adds the new one.
@@ -8,7 +8,7 @@
 # The write uses a REST PATCH with a **replace** op, NOT `az boards work-item update
 # --fields "System.Tags=…"`: that az path emits a JSON-Patch `add`, which on some az builds
 # MERGES into the existing tag set instead of replacing it — silently undoing the strip and
-# leaving two AIND status tags (violating D4). `replace` overwrites the field outright. When
+# leaving two AIND status tags (violating the single-tag invariant). `replace` overwrites the field outright. When
 # the item has no tags yet the field doesn't exist, so we use `add` in that one case.
 #
 # After updating it VERIFIES the result: if there is not exactly one AIND status tag (the

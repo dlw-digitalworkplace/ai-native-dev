@@ -78,8 +78,8 @@ fi
 
 echo
 echo "Manual checks (cannot be auto-verified):"
-manual "Azure Boards <-> GitHub integration connected (so AB#<id> in a PR links to the work item — D17)"
-manual "Integration branch has 'require conversation resolution before merging' enabled (so assumption threads gate the plan-PR merge — D5)"
+manual "Azure Boards <-> GitHub integration connected (so AB#<id> in a PR links to the work item)"
+manual "Integration branch has 'require conversation resolution before merging' enabled (so assumption threads gate the plan-PR merge)"
 
 echo
 echo "-------------------------------------------------"

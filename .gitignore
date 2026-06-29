@@ -3,3 +3,6 @@ aind.zip
 
 # Project-side secret (never in this repo; listed defensively)
 .claude/aind.env
+
+# Local, per-developer Claude Code permission grants (not shared, not shipped)
+.claude/settings.local.json

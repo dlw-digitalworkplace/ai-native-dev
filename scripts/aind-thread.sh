@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # aind-thread.sh <pr-number> <path> <line> [message]
 # Posts a single RESOLVABLE review thread on a plan PR, anchored to a line of the diff
-# (design-log D5). Resolvable review threads — not plain issue comments — are what the
+# Resolvable review threads — not plain issue comments — are what the
 # "require conversation resolution before merging" branch rule gates on, so each assumption /
 # open question must be cleared by the human before the plan can merge.
 #

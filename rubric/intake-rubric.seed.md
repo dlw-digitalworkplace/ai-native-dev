@@ -4,16 +4,16 @@
 > plugin and copies this file to `.claude/intake-rubric.md`, then **edits it in place**
 > to add project-specific criteria.
 >
-> The core is a **strong default, not an enforced floor** (design-log D11): because the
+> The core is a **strong default, not an enforced floor**: because the
 > project copy is a single editable file, a team *can* remove or change core items —
 > nothing structurally prevents it. If enforcement is ever needed, promote the core to a
 > read-only merged layer.
 
 The intake agent scores a story against this rubric and records its reasoning as a
-signed comment on the work item (D2). It **suggests** fixes but never edits the story —
+signed comment on the work item. It **suggests** fixes but never edits the story —
 the human owns the story text.
 
-The rubric is **hybrid** (D11):
+The rubric is **hybrid**:
 
 - **Objective criteria are pass/fail.** Any miss → `Intake declined`. These are the hard gate.
 - **Judgment criteria are advisory.** The agent surfaces them as comments, never as a hard

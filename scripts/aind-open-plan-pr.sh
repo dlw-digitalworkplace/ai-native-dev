@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # aind-open-plan-pr.sh <work-item-id> [pr-title]
-# Opens the plan PR for a story (design-log D5/D10/D17). Assumes the plan markdown already
+# Opens the plan PR for a story. Assumes the plan markdown already
 # exists at plans/<id>/plan.md (the /plan command writes it first, then calls this).
 #
 # Steps: branch off the integration branch -> commit the plan -> push -> open a PR that
 # targets the integration branch, mentions AB#<id> (native Boards<->GitHub linking) and
 # carries the AIND-LINKS block. The PR/link is created AFTER the push so a failure leaves a
-# real, discoverable branch rather than a dangling pointer (D13/D17 ordering).
+# real, discoverable branch rather than a dangling pointer (create-link-after-push ordering).
 #
-# Branch naming is a project concern (D10/D17) — override the prefix with
+# Branch naming is a project concern — override the prefix with
 # AIND_PLAN_BRANCH_PREFIX (default: aind/plan/). The framework reaches the branch through
 # the PR, never by deriving its name.
 #
@@ -30,6 +30,13 @@ PLAN_PATH="plans/${ID}/plan.md"
 BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
 [[ -n "$TITLE" ]] || TITLE="Plan for work item ${ID}"
 
+# Refuse to clobber an existing plan PR — revisions iterate the same PR via
+# aind-revise-plan-pr.sh, never a second open. (Re-running create here would conflict on the
+# branch push and fail `gh pr create`.)
+if [[ -n "$(gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]]; then
+  aind_die "a plan PR already exists for $BRANCH — iterate it with aind-revise-plan-pr.sh (revise mode), don't re-open"
+fi
+
 # Branch off the latest integration branch.
 git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
 git checkout -B "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
@@ -50,8 +57,8 @@ cat > "$BODY_FILE" <<EOF
 Implementation plan for **AB#${ID}** — ${TITLE}.
 
 The plan lives at \`${PLAN_PATH}\` and merges to \`${AIND_INTEGRATION_BRANCH}\` as living
-documentation (D10). Assumptions and open questions are posted as resolvable review threads
-and must be resolved before merge (D5).
+documentation. Assumptions and open questions are posted as resolvable review threads
+and must be resolved before merge.
 
 ${LINKS_BLOCK}
 EOF

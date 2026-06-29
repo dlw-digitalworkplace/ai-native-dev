@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-# The canonical set of AIND status states (design-log D4).
+# The canonical set of AIND status states.
 AIND_STATES=(
   "Ready for intake"
   "Intake declined"

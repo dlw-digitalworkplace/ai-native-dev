@@ -2,7 +2,7 @@
 # aind-links.sh write <work-item-id> [plan-pr-url]
 # aind-links.sh parse                      (reads a PR body on stdin)
 #
-# The AIND-LINKS block (design-log D17) is a machine-parseable HTML comment carried in a PR
+# The AIND-LINKS block is a machine-parseable HTML comment carried in a PR
 # body. It is invisible in the rendered PR but lets a cold agent resolve the work item and
 # plan from artifacts alone (no ADO round-trip). The work-item ID is the join value; branch
 # names are never encoded (a branch is reached through its PR).
