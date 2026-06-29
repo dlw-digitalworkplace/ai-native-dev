@@ -74,7 +74,7 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 |---|---|:--:|:--:|---|
 | Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. |
-| Plan · 1 | Planner agent — `/aind:plan` | ✅ | ⬜ | Built (plan.md, plan PR, AIND-LINKS, assumption threads); not yet run live. |
+| Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Built & Tested (plan.md, plan PR, AIND-LINKS, assumption threads). Testing only done on smaller user stories |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
 | Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ⬜ | Sets `Ready for implementation`; not yet run live. |
 | Build | Test-writer agent (optional, cold) | ⬜ | — | Not built. |
