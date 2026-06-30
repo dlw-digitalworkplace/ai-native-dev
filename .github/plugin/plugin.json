@@ -1,7 +1,7 @@
 {
   "name": "aind",
-  "version": "0.4.0",
-  "description": "AI-Native Dev flow for Azure DevOps + GitHub. Plan-phase agents — onboarding, intake (readiness scoring), and planning (delivers an implementation plan as a GitHub PR) — plus the shared, scripted ADO/GitHub mechanics they rely on.",
+  "version": "0.5.0",
+  "description": "AI-Native Dev flow for Azure DevOps + GitHub. Agents for onboarding, intake (readiness scoring), planning (delivers an implementation plan as a GitHub PR), and implementation (builds an approved plan into a GitHub code PR) — plus the shared, scripted ADO/GitHub mechanics they rely on.",
   "author": {
     "name": "Robin Agten"
   },

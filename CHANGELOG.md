@@ -9,6 +9,39 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.5.0] — 2026-06-30
+
+### Added
+- **Build phase — coding agent.** `/aind:implement <work-item-id>` turns an approved, merged plan
+  into a GitHub **code PR** (D24). It is a warm in-session command (authoring, not an independent
+  check): a single rule-driven coder whose per-domain conventions come from each task's cited
+  `rules/*.md`, with **polish** as its final in-context phase (style/self-consistency only, no
+  structural change). It grounds from the merged plan + cited rules + the project's build/run
+  skills, generates a `<type>/<id>-<short-name>` branch, and stops at PR creation — the status tag
+  stays `In implementation`.
+- `scripts/aind-open-code-pr.sh` — the GitHub-flow twin of `aind-open-plan-pr.sh`: `start` (branch
+  off the integration branch, with a dirty-working-tree guard) and `open` (push + open the code PR
+  carrying the `AIND-LINKS` block incl. the plan-PR URL, and native Boards↔GitHub linking via
+  `AB#<id>`).
+- Coder hardening habits lifted from prior multi-agent practice: read an existing implementation of
+  the same type before writing new code, make data contracts exact on the wire, self-check against
+  the Definition of done, and get the project's build green before opening the PR (fail-fast — not
+  test authoring).
+
+### Notes
+- This first build-phase iteration scopes to **code-PR creation**: no test authoring, and code
+  review, the merge gate, and the terminal `Implementation complete` write are the next steps
+  (D24). The cold test-writer and the coder's own unit tests stay deferred (D8/D9).
+- Generic, reusable developer guidance (SOLID, .NET, house style) is ruled **out** of AIND — it
+  belongs in a separate companion **dev-standards plugin** (skills), consumed via the two-layer
+  rule-extends-skill pattern and wired by onboarding (D25).
+
+### Validated
+- `/aind:implement` — live-validated end-to-end on a real story: the precondition gate stops a
+  story that is not `Ready for implementation`; grounding + existing-pattern reuse; the pre-PR
+  project build; honest deviation reporting; and code-PR creation with correct links and status
+  discipline.
+
 ## [0.4.0] — 2026-06-30
 
 ### Added

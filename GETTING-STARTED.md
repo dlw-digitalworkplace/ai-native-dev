@@ -5,7 +5,7 @@ How to set up and use AIND on an existing GitHub codebase. The smart order is **
 what's left to set up), then wire up the auth/config the flow needs.
 
 > **Command names are namespaced.** Plugin slash commands are prefixed with the plugin name:
-> `/aind:onboard`, `/aind:intake`, `/aind:plan`, `/aind:approve-plan`. Bare `/onboard` won't
+> `/aind:onboard`, `/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`. Bare `/onboard` won't
 > resolve — type `/aind` (or `/` and scroll) to see them. See [Troubleshooting](#troubleshooting).
 
 In the commands below, replace `<...>` placeholders with your own values: `<your-ado-org>` /
@@ -145,13 +145,15 @@ bash <plugin-dir>/scripts/aind-preflight.sh
 
 ## 4. Run the flow
 
-Tag an ADO user story `AIND status - Ready for intake`, then drive it through the plan phase:
+Tag an ADO user story `AIND status - Ready for intake`, then drive it through the plan phase and
+the build phase's coding step:
 
 | Command | Phase | Effect |
 |---|---|---|
 | `/aind:intake <id>`       | 0 | Score the story; post a signed verdict + readiness score; tag → `Intake approved` / `Intake declined`. |
 | `/aind:plan <id>`         | 1 | Write `plans/<id>/plan.md`; open the plan PR (`AB#`, `AIND-LINKS`); post assumptions as resolvable threads; tag → `Plan ready for review`. |
 | `/aind:approve-plan <id>` | 2 | After you approve **and merge** the plan PR in GitHub: tag → `Ready for implementation`. |
+| `/aind:implement <id>`    | 3 | Ground from the merged plan; implement + polish in-context; build; open the code PR (`AB#`, `AIND-LINKS` incl. plan-PR URL). Tag → `In implementation` (stays there — review/merge are separate, not-yet-built steps). |
 
 A declined story is edited and re-tagged `Ready for intake`, which re-runs intake. Plan-review
 revisions happen in the PR and don't change the tag.
@@ -160,7 +162,9 @@ revisions happen in the PR and don't change the tag.
 failing criteria), fix it, re-run (expect approval + a single status tag). Then `/aind:plan`,
 and confirm the plan PR carries the `AIND-LINKS` block, a native `AB#` link to the work item,
 and one resolvable thread per assumption — and that branch protection blocks the merge until the
-threads are resolved. Merge, then `/aind:approve-plan`.
+threads are resolved. Merge, then `/aind:approve-plan`. Finally run `/aind:implement` and confirm
+it opens a code PR (with the `AIND-LINKS` block + a native `AB#` link) while the tag stays
+`In implementation`.
 
 ---
 
