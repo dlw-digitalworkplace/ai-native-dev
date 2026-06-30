@@ -8,9 +8,11 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
 `design-log.md`, with the flow diagram in `docs/index.html`.
 
-> **Scope today:** the **plan phase** (intake → planning → plan review) runs locally via **Claude
-> Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The build phase, dreaming phase, and
-> unattended automation are designed but not yet built — see [Implementation status](#implementation-status).
+> **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase's
+> **coding step** (`/aind:implement`, up to code-PR creation) run locally via **Claude Code or
+> GitHub Copilot CLI**, by hand (v0 manual scope, D6). The rest of the build phase (review, merge),
+> the dreaming phase, and unattended automation are designed but not yet built — see
+> [Implementation status](#implementation-status).
 
 ## What it does
 
@@ -22,8 +24,9 @@ agents:
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric; a **planner**
   turns an approved story into an implementation plan delivered as a GitHub PR; a human
   reviews and approves it.
-- **Build phase** *(designed, not built)*: test-writer → coder → reviewer turn the plan into
-  merged code behind objective and review gates.
+- **Build phase** *(coder built; review/merge not yet)*: a **coding agent** (`/aind:implement`)
+  builds an approved plan into a GitHub code PR; a test-writer, reviewer, and merge gate are
+  designed but not yet built.
 - **Dreaming phase** *(designed, not built)*: a cold "dreamer" learns from the flow's exhaust
   and proposes config improvements.
 
@@ -47,14 +50,14 @@ own the fine-grained iteration.
   (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
   (e.g. a hook requires every ADO comment to be signed by its agent).
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D23**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D25**).
 
 ## Repository layout
 
 ```
 .claude-plugin/plugin.json   Claude Code manifest (name: aind)
 .github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
-commands/                    onboard, intake, plan, approve-plan  (human entry points)
+commands/                    onboard, intake, plan, approve-plan, implement  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
@@ -62,7 +65,7 @@ rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      (empty — build-phase cold subagents land here next)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D23)
+design-doc.md, design-log.md The design and the decisions (D1–D25)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -78,13 +81,13 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
 | Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
-| Build | Test-writer agent (optional, cold) | ⬜ | — | Not built. |
-| Build | Coding agent | ⬜ | — | Not built. |
-| Build | Polish agent (warm) | ⬜ | — | Not built. |
-| Build | CI gates | ⬜ | — | Not built. |
+| Build | Test-writer agent (optional, cold) | ⬜ | — | Not built; test authoring deferred this iteration (D8). |
+| Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Scope ends at PR creation (D24). |
+| Build | Polish (warm) — in `/aind:implement` | ✅ | ✅ | Final in-context phase of the coder — style/self-consistency only, no structural change. |
+| Build | CI gates | ⬜ | — | Coder runs the project build locally before the PR; CI-pipeline gates not built. |
 | Build | Live / E2E gate (optional) | ⬜ | — | Manual path is the design target for v0 (D15); not built. |
-| Build | Reviewer agent (cold) | ⬜ | — | Not built. |
-| Build | Merge + `Implementation complete` | ⬜ | — | Not built. |
+| Build | Reviewer agent (cold) | ⬜ | — | Not built (next build-phase step). |
+| Build | Merge + `Implementation complete` | ⬜ | — | Not built (D13). |
 | Dreaming | Lessons-learned emission | ⬜ | — | Out of scope this iteration (D16). |
 | Dreaming | Dreamer agent (cold) | ⬜ | — | Out of scope this iteration (D16). |
 
@@ -92,6 +95,6 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D23 with rationale.
+- **`design-log.md`** — decisions D1–D25 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
