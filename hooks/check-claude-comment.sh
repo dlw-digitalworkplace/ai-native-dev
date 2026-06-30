@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# check-signed-comment.sh — PreToolUse(Bash) hook.
+# check-claude-comment.sh — Claude Code PreToolUse(Bash) hook. (Copilot's equivalent is
+# check-copilot-comment.{ps1,sh}; the two tools use different hook formats.)
 # Enforces that ADO work-item comments go through aind-comment.sh (which always signs).
 # A direct comment-posting call that bypasses the signing script is BLOCKED (exit 2).
 #

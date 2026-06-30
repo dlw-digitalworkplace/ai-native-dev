@@ -68,11 +68,15 @@ echo "Connectivity (best-effort):"
 if have gh && [[ -n "${AIND_GH_REPO:-}" ]]; then
   if gh repo view "$AIND_GH_REPO" >/dev/null 2>&1; then ok "GitHub repo reachable: $AIND_GH_REPO"; else bad "cannot access GitHub repo $AIND_GH_REPO with the current gh account"; fi
 fi
-if have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
-  if az boards work-item show --id 1 --org "$AIND_ADO_ORG" >/dev/null 2>&1; then
-    ok "ADO org reachable: $AIND_ADO_ORG"
+if have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_ADO_PROJECT:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
+  # Probe work-item READ access with a project-scoped query (proves org reachability + PAT +
+  # Work Items read in one call). Does not assume any particular work-item id exists, so an
+  # empty project still passes instead of false-warning.
+  if az boards query --org "$AIND_ADO_ORG" --project "$AIND_ADO_PROJECT" \
+       --wiql "SELECT [System.Id] FROM WorkItems" >/dev/null 2>&1; then
+    ok "ADO work items readable in $AIND_ADO_PROJECT (org $AIND_ADO_ORG)"
   else
-    warning "could not read a work item from $AIND_ADO_ORG (PAT/permissions/empty project?) — verify before running /intake"
+    warning "could not query work items in $AIND_ADO_PROJECT (PAT 'Work Items' read scope? org/project access?) — verify before running /intake"
   fi
 fi
 

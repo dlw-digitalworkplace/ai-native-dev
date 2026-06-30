@@ -2,15 +2,15 @@
 
 An AI-native development flow — a multi-agent pipeline that carries an Azure DevOps (ADO) user
 story from readiness check → implementation plan → build → review, plus a continuous-improvement
-loop — implemented as a reusable **Claude Code plugin**.
+loop — implemented as a reusable plugin that runs on **Claude Code** and **GitHub Copilot CLI**.
 
 This README covers **what it is** and **where it stands**. To set it up and use it, see
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
 `design-log.md`, with the flow diagram in `docs/index.html`.
 
-> **Scope today:** the **plan phase** (intake → planning → plan review) runs locally via Claude
-> Code, by hand (v0 manual scope, D6). The build phase, dreaming phase, and unattended automation
-> are designed but not yet built — see [Implementation status](#implementation-status).
+> **Scope today:** the **plan phase** (intake → planning → plan review) runs locally via **Claude
+> Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The build phase, dreaming phase, and
+> unattended automation are designed but not yet built — see [Implementation status](#implementation-status).
 
 ## What it does
 
@@ -47,21 +47,22 @@ own the fine-grained iteration.
   (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
   (e.g. a hook requires every ADO comment to be signed by its agent).
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D18**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D22**).
 
 ## Repository layout
 
 ```
-.claude-plugin/plugin.json   Plugin manifest (name: aind)
+.claude-plugin/plugin.json   Claude Code manifest (name: aind)
+.github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
 commands/                    onboard, intake, plan, approve-plan  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
-hooks/                       PreToolUse hook that enforces signed ADO comments
+hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      (empty — build-phase cold subagents land here next)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D18)
+design-doc.md, design-log.md The design and the decisions (D1–D22)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -91,5 +92,5 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D18 with rationale.
+- **`design-log.md`** — decisions D1–D22 with rationale.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).

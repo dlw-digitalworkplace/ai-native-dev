@@ -5,5 +5,5 @@
   "author": {
     "name": "Robin Agten"
   },
-  "hooks": "./hooks/hooks.claude.json"
+  "hooks": "hooks/hooks.copilot.json"
 }

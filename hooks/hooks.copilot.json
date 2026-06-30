@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "powershell": "& ([ScriptBlock]::Create((Get-Content -Raw -LiteralPath \"$env:CLAUDE_PLUGIN_ROOT/hooks/check-copilot-comment.ps1\")))",
+        "bash": "bash \"$CLAUDE_PLUGIN_ROOT/hooks/check-copilot-comment.sh\"",
+        "timeoutSec": 15
+      }
+    ]
+  }
+}

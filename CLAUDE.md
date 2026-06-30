@@ -9,9 +9,11 @@ Context for working **on** the AIND plugin itself. (Not to be confused with
 The design **and** implementation of an **AI-Native Dev (AIND)** flow: a multi-agent pipeline
 that takes an Azure DevOps (ADO) user story → readiness intake → implementation plan (GitHub PR)
 → build → review, with a cross-cutting "dreaming" improvement loop. This repo is itself a
-**Claude Code plugin** (`.claude-plugin/plugin.json`, name `aind`) that ships the flow's
-commands, skills, scripts, hooks, and the seed rubric. A consuming project installs the plugin
-and layers its own `.claude/` (rules, edited rubric, project skills) on top.
+**plugin for both Claude Code and GitHub Copilot CLI** (manifests: `.claude-plugin/plugin.json` for
+Claude, `.github/plugin/plugin.json` for Copilot; name `aind`) that ships the flow's commands,
+skills, scripts, hooks, and the seed rubric. A consuming project installs the plugin and layers its
+own `.claude/` (rules, edited rubric, project skills) on top. The two hosts share one behavior layer
+— only the manifest + hook format differ per host (D22).
 
 ## Design docs (read these first for the "why")
 
@@ -31,14 +33,20 @@ and layers its own `.claude/` (rules, edited rubric, project skills) on top.
 commands/   onboard, intake, plan, approve-plan        (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer)
-hooks/      hooks.json + check-signed-comment.sh        (PreToolUse signing enforcement)
+hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
+.github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
 project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
 agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, dreamer) land here
 ```
 
-## Current status (2026-06-26)
+## Current status (2026-06-30)
 
+- **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
+  (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
+  (`hooks.claude.json` / `hooks.copilot.json`) absorb the only incompatibility. Copilot needs Git's
+  `bash` on PATH (Windows) — see the Copilot lesson below. Claude side re-validated (intake, WI 18,
+  under the renamed hooks); Copilot intake E2E being confirmed.
 - **Plan phase = implemented & live-exercised.** **Intake is live-validated** end-to-end
   (fail→fix→pass, signed comments, tag transitions, scoring, table output). **Onboarding
   (`/aind:onboard`) is validated.** **Planner create-path validated** (plan PR + assumption
@@ -126,9 +134,44 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
 
 **Signing enforcement.**
 - All ADO comments must go through `aind-comment.sh` (it signs). The `PreToolUse` hook
-  (`hooks/check-signed-comment.sh`) blocks raw comment calls (`…/_apis/wit/workItems/<id>/comments`,
-  `az devops invoke … comments`). Logic is unit-tested; live harness enforcement is best confirmed
-  in a `--plugin-dir` session.
+  (`hooks/check-claude-comment.sh`, wired via `.claude-plugin/plugin.json`'s `hooks` field) blocks
+  raw comment calls (`…/_apis/wit/workItems/<id>/comments`, `az devops invoke … comments`). Logic is
+  unit-tested; live harness enforcement is best confirmed in a `--plugin-dir` session.
+- **Copilot CLI uses a separate hook** (`hooks/check-copilot-comment.ps1`/`.sh` via
+  `hooks/hooks.copilot.json`, referenced by `.github/plugin/plugin.json`): different schema
+  (`version:1`/`preToolUse`, `bash`+`powershell` keys), different I/O (reads `toolArgs` JSON on
+  stdin, returns a `permissionDecision` JSON; it does **not** use exit-code 2). Same enforcement
+  intent. Each tool loads only its own hook file — they don't collide.
+
+**Copilot CLI (second host) — what's the same, what differs.**
+- **Install:** `copilot plugin install <owner>/<repo>` (or a local path — local installs are
+  **snapshots**, so re-install after changes). Commands register **namespaced** (`/aind:intake`)
+  exactly as in Claude; the manifest is read directly. Confirmed live on Copilot CLI 1.0.65.
+- **Manifest split:** Copilot reads `.github/plugin/plugin.json` (preferred over `.claude-plugin/`);
+  Claude reads `.claude-plugin/plugin.json`. Each points its own `hooks` field at its own hook file.
+  **Keep the two manifests' non-hook fields in sync** when you edit one.
+- **`${CLAUDE_PLUGIN_ROOT}` works under Copilot** — it's injected into the hook env alongside
+  `PLUGIN_ROOT`/`COPILOT_PLUGIN_ROOT`; no token rename needed. (Stale docs claimed otherwise — wrong.)
+- **The *right* `bash` must WIN on PATH (Windows) — non-negotiable.** Copilot's shell tool is
+  **PowerShell**; if Git's `bash` doesn't resolve, the model either **reimplements the scripts in
+  PowerShell** (silently breaking the single-`AIND status` tag invariant + comment signing — observed:
+  duplicate tags, unsigned comment via ad-hoc `az`/REST) or **gives up mid-run** ("no bash/ADO access").
+  - **Two traps, both hit live:** (1) the Git installer puts only `Git\cmd` (has `git`, not `bash`) on
+    PATH; (2) Windows ships **`C:\Windows\System32\bash.exe` (the WSL launcher)** which **shadows Git's
+    bash** and errors `No such file or directory` when no WSL distro exists. Because `System32` is on
+    the **machine** PATH (searched before user PATH), **appending `Git\bin` to the user PATH does NOT
+    win** — Git's bash must come *first*.
+  - **Fix that actually works:** **prepend** `C:\Program Files\Git\bin` in the PowerShell `$PROFILE`
+    (`$env:PATH = "C:\Program Files\Git\bin;" + $env:PATH`), so every new shell (and `copilot` launched
+    from it) resolves Git's bash first. Verify with **`(Get-Command bash).Source`** → must be Git's
+    bash, not `System32\bash.exe`. (A session-level prepend works too; a permanent *user-PATH append*
+    does not, and disabling the WSL app-execution alias alone doesn't remove the System32 launcher.)
+  - **Fresh terminal required** after any PATH/profile change — Windows Terminal/VS Code cache env at
+    host launch, so a new *tab* isn't enough. When Git's bash wins, scripts run and signing/tagging
+    behave exactly as on Claude.
+- **Trust a live `copilot` over docs.** This port corrected stale docs repeatedly (commands
+  "unsupported", no `CLAUDE_PLUGIN_ROOT`, hook format) — every time, installing and running was the
+  corrective. Validate empirically, not by searching.
 
 **Permissions / allowlisting (avoid prompt spam).**
 - **Invoke every script as a single command — never a pipeline.** Feed multi-line input to
@@ -182,7 +225,11 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
 
 ## Likely next steps
 
-1. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
+1. Finish the **Copilot CLI validation**: complete the intake E2E (parity with Claude) and confirm
+   the renamed Claude hook loads via the custom `hooks` manifest path (`claude --plugin-dir … --debug`).
+   Optionally add a **"verify bash first; never reimplement a script — stop instead" guard** so a
+   consumer without bash fails loud rather than improvising (the open hardening item from D22).
+2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
    threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
    (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-2. Then the **build phase** cold subagents in `agents/` (reviewer first).
+3. Then the **build phase** cold subagents in `agents/` (reviewer first).

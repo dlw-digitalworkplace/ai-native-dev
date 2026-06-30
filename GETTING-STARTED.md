@@ -31,6 +31,56 @@ what's missing.
   before merging"** (D5) — this is what makes the planner's assumption threads block the plan-PR
   merge until you resolve them.
 
+### Validate prerequisites — run the preflight
+
+A read-only probe checks the tools, auth, config, and connectivity above and prints a
+`[PASS] / [WARN] / [FAIL]` checklist with a summary. It never changes anything (always exits 0).
+
+- **In a Claude Code or Copilot session** (easiest): ask it to **"run the AIND preflight check"**.
+  It also runs automatically as the final step of `/aind:onboard`.
+- **From a terminal**, run it **from your project root** (so it auto-loads `.claude/aind.env` — no
+  `source` needed):
+  ```bash
+  bash <plugin-dir>/scripts/aind-preflight.sh    # <plugin-dir> = the dir containing .claude-plugin/plugin.json
+  ```
+
+Resolve every **`[FAIL]`** before running the plan-phase commands. **`[WARN]`** is usually config
+you haven't filled in yet (see step 3), and **`[MANUAL]`** items (the Boards↔GitHub integration and
+branch-protection rule) can't be auto-verified — confirm those by hand.
+
+> **Using GitHub Copilot CLI instead of Claude Code?** The plugin installs there too
+> (`copilot plugin install <owner>/<repo>`) and its commands appear namespaced (`/aind:intake`, …).
+> One extra requirement **on Windows**: Copilot's shell tool is PowerShell, but the plugin's
+> mechanics are Bash scripts — so **Git's `bash` must be the `bash` that resolves in the shell that
+> launches `copilot`**.
+>
+> Two gotchas make this trickier than "add Git to PATH":
+> 1. The usual Git installer only puts `Git\cmd` (which has `git`, not `bash`) on PATH.
+> 2. Windows ships a **WSL `bash.exe` in `System32`** that *shadows* Git's bash — and because
+>    `System32` is on the machine PATH (searched before your user PATH), **appending** `Git\bin` to
+>    your user PATH is **not enough**; the WSL bash still wins (and fails with "No such file or
+>    directory" if you have no WSL distro). Git's bash must come **first**.
+>
+> The reliable fix is to **prepend** `Git\bin` in your PowerShell profile, so every new shell (and any
+> `copilot` launched from it) resolves Git's bash first:
+>
+> ```powershell
+> $line = '$env:PATH = "C:\Program Files\Git\bin;" + $env:PATH'   # adjust if Git is elsewhere
+> if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
+> if (-not (Select-String -Path $PROFILE -SimpleMatch 'Program Files\Git\bin' -Quiet)) { Add-Content $PROFILE $line }
+> ```
+>
+> Then open a **new** terminal (fully reopen Windows Terminal / VS Code — a new tab reuses the cached
+> environment) and **verify which bash wins**:
+>
+> ```powershell
+> (Get-Command bash).Source        # must print C:\Program Files\Git\bin\bash.exe, NOT System32\bash.exe
+> ```
+>
+> Launch `copilot` only once that check passes. Without Git's bash resolving first, Copilot can't run
+> the scripts and may improvise the ADO/GitHub calls in PowerShell — which bypasses comment signing
+> and the single-status-tag rule. (Claude Code is unaffected; it finds bash on its own.)
+
 ---
 
 ## 1. Load the plugin
@@ -46,7 +96,19 @@ claude --plugin-url https://github.com/dlw-digitalworkplace/ai-native-dev/releas
 claude --plugin-dir <plugin-dir>      # the dir containing .claude-plugin/plugin.json
 ```
 
-Confirm it loaded: type `/aind` — you should see `onboard`, `intake`, `plan`, `approve-plan`.
+**Using GitHub Copilot CLI instead?** Install the plugin once (it persists across sessions), then
+run `copilot` from the project root:
+
+```bash
+copilot plugin install dlw-digitalworkplace/ai-native-dev     # from GitHub
+# …or from a local clone:
+copilot plugin install "C:/path/to/ai-native-dev"
+```
+
+On Windows, make sure Git's `bash` is on PATH first — see the Copilot note under
+[Prerequisites](#prerequisites). (Re-install after pulling plugin updates — a local install is a snapshot.)
+
+Confirm it loaded: type `/aind` — you should see `onboard`, `intake`, `plan`, `approve-plan` (namespaced as `/aind:onboard`, etc.).
 
 ## 2. Bootstrap the config — `/aind:onboard`
 
