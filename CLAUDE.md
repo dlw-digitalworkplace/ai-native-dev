@@ -67,8 +67,21 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
   model is handled by **choosing the session model per invocation** (`claude --model …` / `/model`) —
   natural since the two phases are gated apart. Cold subagents stay reserved for the independent
   build-phase checks.
-- **Not built yet:** build phase (coder/polish + cold reviewer/test-writer/E2E subagents) and the
-  dreaming phase (lessons-learned emission + cold dreamer). Out of scope per D6/D16.
+- **Build phase started — coder designed, not yet built (D24, 2026-06-30).** The coding agent is
+  packaged as a **warm in-session command `/aind:implement`** (per D20 — it authors, it is not an
+  independent check): a **single** rule-driven coder (per-domain conventions come from each task's
+  cited `rules/*.md`, D23), with **polish as its final in-context phase** (D7, no structural change).
+  It grounds from the merged plan + cited rules + project build/run **skills** (D18 — dev skills are
+  the project's, not the plugin's), and the only new plugin script is `aind-open-code-pr.sh` (the
+  GitHub-flow twin of `aind-open-plan-pr.sh`). The coder **generates** its branch as
+  `[type]/<id>-<short-name>` (e.g. `feat/123-new-component`); the PR stays the only handle (D17).
+  **First iteration scope ends at code-PR creation** — all test authoring is deferred (D8/D9), and
+  code review (cold reviewer), the merge gate, and the terminal `Implementation complete` write
+  (`/aind:complete`, D13) are the next iterations. Design is documented; `commands/implement.md` +
+  the script are the next thing to write.
+- **Not built yet:** the rest of the build phase (cold reviewer/test-writer/E2E subagents, merge +
+  terminal tag) and the dreaming phase (lessons-learned emission + cold dreamer). Out of scope per
+  D6/D16.
 - **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
   lessons-learned emission (D16).
 
@@ -82,8 +95,9 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
   dreamer: a separate invocation re-grounded from artifacts only, so their judgment isn't
   contaminated by the work they're checking → these are **subagents** in `agents/`. **Warm** roles
   are human-facing **authoring/entry** roles with nothing to stay independent *from* (a human
-  reviews their output): intake and the planner run **in-session as slash commands**
-  (`/aind:intake`, `/aind:plan`); polish runs in the coder's context. Per-role model for a command
+  reviews their output): intake, the planner, **and the coder** run **in-session as slash commands**
+  (`/aind:intake`, `/aind:plan`, `/aind:implement`); polish runs in the coder's context as that
+  command's final phase (D24). Per-role model for a command
   is set by choosing the **session** model per invocation (the phases are gated apart anyway), not
   by a subagent. *(D19 briefly made intake/planner cold subagents; D20 reverted them — independence,
   not model selection, is what justifies coldness, and these two don't need it. See design-log.)*
@@ -239,4 +253,10 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
 2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
    threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
    (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-3. Then the **build phase** cold subagents in `agents/` (reviewer first).
+3. Build the **coding agent** (D24): write `commands/implement.md` (the warm `/aind:implement`
+   command — ground → implement task breakdown against the Definition of done → in-context polish →
+   open code PR; stuck-state mirrors `plan.md`) and `scripts/aind-open-code-pr.sh` (twin of
+   `aind-open-plan-pr.sh`, adding the code PR's `AIND-LINKS` block with the plan-PR URL). Scope ends
+   at PR creation — no tests, no merge/complete.
+4. Then the **build phase** cold subagents in `agents/` (reviewer first), then the merge gate +
+   terminal tag (`/aind:complete`, D13).
