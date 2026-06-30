@@ -47,7 +47,7 @@ own the fine-grained iteration.
   (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
   (e.g. a hook requires every ADO comment to be signed by its agent).
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D22**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D23**).
 
 ## Repository layout
 
@@ -62,7 +62,7 @@ rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      (empty — build-phase cold subagents land here next)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D22)
+design-doc.md, design-log.md The design and the decisions (D1–D23)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -75,9 +75,9 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 |---|---|:--:|:--:|---|
 | Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. |
-| Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Built & Tested (plan.md, plan PR, AIND-LINKS, assumption threads). Testing only done on smaller user stories |
+| Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
-| Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ⬜ | Sets `Ready for implementation`; not yet run live. |
+| Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
 | Build | Test-writer agent (optional, cold) | ⬜ | — | Not built. |
 | Build | Coding agent | ⬜ | — | Not built. |
 | Build | Polish agent (warm) | ⬜ | — | Not built. |
@@ -92,5 +92,6 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D22 with rationale.
+- **`design-log.md`** — decisions D1–D23 with rationale.
+- **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).

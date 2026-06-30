@@ -12,7 +12,8 @@
 #
 # Note: the published zip is a SNAPSHOT of HEAD — re-run after changes. Bump the version in
 # .claude-plugin/plugin.json for a clean new release tag (otherwise the asset is re-uploaded to
-# the existing tag).
+# the existing tag). The GitHub Release notes are taken from the matching CHANGELOG.md section
+# (## [<version>]); add that section before deploying a new version.
 
 set -euo pipefail
 
@@ -61,12 +62,22 @@ rm -f aind.zip
 git archive --format=zip -o aind.zip HEAD
 echo "deploy: built aind.zip ($(du -h aind.zip | cut -f1))"
 
+# Release notes = the matching CHANGELOG.md section body (## [VERSION] … up to the next ## [).
+# Falls back to a one-liner if CHANGELOG.md or the section is missing, so deploy never breaks.
+NOTES="$(awk -v ver="$VERSION" '
+  index($0, "## [" ver "]") == 1 {grab=1; next}
+  grab && index($0, "## [") == 1 {exit}
+  grab {print}
+' CHANGELOG.md 2>/dev/null | sed -e '/./,$!d')"
+[[ -n "${NOTES//[$'\n\t ']/}" ]] || NOTES="AIND plugin $VERSION"
+
 # --- 3. Upload as a Release asset (stable releases/latest/download URL) ---
 if gh release view "$TAG" >/dev/null 2>&1; then
   gh release upload "$TAG" aind.zip --clobber
-  echo "deploy: updated release $TAG asset"
+  gh release edit "$TAG" --notes "$NOTES" >/dev/null
+  echo "deploy: updated release $TAG asset + notes"
 else
-  gh release create "$TAG" aind.zip --title "AIND plugin $TAG" --notes "AIND plugin $VERSION" --latest
+  gh release create "$TAG" aind.zip --title "AIND plugin $TAG" --notes "$NOTES" --latest
   echo "deploy: created release $TAG"
 fi
 rm -f aind.zip

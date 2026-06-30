@@ -50,9 +50,16 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
 - **Plan phase = implemented & live-exercised.** **Intake is live-validated** end-to-end
   (fail→fix→pass, signed comments, tag transitions, scoring, table output). **Onboarding
   (`/aind:onboard`) is validated.** **Planner create-path validated** (plan PR + assumption
-  threads). **Plan-revision loop built (D21):** a re-run of `/aind:plan` on a story with an open
-  plan PR enters revise mode — reads the PR's comments/threads and folds them into the same PR
-  (`aind-revise-plan-pr.sh`). Revise path is implemented; confirm live next.
+  threads), now with the **enriched plan template (D23)** — Keep-it-simple/non-goals, conditional
+  data contracts, a dependency-ordered task breakdown whose tasks cite the project's `rules/*.md`
+  (not hardcoded domains), a Considerations section, and a sourced Definition-of-done checklist;
+  live-validated on a real story (AB#19), where the simplicity bias visibly held (the planner
+  declined an unrequested shared-nav-config refactor and logged it as a non-goal). **`/aind:approve-plan`
+  is live-validated:** it correctly refuses while the plan PR is unmerged and, once merged, sets
+  `Ready for implementation` and runs the plan-branch cleanup. **Plan-revision loop built (D21):**
+  a re-run of `/aind:plan` on a story with an open plan PR enters revise mode — reads the PR's
+  comments/threads and folds them into the same PR (`aind-revise-plan-pr.sh`). Revise path is
+  implemented; confirm live next.
 - **Role packaging settled (D19→D20, 2026-06-26).** Intake and the planner were briefly trialed as
   cold subagents (D19) then **reverted to in-session slash commands** (D20): live testing showed the
   subagent friction (permission re-prompts from fresh contexts, command→Task→subagent indirection,

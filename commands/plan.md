@@ -32,18 +32,61 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
    ```
 
 2. **Understand the codebase.** Read the project rules (`.claude/CLAUDE.md` and its imported
-   domain rules) and explore the relevant code so the plan is grounded in real files and
-   patterns. Reuse existing utilities rather than inventing new ones.
+   domain rules), the relevant project skills (`.claude/skills/`), and any `docs/` the rules point
+   to — then explore the relevant code so the plan is grounded in real files, patterns, and the
+   commands/conventions the implementer will actually follow. Reuse existing utilities rather than
+   inventing new ones. Where the rules describe a multi-project / deployment topology, respect it —
+   each task should land in the right project/unit.
 
-3. **Write the plan** to `plans/$1/plan.md` with these fixed headings:
+3. **Write the plan** to `plans/$1/plan.md` with these fixed headings. Write for a coding agent
+   that was **not** part of this discussion — name concrete files, signatures, and data shapes so
+   it never has to re-derive a decision. Bias toward the **simplest change that satisfies the
+   acceptance criteria**: reuse before building, and add no abstraction, configurability, or
+   generalization the story doesn't call for — size the solution to the work, not to what's
+   imaginable:
    - **Context** — why this change, the problem it solves, intended outcome.
+   - **Keep it simple** — the scope guardrail against over-building. State the explicit
+     **non-goals** (what this plan deliberately does *not* do), and where you weighed a heavier
+     option, the simpler one you took and why it is sufficient. Each bullet names a concrete thing
+     not being built; if there is genuinely nothing to fence off, drop the heading rather than
+     write platitudes.
    - **Implementation approach** — the recommended approach (not a survey of alternatives),
      naming the concrete files/areas to change and existing utilities to reuse.
+   - **Data contracts** *(include only when this change moves data across a boundary — API↔client,
+     service↔service, module↔module; omit the heading entirely for changes that don't)*. For each
+     boundary, pin the exact shape both sides must agree on — field names, types, nullability —
+     expressed in the language(s) the project actually uses, plus explicit notes for any
+     transformation/mapping (e.g. serialization casing) between the sides. Mismatched field names
+     are the failure this section exists to prevent; never fabricate a contract for a change that
+     has no boundary.
+   - **Task breakdown** — an **ordered** list of concrete tasks, sequenced so dependencies come
+     first (a contract before its consumer). Each task names the file(s) to create/change and the
+     existing pattern/utility to reuse, and **cites the project rule(s) it must obey** — the
+     relevant `.claude/rules/*.md` file(s), whose conventions and "what done looks like" bar govern
+     that task. A task may cite more than one rule (e.g. a change that also touches a cross-cutting
+     concern), and several tasks may share a rule. The rule citation — not the grouping — is what
+     makes the coder apply the right conventions, so do **not** force a one-task-per-domain
+     structure: order by dependency, and only group adjacent tasks under a domain heading when it
+     genuinely aids reading.
    - **Assumptions & open questions** — one bullet per item (see step 4). Keep each on its
-     own line; you will anchor a thread to each.
+     own line; you will anchor a thread to each. This is for any point where you resolved a genuine
+     ambiguity by **picking one reasonable option over another** — list it here *even though you
+     proceeded on your choice*, because the reviewer may prefer the alternative and the thread is
+     their chance to say so. "I made a decision" is not what moves an item out of this section.
+   - **Considerations** — non-blocking context for the reviewer: security implications, performance
+     and edge cases, and risks the change introduces or brushes against. Use this **only** for pure
+     FYI — context with no reasonable alternative the reviewer would choose (a risk to monitor, an
+     edge case already handled, a perf note). The moment the reviewer could plausibly want it done
+     differently, it is an **open question**, not a consideration — put it under *Assumptions & open
+     questions* so it gets a thread. **When in doubt, make it an open question**: a thread is cheap,
+     a silently-dropped decision is not. Omit a bullet rather than padding with generic advice.
    - **Testing recommendations** — two orthogonal calls, each yes/no with a reason:
      *Spec-level (behavioral) tests?* and *Live / end-to-end test?* The human ratifies both at
      plan review.
+   - **Definition of done** — a `- [ ]` checklist the coder validates against before the story is
+     done. Derive **every** item from a real source — an acceptance criterion, the "what done
+     looks like" bar of a rule a task cited, an invariant a change must uphold, or a ratified
+     testing decision — and make each one binary and verifiable. No generic best-practice filler.
    - **Files/areas affected** — the concrete list.
 
 4. **Record assumptions in two places.** For every genuine choice or ambiguity, write a
@@ -85,7 +128,11 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
 2. **Revise the plan.** Read the current `plans/$1/plan.md` together with the feedback, then edit
    the plan to address **every `[OPEN]` item** — reviewer comments and unanswered assumptions
    alike. Keep the **Assumptions & open questions** section honest: update or drop items the
-   feedback has settled, and add any genuinely new question your revision introduces.
+   feedback has settled, and add any genuinely new question your revision introduces. When the
+   feedback changes the shape of the work, update the **Keep it simple**, **Task breakdown** (tasks,
+   order, rule citations), **Data contracts**, and **Considerations** sections, and re-check the
+   **Definition of done** so they all still match the plan — keep every section honest, not just the
+   assumptions.
 
 3. **Reply on each `[OPEN]` thread** using its `thread=<id>` from the digest. **Never resolve a
    thread yourself — resolution is the human's merge gate.**
