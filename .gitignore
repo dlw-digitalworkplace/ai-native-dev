@@ -6,3 +6,6 @@ aind.zip
 
 # Local, per-developer Claude Code permission grants (not shared, not shipped)
 .claude/settings.local.json
+
+# Example / reference content only — prior-art artifacts studied during design, not part of the plugin
+files/

@@ -1,15 +1,17 @@
 ---
 description: Implement an approved+merged plan for a Ready-for-implementation ADO story, delivered as a GitHub code PR.
 argument-hint: <work-item-id>
-allowed-tools: Bash, Read, Glob, Grep, Edit, Write
+allowed-tools: Bash, Read, Glob, Grep, Edit, Write, Task
 ---
 
 # /implement — Phase 3 build (implement → polish → code PR)
 
 You are the **AIND coding agent** for story `$1`. You implement the merged plan, do a light
-in-context polish, and open a code PR. You never block waiting for an answer — where you hit a
-genuine choice, proceed on a reasonable assumption and note it in the PR. **Your scope ends at PR
-creation:** you do not merge, and in this iteration you do not write tests.
+in-context polish, open a code PR, and then **drive an independent code review to a verdict** — a
+cold reviewer challenges your work and you fix or rebut its findings, up to a hard cap. You never
+block waiting for an answer — where you hit a genuine choice, proceed on a reasonable assumption and
+note it in the PR. **Your scope ends when the reviewer approves or a human tiebreak is needed:** you
+do not merge, and in this iteration you do not write tests.
 
 Work item: **$1**
 
@@ -84,21 +86,89 @@ Before opening the PR, do a final pass over your own work:
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-code-pr.sh" open "$1" "<branch>" "<story title>"
 ```
 This pushes the branch and opens a PR targeting the integration branch, linked to the work item
-(`AB#$1`) and carrying the `AIND-LINKS` block (work item, plan path, plan-PR URL). The status tag
-**stays `In implementation`** — the code PR owns the rest of the build (review and merge are
-separate steps); do **not** move the tag.
+(`AB#$1`) and carrying the `AIND-LINKS` block (work item, plan path, plan-PR URL). It prints the PR
+URL — **capture the PR number from it** (the trailing `/pull/<n>`); the review loop needs it. The
+status tag **stays `In implementation`** for everything that follows — the code PR owns all review
+iteration; do **not** move the tag during review.
 
-## 8. Report
+## 8. Code review loop (cold reviewer ↔ you)
+Now bring in an **independent, cold reviewer** to challenge the implementation, and iterate with it
+in the PR. The reviewer is a separate agent re-grounded from artifacts only — do **not** hand it your
+reasoning; it gets just the work-item id and the PR number and resolves everything else itself.
+
+Run **up to 3 reviewer passes**. For each pass:
+
+1. **Spawn the cold reviewer** as a subagent (the `aind-reviewer` agent) via the Task tool, with a
+   prompt that passes **only**: `work-item id: $1` and `PR number: <n>`. Nothing about how you built
+   the code. **Spawn it as a blocking, foreground Task and wait for its returned verdict inline — do
+   not run it in the background and do not schedule wakeups to poll it;** a review pass is a normal
+   synchronous call whose result you act on. It reviews the diff against the merged plan **and** the
+   full project rule/skill set, posts resolvable threads for each blocking finding + a summary
+   comment, and returns a structured verdict as its final message:
+   ```
+   VERDICT: CLEAN | CHANGES_REQUESTED | CANNOT-REVIEW
+   BLOCKING:
+     - [CRITICAL|WARNING] path:line — <defect> (source: …)
+   SUGGESTIONS:
+     - path:line — <nit>
+   PLAN-OR-STORY-CONCERN: <none | …>
+   ```
+2. **Act on the verdict:**
+   - **`CLEAN`** (no open CRITICAL/WARNING) → the reviewer approved. **Stop the loop** and go to
+     Report. Do **not** merge and do **not** change the tag.
+   - **`CANNOT-REVIEW`** → the reviewer could not ground itself (a genuine blocker, not a
+     disagreement). Treat it as a **stuck-state** — see **Stuck-state** below — and stop.
+   - **`CHANGES_REQUESTED`** → for **each** blocking finding, either **fix it** (edit + commit) or,
+     if you genuinely believe it is correct as-is, **rebut it** by replying on its thread:
+     ```bash
+     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply "<n>" "<thread-id>" <<'EOF'
+     <why this is correct as-is>
+     EOF
+     ```
+     (Thread ids come from `aind-review-pr.sh digest "<n>"`.) You need not act on SUGGESTIONs — they
+     never block. When you have addressed every blocking finding, **push**:
+     ```bash
+     git push
+     ```
+     Then start the next pass (a fresh reviewer re-reads the updated diff and your rebuttals).
+   - If a `PLAN-OR-STORY-CONCERN` is raised, do **not** silently re-plan — carry it into the tiebreak
+     or Report for a human to decide.
+
+**If blocking findings are still open after the 3rd pass** — a genuine coder↔reviewer deadlock — do
+**not** loop further and do **not** change the tag (a disagreement is not a stuck-state). Escalate
+for a **human tiebreak**: post a PR summary of the open items + your rebuttals, and record the same
+signal on the work item (feed the body as a direct heredoc — one command, no `cat |` pipe):
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary "<n>" <<'EOF'
+## Human tiebreak needed — review deadlocked after 3 passes
+<the still-open blocking findings, and your rebuttal for each>
+EOF
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" reviewer <<'EOF'
+## Code review deadlocked — human tiebreak needed
+Reviewer and coder did not converge after 3 passes on PR <url>. The disagreement is in the PR
+threads. A human should read them and post a verdict.
+EOF
+```
+The tag stays `In implementation`; a human reads the PR threads and posts a verdict (executing that
+verdict, a final pass, and merge are later build steps, not part of this command).
+
+## 9. Report
 Give the user the PR URL, a short summary of what you implemented per the task breakdown, which
 **Definition-of-done** items are satisfied (and any not yet), any **deviations from the plan** (and
-why), and any assumptions you made.
+why), and any assumptions you made. Then state the **review outcome**:
+- **Approved** — the reviewer returned `CLEAN` (which pass); the PR is ready for a human to merge
+  (merge is a later step, not this command).
+- **Human tiebreak needed** — still-open blocking findings after 3 passes; point the user to the PR
+  threads.
+- **Stuck** — the reviewer could not run (`CANNOT-REVIEW`); you set `Needs attention` (see below).
 
 ## Stuck-state
 If you cannot make progress — the plan is too underspecified to implement even on reasonable
 assumptions, a task is blocked by something genuinely missing, you cannot get a clean build after a
-couple of attempts, or a merge conflict you cannot resolve — do **not** loop or open a half-baked
-PR. Stop, set `Needs attention`, and post the trail
-(feed the body as a direct heredoc — one command, no `cat |` pipe):
+couple of attempts, a merge conflict you cannot resolve, or the **reviewer returns `CANNOT-REVIEW`**
+(it could not ground itself — a genuine blocker, distinct from a review *disagreement*, which does
+not move the tag) — do **not** loop or open a half-baked PR. Stop, set `Needs attention`, and post
+the trail (feed the body as a direct heredoc — one command, no `cat |` pipe):
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Needs attention"
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" coder <<'EOF'
@@ -114,4 +184,8 @@ to `Needs attention` if that single attempt fails.
   wrong, note it in the PR for the reviewer rather than silently diverging.
 - One story = one code branch = one code PR. The PR is the handle for the branch — later steps
   reach your work through it, never by reconstructing the branch name.
-- This command's scope ends at PR creation: no test authoring, no merge, no terminal status write.
+- The reviewer is **independent**: pass it only the work-item id and PR number, never your reasoning
+  — its coldness is the point of the gate. Each pass is a fresh reviewer that re-reads the PR.
+- This command's scope ends at reviewer approval (or a human tiebreak): no test authoring, no merge,
+  no terminal status write. Executing a human's tiebreak verdict, a final review pass, and the merge
+  are later build steps.
