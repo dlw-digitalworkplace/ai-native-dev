@@ -9,6 +9,46 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.6.0] — 2026-07-01
+
+### Added
+- **Build phase — code reviewer (Phase 4).** After `/aind:implement` opens the code PR it now drives
+  an **independent code review to a verdict** (D26). A **cold reviewer subagent** (`agents/reviewer.md`,
+  `aind-reviewer`, strong-model override) is spawned from inside the command with **only** the
+  work-item id + PR number — coldness is structural: it re-grounds from artifacts (the PR diff, the
+  merged plan, the project's rules and skills), never the coder's context. It challenges the diff
+  against the merged plan **and the full project rule + skill set** (an asymmetry with the coder,
+  which obeys only each task's *cited* rules), posts resolvable PR threads for blocking findings plus
+  a summary comment, and returns a structured verdict. The **warm coder** fixes or rebuts between
+  passes — **up to 3 passes**, early-exit on a clean pass.
+- `scripts/aind-review-pr.sh` — PR-review mechanics (`fetch` / `digest` / `summary` / `thread` /
+  `resolve` / `reply`), each a single allow-listed command so a fresh subagent context is not
+  re-prompted per call. It posts the verdict as a comment (never a GitHub self-approval, which the
+  same-user local mode forbids); loop termination is driven by the returned verdict.
+- Three-tier severity with a deliberately strict gate: **CRITICAL and WARNING both block**; only
+  SUGGESTION is non-blocking (recorded in the PR summary body). An objective/taste split keeps the
+  loop from deadlocking on nits, and **scope creep beyond the plan is a finding**.
+
+### Changed
+- `/aind:implement` gains the review loop (adds `Task` to its allowed-tools) and now ends at
+  **reviewer approval or a human tiebreak**, not at PR creation. The `AIND status` tag stays
+  `In implementation` throughout — the code PR owns all review iteration.
+
+### Notes
+- **Escalation:** after 3 deadlocked passes a human tiebreak is signalled by a PR summary **and** a
+  signed `reviewer` ADO comment; the tag is **not** moved (a disagreement is not a stuck-state). A
+  reviewer that cannot ground returns `CANNOT-REVIEW` → the coder raises `Needs attention` (D12).
+- Scope still stops before **merge** and the terminal `Implementation complete` write (D13); test
+  authoring stays deferred (D8/D9). Acting on a non-blocking suggestion or a human's verdict against
+  an already-open code PR (a **code-revision loop**, the twin of the plan-revision loop) is a noted
+  next iteration.
+
+### Validated
+- The review loop — live-validated on a real story: the **clean-approval** path (`CLEAN` on pass 1,
+  tag unchanged, PR ready for a human merge) and the **blocking** path (findings posted as resolvable
+  threads, coder fix, re-review). Offline: `aind-review-pr.sh` `digest` parsing and the `fetch`
+  link-parse path.
+
 ## [0.5.0] — 2026-06-30
 
 ### Added
