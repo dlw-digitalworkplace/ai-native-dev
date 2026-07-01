@@ -8,11 +8,12 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
 `design-log.md`, with the flow diagram in `docs/index.html`.
 
-> **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase's
-> **coding step** (`/aind:implement`, which builds the code PR and then drives an independent
-> **code review** to a verdict) run locally via **Claude Code or GitHub Copilot CLI**, by hand (v0
-> manual scope, D6). The rest of the build phase (merge + terminal tag), the dreaming phase, and
-> unattended automation are designed but not yet built — see
+> **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase —
+> **coding** (`/aind:implement`, which builds the code PR then drives an independent **code review**
+> to a verdict) and **close-out** (`/aind:complete`, which verifies the merged PR and writes the
+> terminal status) — run locally via **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope,
+> D6). The remaining build-phase pieces (a test-writer and a code-revision loop), the dreaming phase,
+> and unattended automation are designed but not yet built — see
 > [Implementation status](#implementation-status).
 
 ## What it does
@@ -25,9 +26,11 @@ agents:
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric; a **planner**
   turns an approved story into an implementation plan delivered as a GitHub PR; a human
   reviews and approves it.
-- **Build phase** *(coder + reviewer built; merge not yet)*: a **coding agent** (`/aind:implement`)
+- **Build phase** *(coder + reviewer + merge close-out built)*: a **coding agent** (`/aind:implement`)
   builds an approved plan into a GitHub code PR, then a cold, independent **reviewer** challenges it
-  and the two iterate to a verdict; a test-writer and the merge gate are designed but not yet built.
+  and the two iterate to a verdict; once a human merges, **`/aind:complete`** verifies the merge and
+  writes the terminal `Implementation complete` status. A test-writer and a code-revision loop are
+  designed but not yet built.
 - **Dreaming phase** *(designed, not built)*: a cold "dreamer" learns from the flow's exhaust
   and proposes config improvements.
 
@@ -58,7 +61,7 @@ Rationale for every choice is in `design-log.md` (decisions **D1–D26**).
 ```
 .claude-plugin/plugin.json   Claude Code manifest (name: aind)
 .github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
-commands/                    onboard, intake, plan, approve-plan, implement  (human entry points)
+commands/                    onboard, intake, plan, approve-plan, implement, complete  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
@@ -88,7 +91,7 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Build | CI gates | ⬜ | — | Coder runs the project build locally before the PR; CI-pipeline gates not built. |
 | Build | Live / E2E gate (optional) | ⬜ | — | Manual path is the design target for v0 (D15); not built. |
 | Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
-| Build | Merge + `Implementation complete` | ⬜ | — | Not built — next build-phase step (D13); a code-revision loop for suggestions/tiebreak-verdicts is a companion next step. |
+| Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). A code-revision loop for suggestions/tiebreak-verdicts on an open PR is a companion next step. |
 | Dreaming | Lessons-learned emission | ⬜ | — | Out of scope this iteration (D16). |
 | Dreaming | Dreamer agent (cold) | ⬜ | — | Out of scope this iteration (D16). |
 

@@ -9,6 +9,38 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.7.0] — 2026-07-01
+
+### Added
+- **Build phase — merge gate + terminal completion (Phase 4 close-out).** `/aind:complete <id> [pr]`
+  closes out the build phase (D27) — the twin of `/aind:approve-plan`. It resolves the story's code
+  PR, **verifies it is MERGED (refuses otherwise)**, writes the terminal `Implementation complete`
+  tag, posts a signed `coder` completion note, and cleans up the merged code branch. **Merge-then-tag**
+  (D13): the tag is only written after a confirmed merge, so a tag-write failure leaves the item
+  recoverable rather than falsely complete; branch cleanup runs last so a hygiene hiccup can't corrupt
+  status. The command does **not** merge — a human merges in GitHub and this records the result
+  (D13 realised as verify-then-tag, not command-merges).
+- `scripts/aind-complete.sh` — `verify` (resolve the code PR by searching the work-item id against the
+  flow's own markers — a title `(AB#<id>)` or the `AIND-LINKS` work-item URL — requiring a single
+  MERGED match, with an explicit `[pr]` override; the coder-generated branch is non-derivable, so the
+  PR is found by search, never by reconstructing a name) and `cleanup` (delete the remote branch only
+  if still present — a no-op when the merge auto-deleted it — prune the stale remote-tracking ref, and
+  remove the lingering local branch, switching off it only when the working tree is clean).
+
+### Notes
+- **Scope is `/aind:complete` alone.** A **code-revision loop** — re-entering an already-open code PR
+  to apply a wanted suggestion, a rebutted fix, or a human's tiebreak verdict, then pushing to the same
+  PR (the twin of the plan-revision loop) — is the next iteration. Until then, the sanctioned interim
+  bridge for those cases is a direct edit on the PR branch + push before merge.
+- Test authoring (D8/D9) and the dreaming phase (D16) remain deferred; unattended automation +
+  auto-merge stay out of manual scope (D6).
+
+### Validated
+- `/aind:complete` — live-validated on a real story (AB#19): refuses while the PR is unmerged, then
+  once merged flips the tag to `Implementation complete`, posts the note, and cleans up the code
+  branch. Offline: 7/7 unit tests on the code-PR selection logic (single-MERGED match, none-merged,
+  ambiguous, no-match, body-marker fallback, and the id-boundary case).
+
 ## [0.6.0] — 2026-07-01
 
 ### Added
