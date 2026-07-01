@@ -37,10 +37,10 @@ hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
 project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
-agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, dreamer) land here
+agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer land here later
 ```
 
-## Current status (2026-06-30)
+## Current status (2026-07-01)
 
 - **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
   (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
@@ -67,21 +67,31 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
   model is handled by **choosing the session model per invocation** (`claude --model …` / `/model`) —
   natural since the two phases are gated apart. Cold subagents stay reserved for the independent
   build-phase checks.
-- **Build phase started — coder designed, not yet built (D24, 2026-06-30).** The coding agent is
-  packaged as a **warm in-session command `/aind:implement`** (per D20 — it authors, it is not an
-  independent check): a **single** rule-driven coder (per-domain conventions come from each task's
-  cited `rules/*.md`, D23), with **polish as its final in-context phase** (D7, no structural change).
-  It grounds from the merged plan + cited rules + project build/run **skills** (D18 — dev skills are
-  the project's, not the plugin's), and the only new plugin script is `aind-open-code-pr.sh` (the
-  GitHub-flow twin of `aind-open-plan-pr.sh`). The coder **generates** its branch as
-  `[type]/<id>-<short-name>` (e.g. `feat/123-new-component`); the PR stays the only handle (D17).
-  **First iteration scope ends at code-PR creation** — all test authoring is deferred (D8/D9), and
-  code review (cold reviewer), the merge gate, and the terminal `Implementation complete` write
-  (`/aind:complete`, D13) are the next iterations. Design is documented; `commands/implement.md` +
-  the script are the next thing to write.
-- **Not built yet:** the rest of the build phase (cold reviewer/test-writer/E2E subagents, merge +
-  terminal tag) and the dreaming phase (lessons-learned emission + cold dreamer). Out of scope per
-  D6/D16.
+- **Build phase — coder built (D24, 2026-06-30).** The coding agent is the **warm in-session command
+  `/aind:implement`** (per D20 — it authors, it is not an independent check): a **single** rule-driven
+  coder (per-domain conventions come from each task's cited `rules/*.md`, D23), with **polish as its
+  final in-context phase** (D7, no structural change). It grounds from the merged plan + cited rules +
+  project build/run **skills** (D18 — dev skills are the project's, not the plugin's); its new plugin
+  script is `aind-open-code-pr.sh` (the GitHub-flow twin of `aind-open-plan-pr.sh`). The coder
+  **generates** its branch as `[type]/<id>-<short-name>`; the PR stays the only handle (D17).
+  `commands/implement.md` + the script are written; live validation is pending.
+- **Build phase — code reviewer built (D26, 2026-07-01), pending live validation.** Phase 4 review is
+  now implemented as a **cold reviewer subagent** (`agents/reviewer.md`, `name: aind-reviewer`,
+  strong-model override) driven from **inside `/aind:implement`**: after the code PR is opened the
+  command spawns the reviewer (via `Task`, passing only the work-item id + PR number — coldness is
+  structural), the **warm coder** fixes or rebuts findings, and it re-spawns **up to 3 passes**. The
+  reviewer challenges the diff against the merged plan **and the full project rule + skill set** (an
+  asymmetry with the coder, which obeys only each task's *cited* rules), with a deliberately strict
+  **CRITICAL+WARNING-block** gate (only SUGGESTION is non-blocking; an objective/taste split keeps the
+  loop from deadlocking on nits). It posts resolvable PR threads + a summary and **never authors
+  fixes** (no `Edit`/`Write`, never commits/pushes). Tag stays `In implementation` throughout; a
+  3-pass deadlock escalates to a human (PR summary + a signed `reviewer` ADO comment, tag unchanged);
+  a reviewer that can't ground returns `CANNOT-REVIEW` → the coder raises `Needs attention` (D12). New
+  plugin script: `aind-review-pr.sh` (`fetch`/`digest`/`summary`/`thread`/`resolve`/`reply`). **Scope
+  ends at reviewer-approval or human-tiebreak** — no merge, no terminal tag, no test authoring.
+- **Not built yet:** the rest of the build phase (cold test-writer/E2E subagents, the human merge
+  gate + the terminal `Implementation complete` write / `/aind:complete`, D13) and the dreaming phase
+  (lessons-learned emission + cold dreamer). Out of scope per D6/D16.
 - **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
   lessons-learned emission (D16).
 
@@ -253,10 +263,12 @@ agents/     (empty) — build-phase cold subagents (reviewer, test-writer, E2E, 
 2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
    threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
    (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-3. Build the **coding agent** (D24): write `commands/implement.md` (the warm `/aind:implement`
-   command — ground → implement task breakdown against the Definition of done → in-context polish →
-   open code PR; stuck-state mirrors `plan.md`) and `scripts/aind-open-code-pr.sh` (twin of
-   `aind-open-plan-pr.sh`, adding the code PR's `AIND-LINKS` block with the plan-PR URL). Scope ends
-   at PR creation — no tests, no merge/complete.
-4. Then the **build phase** cold subagents in `agents/` (reviewer first), then the merge gate +
-   terminal tag (`/aind:complete`, D13).
+3. **Live-validate the build phase end-to-end** (D24 + D26): run `/aind:implement` on a real
+   `Ready for implementation` story — confirm it builds → opens the code PR → the cold reviewer
+   (`aind-reviewer`) challenges it → the coder fixes/rebuts across passes → the loop ends at a
+   `CLEAN` approval or a 3-pass human tiebreak (and that `CANNOT-REVIEW` raises `Needs attention`).
+   Exercise the `gh`-live phases of `aind-review-pr.sh` (`fetch`/`summary`/`thread`/`resolve`/`reply`)
+   that offline tests couldn't cover.
+4. Then the rest of the **build phase**: the human **merge gate + terminal tag**
+   (`/aind:complete`, D13); then the cold **test-writer / E2E** subagents in `agents/` (D8/D9); then
+   the **dreaming phase** (lessons-learned emission + cold dreamer, D16).
