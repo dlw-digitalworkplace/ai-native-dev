@@ -71,6 +71,32 @@ aind_actor() {
 # Strip the scheme from the org URL host for messages (cosmetic only).
 aind_org() { echo "${AIND_ADO_ORG%/}"; }
 
+# Find the code PR(s) for a work item. The code branch is coder-generated and never reconstructed,
+# so a PR is matched by this flow's own markers: a title ending "(AB#<id>)" (from aind-open-code-pr.sh
+# open) OR an AIND-LINKS work-item URL ending "/edit/<id>". Emits one TSV line per matching PR:
+#   <state>\t<number>\t<url>\t<head-ref>
+# for EVERY state — the caller applies its own policy (e.g. a single MERGED match for completion, a
+# single OPEN match for revision). The marker match itself lives in aind_filter_code_prs so it is
+# unit-testable offline (feed it captured `gh pr list` TSV; no live gh needed).
+aind_filter_code_prs() {
+  # stdin: TSV rows "state\tnumber\turl\thead\ttitle\tbody" (body newlines escaped by @tsv).
+  awk -F'\t' -v id="$1" '
+    {
+      state=$1; num=$2; url=$3; head=$4; title=$5; body=$6
+      if ((index(title, "(AB#" id ")") > 0) || (body ~ ("edit/" id "([^0-9]|$)")))
+        printf "%s\t%s\t%s\t%s\n", state, num, url, head
+    }'
+}
+
+aind_find_code_prs() {
+  # Needs AIND_GH_REPO + gh (caller validates). @tsv escapes newlines so each PR is one row.
+  local id="$1"
+  gh pr list --repo "$AIND_GH_REPO" --state all --limit 200 \
+    --json number,title,url,state,headRefName,body \
+    --jq '.[] | [.state,(.number|tostring),.url,.headRefName,.title,.body] | @tsv' \
+  | aind_filter_code_prs "$id"
+}
+
 # Auto-source the project's .claude/aind.env so callers don't have to `source` it first.
 # Walk up from $PWD; the first .claude/aind.env found wins. An already-set environment takes
 # precedence: if AIND_ADO_ORG is already exported, we leave everything as-is (lets CI or a

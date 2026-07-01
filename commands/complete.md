@@ -49,7 +49,10 @@ Work item: **$1**
    committed status. The script re-confirms the PR is `MERGED` first, deletes the remote branch only
    if it still exists (a no-op when the merge auto-deleted it), prunes the stale remote-tracking ref,
    and removes the lingering local branch (switching you to the integration branch first if it's
-   checked out and your working tree is clean). Pass the PR number from step 1:
+   checked out and your working tree is clean). Finally, if you end up on the integration branch with
+   a clean tree, it **fast-forwards that branch to include the merge** so your local checkout is
+   current (fast-forward only — a diverged branch is left for a manual pull). Pass the PR number from
+   step 1:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-complete.sh" cleanup "$1" <pr-number>
    ```
@@ -57,7 +60,7 @@ Work item: **$1**
 ## Report
 Tell the user the story is **Implementation complete**, with the merged PR URL and merge commit, and
 note the branch-cleanup outcome (deleted / already gone / left for you to remove manually if your
-working tree was dirty).
+working tree was dirty) and whether the integration branch was fast-forwarded to include the merge.
 
 ## Notes
 - This is the terminal state of the flow. There is no un-complete step; if the tag was written in

@@ -19,7 +19,9 @@
 #             deletes the remote branch IF it still exists (a no-op when the merge auto-deleted it),
 #             prunes the stale origin/<head-ref> ref, and deletes the LOCAL branch — switching to the
 #             integration branch first if that branch is checked out AND the working tree is clean
-#             (never stashes/discards; a dirty tree is left for the human). Idempotent.
+#             (never stashes/discards; a dirty tree is left for the human). Finally, if we end up on
+#             the integration branch with a clean tree, fast-forwards it to include the merge (ff-only;
+#             a diverged local branch is left for a manual pull). Idempotent.
 #
 # Usage:
 #   aind-complete.sh verify  123
@@ -50,40 +52,6 @@ merged_pr_line() {
   printf '%s' "$line" | cut -f1-3    # number \t url \t head-ref
 }
 
-# Resolve the story's code PR by searching this flow's markers. Prints the awk verdict to stdout.
-resolve_by_search() {
-  # Field-extract every PR (state, number, url, head, title, body) as TSV — @tsv escapes newlines to a
-  # literal \n so each PR stays on one row. The marker match + MERGED selection is done in awk (always
-  # present, unlike jq) so it is unit-testable against a captured `gh pr list --json` fixture offline.
-  gh pr list --repo "$AIND_GH_REPO" --state all --limit 200 \
-    --json number,title,url,state,headRefName,body \
-    --jq '.[] | [.state,(.number|tostring),.url,.headRefName,.title,.body] | @tsv' \
-    | aind_complete_select "$ID"
-}
-
-# awk filter: read TSV PR rows on stdin, pick the single MERGED PR matching work-item <id>.
-# Markers: title contains literal "(AB#<id>)", OR body contains "edit/<id>" not followed by a digit.
-# Emits a first-token verdict the caller acts on: OK | NONE_MERGED | AMBIGUOUS | NO_MATCH.
-aind_complete_select() {
-  awk -F'\t' -v id="$1" '
-    {
-      state=$1; num=$2; url=$3; head=$4; title=$5; body=$6
-      matched = (index(title, "(AB#" id ")") > 0) || (body ~ ("edit/" id "([^0-9]|$)"))
-      if (!matched) next
-      cand++
-      candlist = candlist sprintf("  #%s [%s] %s\n", num, state, url)
-      if (state == "MERGED") { mcount++; mnum=num; murl=url; mhead=head
-        mlist = mlist sprintf("  #%s %s\n", num, url) }
-    }
-    END{
-      if (mcount == 1)      printf "OK\t%s\t%s\t%s\n", mnum, murl, mhead
-      else if (mcount > 1){ printf "AMBIGUOUS\n"; printf "%s", mlist }
-      else if (cand > 0)  { printf "NONE_MERGED\n"; printf "%s", candlist }
-      else                  printf "NO_MATCH\n"
-    }
-  '
-}
-
 case "$MODE" in
   verify)
     PR="${3:-}"
@@ -91,22 +59,18 @@ case "$MODE" in
       [[ "$PR" =~ ^[0-9]+$ ]] || aind_die "pr-number must be numeric, got '$PR'"
       read -r num url head < <(merged_pr_line "$PR")   # dies unless MERGED
     else
-      verdict="$(resolve_by_search)"
-      tag="$(printf '%s' "$verdict" | head -n1 | cut -f1)"
-      case "$tag" in
-        OK)
-          IFS=$'\t' read -r _ num url head <<< "$(printf '%s' "$verdict" | head -n1)"
-          ;;
-        NONE_MERGED)
-          aind_die $'a code PR for AB#'"$ID"$' exists but is not MERGED — merge it first, then re-run:\n'"$(printf '%s' "$verdict" | tail -n +2)"
-          ;;
-        AMBIGUOUS)
-          aind_die $'more than one MERGED PR matches AB#'"$ID"$' — pass the PR number explicitly (aind-complete.sh verify '"$ID"$' <pr>):\n'"$(printf '%s' "$verdict" | tail -n +2)"
-          ;;
-        *)  # NO_MATCH
-          aind_die "no code PR found for AB#$ID in $AIND_GH_REPO — pass the PR number explicitly: aind-complete.sh verify $ID <pr>"
-          ;;
-      esac
+      # Resolve by marker-search (shared helper), then require a single MERGED match.
+      cands="$(aind_find_code_prs "$ID")"
+      [[ -n "${cands//[$'\n\t ']/}" ]] \
+        || aind_die "no code PR found for AB#$ID in $AIND_GH_REPO — pass the PR number explicitly: aind-complete.sh verify $ID <pr>"
+      merged="$(printf '%s\n' "$cands" | awk -F'\t' '$1=="MERGED"')"
+      mcount="$(printf '%s\n' "$merged" | awk 'NF{c++} END{print c+0}')"
+      if (( mcount == 0 )); then
+        aind_die $'a code PR for AB#'"$ID"$' exists but is not MERGED — merge it first, then re-run:\n'"$(printf '%s\n' "$cands" | awk -F'\t' 'NF{printf "  #%s [%s] %s\n",$2,$1,$3}')"
+      elif (( mcount > 1 )); then
+        aind_die $'more than one MERGED PR matches AB#'"$ID"$' — pass the PR number explicitly (aind-complete.sh verify '"$ID"$' <pr>):\n'"$(printf '%s\n' "$merged" | awk -F'\t' 'NF{printf "  #%s %s\n",$2,$3}')"
+      fi
+      IFS=$'\t' read -r _ num url head <<< "$merged"
     fi
 
     # Authoritative merge-commit SHA for the completion note (empty if the field is unavailable).
@@ -152,6 +116,25 @@ case "$MODE" in
       fi
     else
       echo "aind: no local branch $head — nothing to clean up locally"
+    fi
+
+    # Leave the developer on an up-to-date integration branch: if we're now on it (we switched here
+    # above, or you were already on it) and the tree is clean, fast-forward it to include the merge
+    # (origin/<integration> is current from the prune fetch above). Fast-forward ONLY — if the local
+    # branch has diverged, warn and leave it for a manual pull rather than creating a merge.
+    current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+    if [[ "$current" == "$AIND_INTEGRATION_BRANCH" ]]; then
+      if git diff --quiet && git diff --cached --quiet; then
+        if git merge --ff-only "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1; then
+          echo "aind: fast-forwarded $AIND_INTEGRATION_BRANCH to include the merge"
+        else
+          echo "aind: [WARN] could not fast-forward $AIND_INTEGRATION_BRANCH (local commits diverge?) — pull manually" >&2
+        fi
+      else
+        echo "aind: working tree not clean — skipped updating $AIND_INTEGRATION_BRANCH (pull manually)"
+      fi
+    else
+      echo "aind: on '$current' (not $AIND_INTEGRATION_BRANCH) — skipped updating the integration branch"
     fi
     ;;
 

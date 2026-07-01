@@ -38,8 +38,9 @@ aind_require_cmd git gh
 [[ "$BRANCH" =~ ^[a-z]+/${ID}-[A-Za-z0-9._-]+$ ]] \
   || aind_die "branch '$BRANCH' must follow <type>/${ID}-<short-name> (e.g. feat/${ID}-new-component)"
 
-# A code PR already open for this branch means a re-run — code-revision is not supported in this
-# iteration (a re-run would conflict on push / gh pr create).
+# A code PR already open for this branch means a re-run of the CREATE path, which would conflict on
+# push / gh pr create. Revising an open PR is a separate flow: re-run /aind:implement, which detects
+# the open PR and enters revise mode (aind-revise-code-pr.sh) instead of opening a second PR.
 code_pr_exists() {
   [[ -n "$(gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]]
 }
@@ -47,7 +48,7 @@ code_pr_exists() {
 case "$MODE" in
   start)
     aind_require_env AIND_GH_REPO AIND_INTEGRATION_BRANCH
-    code_pr_exists && aind_die "a code PR already exists for $BRANCH — code-revision is not supported in this iteration"
+    code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
     # Don't clobber a dirty working tree: branching off integration with uncommitted tracked
     # changes would drag them onto the new branch. Refuse and let the developer decide — never
     # stash automatically. (Untracked files are fine; they're carried along harmlessly.)
@@ -65,7 +66,7 @@ case "$MODE" in
     aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_GH_REPO AIND_INTEGRATION_BRANCH
     [[ -n "$TITLE" ]] || TITLE="Implementation for work item ${ID}"
 
-    code_pr_exists && aind_die "a code PR already exists for $BRANCH — code-revision is not supported in this iteration"
+    code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
 
     # There must be implementation to review.
     git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
