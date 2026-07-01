@@ -30,7 +30,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ```
 .claude-plugin/plugin.json   manifest (name: aind)
-commands/   onboard, intake, plan, approve-plan        (human entry points; namespaced /aind:*)
+commands/   onboard, intake, plan, approve-plan, implement, complete   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
@@ -89,9 +89,25 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   a reviewer that can't ground returns `CANNOT-REVIEW` → the coder raises `Needs attention` (D12). New
   plugin script: `aind-review-pr.sh` (`fetch`/`digest`/`summary`/`thread`/`resolve`/`reply`). **Scope
   ends at reviewer-approval or human-tiebreak** — no merge, no terminal tag, no test authoring.
-- **Not built yet:** the rest of the build phase (cold test-writer/E2E subagents, the human merge
-  gate + the terminal `Implementation complete` write / `/aind:complete`, D13) and the dreaming phase
-  (lessons-learned emission + cold dreamer). Out of scope per D6/D16.
+- **Build phase — merge gate + terminal completion built & live-validated (D27, 2026-07-01).**
+  The build phase closes out with the human-run command **`/aind:complete <id> [pr]`** — the twin of
+  `/aind:approve-plan`. It **verifies the code PR is MERGED (refuses otherwise)**, writes the terminal
+  `Implementation complete` tag, posts a signed `coder` completion note, and cleans up the merged code
+  branch — in that order (**merge-then-tag**: a tag-write failure leaves the item recoverable, never
+  false-complete; cleanup last so a hygiene hiccup can't corrupt status). It does **not** merge — the
+  human merges in GitHub and this records the result (D13 realised as *verify-then-tag*, not
+  command-merges; matches approve-plan). The code PR is found by **search on the work-item id** (title
+  `(AB#<id>)` / `AIND-LINKS` marker; explicit `[pr]` override; refuses on none-merged/no-match/ambiguous),
+  since the coder-generated branch is non-derivable (D17). Branch cleanup is tuned for
+  auto-delete-on-merge: remote deleted only if present, stale ref pruned, lingering local branch
+  removed (switching off it only when the tree is clean). New plugin script: `aind-complete.sh`
+  (`verify`/`cleanup`). **Scope: `/aind:complete` alone** — the code-revision loop (re-entering an
+  open code PR) is deferred to the next iteration.
+- **Not built yet:** the code-revision loop (twin of the plan-revision loop D21 — re-enter an open
+  code PR to apply a wanted suggestion / a human tiebreak verdict / a touch-up, push to the same PR,
+  optionally re-review; `aind-open-code-pr.sh` currently refuses re-runs); the rest of the build phase
+  (cold test-writer/E2E subagents, D8/D9); and the dreaming phase (lessons-learned emission + cold
+  dreamer, D16). Out of scope per D6/D16.
 - **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
   lessons-learned emission (D16).
 
@@ -263,12 +279,14 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
 2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
    threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
    (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-3. **Live-validate the build phase end-to-end** (D24 + D26): run `/aind:implement` on a real
+3. **Live-validate the build phase end-to-end** (D24 + D26 + D27): run `/aind:implement` on a real
    `Ready for implementation` story — confirm it builds → opens the code PR → the cold reviewer
    (`aind-reviewer`) challenges it → the coder fixes/rebuts across passes → the loop ends at a
    `CLEAN` approval or a 3-pass human tiebreak (and that `CANNOT-REVIEW` raises `Needs attention`).
    Exercise the `gh`-live phases of `aind-review-pr.sh` (`fetch`/`summary`/`thread`/`resolve`/`reply`)
-   that offline tests couldn't cover.
-4. Then the rest of the **build phase**: the human **merge gate + terminal tag**
-   (`/aind:complete`, D13); then the cold **test-writer / E2E** subagents in `agents/` (D8/D9); then
-   the **dreaming phase** (lessons-learned emission + cold dreamer, D16).
+   that offline tests couldn't cover. (The **`/aind:complete`** close-out is already **live-validated**
+   on AB#19 — refuse-while-unmerged, then tag `Implementation complete` + note + branch cleanup.)
+4. Then the rest of the **build phase**: the **code-revision loop** (D27's deferred twin of D21 — the
+   execution path for a wanted suggestion / a human tiebreak verdict on an open code PR); then the cold
+   **test-writer / E2E** subagents in `agents/` (D8/D9); then the **dreaming phase** (lessons-learned
+   emission + cold dreamer, D16).
