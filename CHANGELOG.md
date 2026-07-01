@@ -9,6 +9,40 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.8.0] — 2026-07-01
+
+### Added
+- **Build phase — code-revision loop (steer the coder from the PR).** `/aind:implement` is now
+  **mode-aware** (D28): a re-run on a story that already has an open code PR enters **revise mode**.
+  It checks out the PR's head branch, prints a **steering digest** (PR comments + review threads),
+  applies **only the human-directed** changes — a reviewer suggestion the human picked, a **tiebreak
+  verdict**, or a touch-up — replies on each acted thread (**never resolving** — resolution stays the
+  human's merge gate), pushes to the **same** PR, and re-runs the code review by default (skippable
+  for a trivial touch-up). The `AIND status` tag stays `In implementation` throughout.
+- `scripts/aind-revise-code-pr.sh` — `status` (detect an open code PR by marker-search), `begin`
+  (check out the head branch + print the steering digest), `push` (push to the same PR + optional
+  comment). The twin of `aind-revise-plan-pr.sh`; thread replies reuse `aind-review-pr.sh reply`.
+
+### Changed
+- The code-PR marker-search is factored into a shared `aind-common.sh` helper (`aind_find_code_prs`),
+  reused by `/aind:complete` (a single MERGED match) and the revision loop (a single OPEN match).
+- `/aind:complete` cleanup now also **fast-forwards the integration branch** to include the merge
+  when you end up on it with a clean tree (fast-forward only; a diverged local branch is left for a
+  manual pull), so your local trunk isn't silently behind (D27 refinement).
+- `aind-open-code-pr.sh`'s re-run refusal now points to revise mode instead of "not supported".
+
+### Notes
+- Applying **only human-directed** changes keeps the human the decision-maker (suggest-don't-assert):
+  the coder does not sweep up undirected suggestions or re-implement freely.
+- Scope still stops before merge — `/aind:complete` remains the only terminal step; a plan-level
+  problem surfaced during revision is flagged for a human, never silently re-planned.
+
+### Validated
+- The code-revision loop — live-validated on a real story: a re-run entered revise mode, applied
+  **only** the directed change, replied without resolving, pushed to the same PR, re-reviewed CLEAN,
+  and never moved the tag. Offline: 13/13 code-PR selection unit tests (the shared resolver —
+  single-MERGED for complete, single-OPEN for revise — plus id-boundary cases).
+
 ## [0.7.0] — 2026-07-01
 
 ### Added

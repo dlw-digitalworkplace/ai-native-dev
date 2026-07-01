@@ -102,7 +102,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   auto-delete-on-merge: remote deleted only if present, stale ref pruned, lingering local branch
   removed (switching off it only when the tree is clean). New plugin script: `aind-complete.sh`
   (`verify`/`cleanup`). Merge stays a human act in GitHub; `/aind:complete` records it.
-- **Build phase — code-revision loop built (D28, 2026-07-01), pending live validation.** `/aind:implement`
+- **Build phase — code-revision loop built & live-validated (D28, 2026-07-01).** `/aind:implement`
   is now **mode-aware** (the twin of the plan-revision loop D21): a re-run on a story with an **open
   code PR** enters **revise mode** — you *steer the coder from the PR*. It checks out the PR's head
   branch, prints the **steering digest** (PR comments + review threads via `aind-review-pr.sh digest`),
