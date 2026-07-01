@@ -101,13 +101,22 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   since the coder-generated branch is non-derivable (D17). Branch cleanup is tuned for
   auto-delete-on-merge: remote deleted only if present, stale ref pruned, lingering local branch
   removed (switching off it only when the tree is clean). New plugin script: `aind-complete.sh`
-  (`verify`/`cleanup`). **Scope: `/aind:complete` alone** — the code-revision loop (re-entering an
-  open code PR) is deferred to the next iteration.
-- **Not built yet:** the code-revision loop (twin of the plan-revision loop D21 — re-enter an open
-  code PR to apply a wanted suggestion / a human tiebreak verdict / a touch-up, push to the same PR,
-  optionally re-review; `aind-open-code-pr.sh` currently refuses re-runs); the rest of the build phase
-  (cold test-writer/E2E subagents, D8/D9); and the dreaming phase (lessons-learned emission + cold
-  dreamer, D16). Out of scope per D6/D16.
+  (`verify`/`cleanup`). Merge stays a human act in GitHub; `/aind:complete` records it.
+- **Build phase — code-revision loop built (D28, 2026-07-01), pending live validation.** `/aind:implement`
+  is now **mode-aware** (the twin of the plan-revision loop D21): a re-run on a story with an **open
+  code PR** enters **revise mode** — you *steer the coder from the PR*. It checks out the PR's head
+  branch, prints the **steering digest** (PR comments + review threads via `aind-review-pr.sh digest`),
+  applies **only the human-directed** changes (a picked reviewer suggestion, a **tiebreak verdict**, a
+  touch-up — never undirected suggestions or a free re-implement; suggest-don't-assert), replies on
+  each acted thread (**never resolves** — the human's gate), pushes to the same PR, and by default
+  re-enters the review loop (skippable for a trivial touch-up). Tag stays `In implementation` (a
+  revision is more PR iteration). New script `aind-revise-code-pr.sh` (`status`/`begin`/`push`); the
+  code-PR marker-search is factored into `aind-common.sh` (`aind_find_code_prs`) and shared with
+  `aind-complete.sh`; `aind-open-code-pr.sh`'s re-run refusal now points to revise mode. **Scope stops
+  before merge** — `/aind:complete` is still the only terminal step; a plan-level problem is flagged
+  for a human, never silently re-planned.
+- **Not built yet:** the rest of the build phase (cold test-writer/E2E subagents, D8/D9); and the
+  dreaming phase (lessons-learned emission + cold dreamer, D16). Out of scope per D6/D16.
 - **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
   lessons-learned emission (D16).
 
@@ -285,8 +294,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
    `CLEAN` approval or a 3-pass human tiebreak (and that `CANNOT-REVIEW` raises `Needs attention`).
    Exercise the `gh`-live phases of `aind-review-pr.sh` (`fetch`/`summary`/`thread`/`resolve`/`reply`)
    that offline tests couldn't cover. (The **`/aind:complete`** close-out is already **live-validated**
-   on AB#19 — refuse-while-unmerged, then tag `Implementation complete` + note + branch cleanup.)
-4. Then the rest of the **build phase**: the **code-revision loop** (D27's deferred twin of D21 — the
-   execution path for a wanted suggestion / a human tiebreak verdict on an open code PR); then the cold
-   **test-writer / E2E** subagents in `agents/` (D8/D9); then the **dreaming phase** (lessons-learned
-   emission + cold dreamer, D16).
+   on AB#19.) Then live-validate the **code-revision loop** (D28): with the code PR open, leave a PR
+   comment asking for a change (AB#19's unapplied `minHeight:44` suggestion is the ready-made case),
+   re-run `/aind:implement 19`, and confirm it enters revise mode, applies **only** that change, pushes
+   to the same PR, re-reviews, and never moves the tag — then `/aind:complete 19`.
+4. Then the rest of the **build phase**: the cold **test-writer / E2E** subagents in `agents/`
+   (D8/D9); then the **dreaming phase** (lessons-learned emission + cold dreamer, D16).

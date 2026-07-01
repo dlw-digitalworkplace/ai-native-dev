@@ -10,10 +10,10 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 
 > **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase —
 > **coding** (`/aind:implement`, which builds the code PR then drives an independent **code review**
-> to a verdict) and **close-out** (`/aind:complete`, which verifies the merged PR and writes the
-> terminal status) — run locally via **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope,
-> D6). The remaining build-phase pieces (a test-writer and a code-revision loop), the dreaming phase,
-> and unattended automation are designed but not yet built — see
+> to a verdict, and on a re-run **revises** the open PR from the human's steering) and **close-out**
+> (`/aind:complete`, which verifies the merged PR and writes the terminal status) — run locally via
+> **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). A test-writer, the dreaming
+> phase, and unattended automation are designed but not yet built — see
 > [Implementation status](#implementation-status).
 
 ## What it does
@@ -26,11 +26,12 @@ agents:
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric; a **planner**
   turns an approved story into an implementation plan delivered as a GitHub PR; a human
   reviews and approves it.
-- **Build phase** *(coder + reviewer + merge close-out built)*: a **coding agent** (`/aind:implement`)
-  builds an approved plan into a GitHub code PR, then a cold, independent **reviewer** challenges it
-  and the two iterate to a verdict; once a human merges, **`/aind:complete`** verifies the merge and
-  writes the terminal `Implementation complete` status. A test-writer and a code-revision loop are
-  designed but not yet built.
+- **Build phase** *(coder + reviewer + revision loop + merge close-out built)*: a **coding agent**
+  (`/aind:implement`) builds an approved plan into a GitHub code PR, then a cold, independent
+  **reviewer** challenges it and the two iterate to a verdict; a human can **steer the coder from the
+  PR** on a re-run (apply a picked suggestion or a tiebreak verdict — revise mode); once a human
+  merges, **`/aind:complete`** verifies the merge and writes the terminal `Implementation complete`
+  status. A test-writer is designed but not yet built.
 - **Dreaming phase** *(designed, not built)*: a cold "dreamer" learns from the flow's exhaust
   and proposes config improvements.
 
@@ -86,12 +87,13 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
 | Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
 | Build | Test-writer agent (optional, cold) | ⬜ | — | Not built; test authoring deferred this iteration (D8). |
-| Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Now also drives the review loop below (D24); scope ends at reviewer approval / human tiebreak. |
+| Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Now also drives the review loop below (D24) and is **mode-aware** — a re-run revises the open PR (D28); scope ends at reviewer approval / human tiebreak. |
 | Build | Polish (warm) — in `/aind:implement` | ✅ | ✅ | Final in-context phase of the coder — style/self-consistency only, no structural change. |
 | Build | CI gates | ⬜ | — | Coder runs the project build locally before the PR; CI-pipeline gates not built. |
 | Build | Live / E2E gate (optional) | ⬜ | — | Manual path is the design target for v0 (D15); not built. |
 | Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
-| Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). A code-revision loop for suggestions/tiebreak-verdicts on an open PR is a companion next step. |
+| Build | Code-revision loop — `/aind:implement` revise mode | ✅ | 🟡 | Re-run on a story with an open code PR enters revise mode: check out the PR branch, read the steering digest, apply **only** human-directed changes (a picked suggestion, a tiebreak verdict, a touch-up), reply on threads (never resolve), push to the same PR, re-review by default (D28). Offline-tested (13/13 selection cases); live validation on AB#19 pending. |
+| Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
 | Dreaming | Lessons-learned emission | ⬜ | — | Out of scope this iteration (D16). |
 | Dreaming | Dreamer agent (cold) | ⬜ | — | Out of scope this iteration (D16). |
 
