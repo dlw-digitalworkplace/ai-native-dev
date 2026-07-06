@@ -140,7 +140,7 @@ rules and keep any data contract real on the wire, exactly as in build mode. Com
 Reply on each thread you addressed, using its `thread=<id>` from the digest — **never resolve it**
 (resolution is the human's merge gate):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply "<pr-number>" "<thread-id>" <<'EOF'
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply "<pr-number>" "<thread-id>" coder <<'EOF'
 Applied: <what you changed>. Please resolve if this looks right.
 EOF
 ```
@@ -193,7 +193,7 @@ Run **up to 3 reviewer passes**. For each pass:
    - **`CHANGES_REQUESTED`** → for **each** blocking finding, either **fix it** (edit + commit) or,
      if you genuinely believe it is correct as-is, **rebut it** by replying on its thread:
      ```bash
-     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply "<n>" "<thread-id>" <<'EOF'
+     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply "<n>" "<thread-id>" coder <<'EOF'
      <why this is correct as-is>
      EOF
      ```
@@ -211,7 +211,7 @@ Run **up to 3 reviewer passes**. For each pass:
 for a **human tiebreak**: post a PR summary of the open items + your rebuttals, and record the same
 signal on the work item (feed the body as a direct heredoc — one command, no `cat |` pipe):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary "<n>" <<'EOF'
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary "<n>" coder <<'EOF'
 ## Human tiebreak needed — review deadlocked after 3 passes
 <the still-open blocking findings, and your rebuttal for each>
 EOF

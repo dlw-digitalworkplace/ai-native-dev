@@ -189,6 +189,19 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   convention, wrong for committed shared notes.
 
 **Signing enforcement.**
+- **PR comments are signed too — not just ADO comments.** Every GitHub PR comment/thread/reply
+  goes through a plugin script that appends the agent signature via `aind_gh_signature <agent>`
+  (in `aind-common.sh`): `aind-thread.sh` (planner assumptions / reviewer findings),
+  `aind-review-pr.sh summary|thread|reply` (reviewer + coder — these take an explicit `<agent>`
+  arg), and `aind-revise-code-pr.sh push` / `aind-revise-plan-pr.sh push|reply` (hardcode `coder` /
+  `planner`, since each is single-author). Same rationale as ADO signing: in local mode the coder,
+  reviewer, and planner post under **one** GitHub identity, so the signature is what tells them
+  apart. GitHub renders markdown and **preserves HTML comments**, so the machine marker there is a
+  real `<!-- AIND-AGENT: <name> -->` (greppable, invisible when rendered) — *not* the display:none
+  span ADO needs (ADO strips HTML comments). Unlike ADO, there is **no PreToolUse hook** enforcing
+  the PR path yet — signing holds because every PR-comment site already routes through these
+  scripts; a raw `gh pr comment` would bypass it. PR **bodies** (open-plan-pr / open-code-pr) are
+  deliberately left unsigned — they're the artifact, authored once, and carry the `AIND-LINKS` marker.
 - All ADO comments must go through `aind-comment.sh` (it signs). The `PreToolUse` hook
   (`hooks/check-claude-comment.sh`, wired via `.claude-plugin/plugin.json`'s `hooks` field) blocks
   raw comment calls (`…/_apis/wit/workItems/<id>/comments`, `az devops invoke … comments`). Logic is

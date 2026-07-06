@@ -21,7 +21,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-plan-pr.sh" "<work-item-id>" "<sto
 line in the plan diff (so "require conversation resolution before merging" gates each one):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/<id>/plan.md" "<line>" "<assumption + the question to resolve>"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/<id>/plan.md" "<line>" planner "<assumption + the question to resolve>"
 ```
 
 Anchor each thread to the line in the **Assumptions & open questions** section where you

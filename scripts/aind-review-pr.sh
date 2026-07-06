@@ -13,20 +13,25 @@
 #                                   file:line and thread=<node-id>) plus top-level PR comments — what
 #                                   a re-pass reviewer and the coder read to see prior findings and
 #                                   rebuttals. Reuses gh's built-in --jq (no external jq needed).
-#   summary <pr> [body]             Post the review summary as a top-level PR comment (the overall
-#                                   verdict + the non-blocking SUGGESTION list). Body via arg or
-#                                   stdin. A plain comment — NOT a GitHub "approve" review, because in
-#                                   local mode the reviewer runs as the same user as the coder and
-#                                   GitHub refuses a self-approval; loop termination is driven by the
-#                                   reviewer's returned verdict, not GitHub review state.
-#   thread <pr> <path> <line> [body]  Post ONE resolvable inline review thread for a blocking
-#                                   (CRITICAL/WARNING) finding, anchored to file:line. Delegates to
-#                                   aind-thread.sh (shared head-SHA anchoring). Body via arg or stdin.
+#   summary <pr> <agent> [body]     Post the review summary as a top-level PR comment (the overall
+#                                   verdict + the non-blocking SUGGESTION list), signed by <agent>.
+#                                   Body via arg or stdin. A plain comment — NOT a GitHub "approve"
+#                                   review, because in local mode the reviewer runs as the same user
+#                                   as the coder and GitHub refuses a self-approval; loop termination
+#                                   is driven by the reviewer's returned verdict, not GitHub review state.
+#   thread <pr> <path> <line> <agent> [body]  Post ONE resolvable inline review thread for a blocking
+#                                   (CRITICAL/WARNING) finding, anchored to file:line, signed by
+#                                   <agent>. Delegates to aind-thread.sh (shared head-SHA anchoring +
+#                                   signing). Body via arg or stdin.
 #   resolve <pr> <thread-id>        Mark a review thread resolved (the reviewer, on a re-pass, when
 #                                   the coder addressed it). <thread-id> is the thread=<node-id> from
 #                                   `digest`.
-#   reply  <pr> <thread-id> [body]  Reply on a review thread — the coder's rebuttal, or a reviewer
-#                                   note. Body via arg or stdin. Does NOT resolve the thread.
+#   reply  <pr> <thread-id> <agent> [body]  Reply on a review thread — the coder's rebuttal, or a
+#                                   reviewer note — signed by <agent>. Body via arg or stdin. Does NOT
+#                                   resolve the thread.
+#
+# Every posted comment/thread/reply is signed with the agent name (aind_gh_signature), so a PR
+# comment is attributed to its author even though the coder and reviewer share one GitHub identity.
 #
 # The <pr> argument is kept on every phase for a uniform interface even where the underlying GraphQL
 # needs only the thread id. The reviewer never checks out or pushes anything — it reports only.
@@ -94,21 +99,24 @@ case "$PHASE" in
     ;;
 
   summary)
-    BODY="${3:-}"
+    AGENT="${3:-}"
+    [[ -n "$AGENT" ]] || aind_die "usage: aind-review-pr.sh summary <pr> <agent> [body]  (body via arg or stdin)"
+    BODY="${4:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty summary body"
+    BODY="${BODY}$(aind_gh_signature "$AGENT")"
     printf '%s\n' "$BODY" | gh pr comment "$PR" --repo "$AIND_GH_REPO" --body-file -
-    echo "aind: posted review summary comment on PR #$PR"
+    echo "aind: posted signed $AGENT review summary comment on PR #$PR"
     ;;
 
   thread)
-    P="${3:-}"; L="${4:-}"
-    [[ -n "$P" && -n "$L" ]] \
-      || aind_die "usage: aind-review-pr.sh thread <pr> <path> <line> [body]  (body via arg or stdin)"
-    if [[ $# -ge 5 ]]; then
-      exec bash "$SCRIPT_DIR/aind-thread.sh" "$PR" "$P" "$L" "$5"
+    P="${3:-}"; L="${4:-}"; AGENT="${5:-}"
+    [[ -n "$P" && -n "$L" && -n "$AGENT" ]] \
+      || aind_die "usage: aind-review-pr.sh thread <pr> <path> <line> <agent> [body]  (body via arg or stdin)"
+    if [[ $# -ge 6 ]]; then
+      exec bash "$SCRIPT_DIR/aind-thread.sh" "$PR" "$P" "$L" "$AGENT" "$6"
     else
-      exec bash "$SCRIPT_DIR/aind-thread.sh" "$PR" "$P" "$L"
+      exec bash "$SCRIPT_DIR/aind-thread.sh" "$PR" "$P" "$L" "$AGENT"
     fi
     ;;
 
@@ -124,17 +132,20 @@ case "$PHASE" in
 
   reply)
     TID="${3:-}"
-    [[ -n "$TID" ]] || aind_die "usage: aind-review-pr.sh reply <pr> <thread-id> [body]  (body via arg or stdin)"
-    BODY="${4:-}"
+    [[ -n "$TID" ]] || aind_die "usage: aind-review-pr.sh reply <pr> <thread-id> <agent> [body]  (body via arg or stdin)"
+    AGENT="${4:-}"
+    [[ -n "$AGENT" ]] || aind_die "usage: aind-review-pr.sh reply <pr> <thread-id> <agent> [body]  (body via arg or stdin)"
+    BODY="${5:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty reply body"
+    BODY="${BODY}$(aind_gh_signature "$AGENT")"
     gh api graphql -f threadId="$TID" -f body="$BODY" -f query='
       mutation($threadId:ID!,$body:String!){
         addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$threadId, body:$body}){
           comment{ url }
         }
       }' --jq '.data.addPullRequestReviewThreadReply.comment.url'
-    echo "aind: replied to thread $TID on PR #$PR (not resolved)"
+    echo "aind: posted signed $AGENT reply to thread $TID on PR #$PR (not resolved)"
     ;;
 
   *)

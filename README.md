@@ -53,9 +53,11 @@ own the fine-grained iteration.
   flow itself (the status model, the gates, the structural decisions).
 - **Deterministic mechanics are scripted.** Agents make judgments; all ADO/GitHub side-effects
   (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
-  (e.g. a hook requires every ADO comment to be signed by its agent).
+  (e.g. a hook requires every ADO comment to be signed by its agent). Comments on GitHub PRs —
+  review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
+  reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D26**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D29**).
 
 ## Repository layout
 
@@ -67,10 +69,10 @@ skills/                      aind-workitem, aind-status, aind-comment, aind-plan
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
-agents/                      (empty — build-phase cold subagents land here next)
+agents/                      reviewer.md (cold code-PR reviewer); test-writer/E2E/dreamer land here next
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D26)
+design-doc.md, design-log.md The design and the decisions (D1–D29)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 

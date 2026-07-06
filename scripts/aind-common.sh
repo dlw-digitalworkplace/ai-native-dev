@@ -71,6 +71,19 @@ aind_actor() {
 # Strip the scheme from the org URL host for messages (cosmetic only).
 aind_org() { echo "${AIND_ADO_ORG%/}"; }
 
+# Agent signature for GitHub PR comments/threads/replies — the GitHub twin of the ADO signature
+# built in aind-comment.sh. Same intent: in local/v0 mode the coder, reviewer, and planner all post
+# under one GitHub identity, so every PR comment must be attributed to the agent that authored it.
+# GitHub renders markdown and PRESERVES HTML comments, so the machine marker is a real HTML comment
+# (invisible when rendered, still greppable as "AIND-AGENT: <name>") rather than the display:none
+# span ADO needs. Callers append the returned string to the comment body before posting.
+aind_gh_signature() {
+  local agent="$1"
+  [[ -n "$agent" ]] || aind_die "aind_gh_signature: missing agent name"
+  printf '\n\n— 🤖 AIND %s Agent (run by %s)\n<!-- AIND-AGENT: %s -->' \
+    "${agent^}" "$(aind_actor)" "$agent"
+}
+
 # Find the code PR(s) for a work item. The code branch is coder-generated and never reconstructed,
 # so a PR is matched by this flow's own markers: a title ending "(AB#<id>)" (from aind-open-code-pr.sh
 # open) OR an AIND-LINKS work-item URL ending "/edit/<id>". Emits one TSV line per matching PR:
