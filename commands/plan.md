@@ -98,7 +98,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-plan-pr.sh" "$1" "<story title>"
    # note the PR number it prints, then for each assumption:
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" "<assumption + question>"
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<assumption + question>"
    ```
 
 6. **Transition to review:**
@@ -151,7 +151,7 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
 4. **Post only genuinely new assumptions** as their own resolvable threads (skip if your revision
    raised none):
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" "<new assumption + question>"
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<new assumption + question>"
    ```
 
 5. **Commit + push to the same PR**, summarizing what changed (posted as a PR comment so reviewers

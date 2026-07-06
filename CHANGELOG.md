@@ -9,6 +9,19 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.8.1] — 2026-07-06
+
+### Fixed
+- **GitHub PR comments are now signed** (D29). Agent signing was only ever built into the ADO
+  comment path (`aind-comment.sh`), so every PR-side post — review summaries, resolvable threads,
+  and thread replies — went out unsigned, making a reviewer finding and a coder rebuttal
+  indistinguishable when the coder, reviewer, and planner all post under one GitHub identity. A new
+  shared `aind_gh_signature <agent>` helper (`aind-common.sh`) is now appended by every PR-posting
+  site: `aind-thread.sh`, `aind-review-pr.sh summary|thread|reply` (which gain an explicit `<agent>`
+  argument), and `aind-revise-code-pr.sh push` / `aind-revise-plan-pr.sh push|reply` (which sign as
+  `coder` / `planner`). The GitHub machine marker is an HTML comment `<!-- AIND-AGENT: <name> -->`
+  (invisible when rendered, still greppable); PR bodies remain unsigned by design.
+
 ## [0.8.0] — 2026-07-01
 
 ### Added

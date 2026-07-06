@@ -98,6 +98,7 @@ case "$PHASE" in
     if [[ -n "$SUMMARY" ]]; then
       rc=0; resolve_open "" || rc=$?
       if [[ "$rc" -eq 0 ]]; then
+        SUMMARY="${SUMMARY}$(aind_gh_signature coder)"   # revise mode is always the warm coder
         printf '%s\n' "$SUMMARY" | gh pr comment "$R_NUM" --repo "$AIND_GH_REPO" --body-file -
       else
         echo "aind: [WARN] pushed, but could not resolve a single open PR to post the summary comment — skipped" >&2

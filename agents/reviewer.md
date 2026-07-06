@@ -110,18 +110,18 @@ Rules for classifying:
 - **Each CRITICAL and WARNING** → a resolvable inline thread anchored to its line (body = severity +
   the defect + the cited source + the concrete fix):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" thread <pr-number> <path> <line> "<CRITICAL|WARNING>: <defect> (source: <...>) — <fix>"
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" thread <pr-number> <path> <line> reviewer "<CRITICAL|WARNING>: <defect> (source: <...>) — <fix>"
   ```
 - **On a re-pass:** for each prior `[OPEN]` thread the coder has genuinely addressed, resolve it;
   keep the rest open (optionally reply a note on why it still stands):
   ```bash
   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" resolve <pr-number> <thread-id>
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply   <pr-number> <thread-id> "<still open because …>"
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply   <pr-number> <thread-id> reviewer "<still open because …>"
   ```
 - **Post the summary** (overall verdict in prose + the full SUGGESTION list — suggestions live here,
   never as blocking threads):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary <pr-number> <<'EOF'
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary <pr-number> reviewer <<'EOF'
   ## AIND review — pass <n>: <CLEAN | changes requested>
   <one-paragraph assessment>
 

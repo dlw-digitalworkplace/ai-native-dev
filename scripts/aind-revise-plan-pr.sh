@@ -104,6 +104,7 @@ case "$PHASE" in
     git push origin "$BRANCH" --quiet
     n="$(pr_number)"
     if [[ -n "$SUMMARY" && -n "$n" ]]; then
+      SUMMARY="${SUMMARY}$(aind_gh_signature planner)"   # plan revision is always the planner
       printf '%s\n' "$SUMMARY" | gh pr comment "$n" --repo "$AIND_GH_REPO" --body-file -
     fi
     url=""
@@ -117,6 +118,7 @@ case "$PHASE" in
     BODY="${4:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty reply body"
+    BODY="${BODY}$(aind_gh_signature planner)"   # plan-PR thread replies are always the planner
     gh api graphql -f threadId="$THREAD_ID" -f body="$BODY" -f query='
       mutation($threadId:ID!,$body:String!){
         addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$threadId, body:$body}){
