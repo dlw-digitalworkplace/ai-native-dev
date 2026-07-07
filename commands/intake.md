@@ -96,7 +96,18 @@ Work item: **$1**
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Intake approved"   # or "Intake declined"
    ```
 
-6. **Report** a one-line summary to the user: the verdict, the readiness score, and (if
+6. **Emit a lesson if the run taught you something reusable** (dreaming phase). If scoring surfaced a
+   real, recurring signal — a rubric criterion that is ambiguous or hard to apply, a story-format gap
+   you keep hitting — record it as a self-report so the dreamer can later synthesise it. **Emit
+   nothing if there is no genuine lesson** (don't manufacture noise). State what happened and *why*,
+   never a proposed fix. One command, body on stdin:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" intake observation self-report .claude/intake-rubric.md <<'EOF'
+   <what happened + why — e.g. "criterion X is ambiguous because …"; the cause, not a fix>
+   EOF
+   ```
+
+7. **Report** a one-line summary to the user: the verdict, the readiness score, and (if
    declined) the failing objective criteria.
 
 ## Notes

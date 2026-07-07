@@ -110,6 +110,48 @@ aind_find_code_prs() {
   | aind_filter_code_prs "$id"
 }
 
+# --- Lessons stream (dreaming phase) ------------------------------------------------------------
+# Lessons-learned records live on a dedicated, long-lived branch that never merges into the
+# integration branch — a pure append-only exhaust store the dreamer later synthesises. The name is
+# an internal AIND convention (like the /plans/<id>/plan.md path), so it has a fixed default and is
+# only overridable for the rare project whose branch-protection/naming policy forbids that name.
+aind_lessons_branch() { echo "${AIND_LESSONS_BRANCH:-aind/lessons}"; }
+
+# Fetch + resolve the tip commit of the lessons branch. Remote wins (a fresh clone / another machine
+# may have emitted since), then a local ref, else empty (branch does not exist yet). Echoes the SHA.
+aind_lessons_ref() {
+  local br ref=""
+  br="$(aind_lessons_branch)"
+  if git fetch --quiet origin "$br" 2>/dev/null; then
+    ref="$(git rev-parse --verify --quiet FETCH_HEAD || true)"
+  fi
+  [[ -z "$ref" ]] && ref="$(git rev-parse --verify --quiet "refs/heads/$br" || true)"
+  echo "$ref"
+}
+
+# Commit an already-written tree onto the lessons branch and push it, WITHOUT touching the working
+# tree or the current branch (callers build the tree in a throwaway GIT_INDEX_FILE, so an agent can
+# emit mid-implementation without being yanked off its branch). Args: <tree-sha> <parent-or-empty>
+# <message>. Echoes the new commit SHA. Updates the local branch ref (unless it is the current HEAD)
+# and pushes to origin when a remote exists; a rejected push (a concurrent emit raced us) is fatal
+# so the caller can retry rather than silently lose the record.
+aind_lessons_push() {
+  local tree="$1" parent="$2" msg="$3" br commit cur
+  br="$(aind_lessons_branch)"
+  if [[ -n "$parent" ]]; then
+    commit="$(git commit-tree "$tree" -p "$parent" -m "$msg")"
+  else
+    commit="$(git commit-tree "$tree" -m "$msg")"
+  fi
+  cur="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  [[ "$cur" != "$br" ]] && git update-ref "refs/heads/$br" "$commit"
+  if git remote get-url origin >/dev/null 2>&1; then
+    git push --quiet origin "${commit}:refs/heads/${br}" 2>/dev/null \
+      || aind_die "committed to local ${br} but the push to origin/${br} was rejected (a concurrent emit likely raced this one) — re-run to retry"
+  fi
+  echo "$commit"
+}
+
 # Auto-source the project's .claude/aind.env so callers don't have to `source` it first.
 # Walk up from $PWD; the first .claude/aind.env found wins. An already-set environment takes
 # precedence: if AIND_ADO_ORG is already exported, we leave everything as-is (lets CI or a
