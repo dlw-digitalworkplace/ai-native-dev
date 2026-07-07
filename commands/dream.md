@@ -97,10 +97,14 @@ rejected vs left in the pool, and any parking-lot notes recorded. Remind them th
 accept/adjust/reject — merging it is what actually changes any agent's behavior.
 
 ## Notes
-- **Config layer only, never the flow.** The dreamer edits project rules, skills, the intake rubric,
-  and project agent prompts — never the status model, the gates, or the AIND operational rules. A
-  suspected flow problem is a parking-lot note, never a diff. If the author pass reports it `SKIPPED`
-  a cluster because it needed a flow change, that becomes a parking-lot note too.
+- **Config layer, never the flow or the guardrails.** The dreamer may change any behavior file under
+  the project's `.claude/` (rules, skills, the rubric, project agent prompts, project dev
+  scripts/hooks) — but never the **flow** (status model, gates, the AIND operational rules), its own
+  **guardrails** (`settings*.json`, enforcement/signing hooks), **secrets** (`aind.env`), or anything
+  **outside `.claude/`** (product code). It tells an enforcement hook from a dev hook by purpose, not
+  name; when unsure it makes a parking-lot note. A suspected flow problem is a parking-lot note, never
+  a diff — and if the author pass reports it `SKIPPED` a cluster because it needed a flow/guardrail
+  change, that becomes a parking-lot note too.
 - **The human gate is permanent.** This is the highest-blast-radius write in the system — the config
   every agent reads on every run — so it gets the strictest controls, not the loosest: a cold
   synthesiser, curation of the clusters, and a mergeable PR where each change is individually

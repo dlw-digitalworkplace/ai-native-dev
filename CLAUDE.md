@@ -130,9 +130,13 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   factualness** (a rubric, not a counter; borderline clusters surfaced with a confidence label, not
   dropped); the **human curates the clusters** (Gate 1); an *author* pass turns approved clusters into
   `.claude` edits → **one PR** (Gate 2). Lifecycle is directory-based (`new/` → `archive/`/`rejected/`
-  on the lessons branch). Scope is the project's own `.claude` only (rules, skills, rubric, project
-  agents) — **never the flow**; a structural problem or generic knowledge (→ the D25 standards plugin)
-  is a `aind-dream.sh note` parking-lot entry (`.aind/parking-lot.md`), never a diff. New scripts:
+  on the lessons branch). **Scope = any behavior file under the project's `.claude/`** (rules, skills,
+  rubric, project agents, project dev scripts/hooks) — scope-by-default, **not** a hardcoded folder
+  allowlist — with four carve-outs it must **never** edit (→ parking-lot instead): the **flow** (status
+  model, gates, AIND operational rules), its own **guardrails** (`settings*.json`, enforcement/signing
+  hooks — told from a dev hook by *purpose*, not name), **secrets** (`aind.env`), and anything
+  **outside `.claude/`** (product code). A structural problem or generic knowledge (→ the D25 standards
+  plugin) is a `aind-dream.sh note` parking-lot entry (`.aind/parking-lot.md`), never a diff. New scripts:
   `aind-emit-lesson.sh`, `aind-dream.sh` (`digest`/`start`/`open-pr`/`consume`/`note`); new agent
   `aind-dreamer`; `aind-common.sh` gains `aind_lessons_branch`/`aind_lessons_ref`/`aind_lessons_push`.
   Offline-validated (plumbing leaves the working tree untouched); **live-validate next** on a testbed
