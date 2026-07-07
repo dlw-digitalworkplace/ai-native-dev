@@ -106,7 +106,18 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Plan ready for review"
    ```
 
-7. **Report** the PR URL and the number of open assumption threads to the user.
+7. **Emit a lesson if the run taught you something reusable** (dreaming phase). If planning surfaced a
+   real, recurring signal — a rule or skill that was missing, out of date, or contradicted the code;
+   a codebase pattern the rules should capture — record it as a self-report so the dreamer can later
+   synthesise it. **Emit nothing if there is no genuine lesson.** State what happened and *why*, never
+   a proposed fix. One command, body on stdin:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" planner observation self-report "<.claude/rules/… if known>" <<'EOF'
+   <what happened + why — the cause, not a fix>
+   EOF
+   ```
+
+8. **Report** the PR URL and the number of open assumption threads to the user.
 
 ---
 
@@ -160,7 +171,18 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" push "Revised per review: <one-line summary of the changes>"
    ```
 
-6. **Report** the PR URL, which feedback items you addressed, which you asked follow-ups on, and
+6. **Emit lessons for the human feedback you acted on** (dreaming phase). This is high-value signal —
+   *why a human corrected the plan.* For each `[OPEN]` item where the reviewer **changed your
+   direction** (chose the alternative you'd assumed against, rejected an approach), emit a
+   `correction` sourced to that thread; for an accepted nice-to-have, emit a `suggestion`. Skip
+   points that were mere clarifications. One command each, body on stdin:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" planner correction "<pr-thread-url>" "<.claude/rules/… if known>" <<'EOF'
+   <the decision the reviewer made and why — what you'd want captured for next time>
+   EOF
+   ```
+
+7. **Report** the PR URL, which feedback items you addressed, which you asked follow-ups on, and
    any new assumption threads you opened. Remind the user the tag stays `Plan ready for review`,
    and that resolving threads (the merge gate) is theirs to do.
 

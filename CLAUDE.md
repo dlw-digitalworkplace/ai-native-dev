@@ -30,17 +30,17 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ```
 .claude-plugin/plugin.json   manifest (name: aind)
-commands/   onboard, intake, plan, approve-plan, implement, complete   (human entry points; namespaced /aind:*)
+commands/   onboard, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
 project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
-agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer land here later
+agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30); test-writer, E2E land here later
 ```
 
-## Current status (2026-07-01)
+## Current status (2026-07-07)
 
 - **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
   (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
@@ -115,10 +115,37 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   `aind-complete.sh`; `aind-open-code-pr.sh`'s re-run refusal now points to revise mode. **Scope stops
   before merge** — `/aind:complete` is still the only terminal step; a plan-level problem is flagged
   for a human, never silently re-planned.
-- **Not built yet:** the rest of the build phase (cold test-writer/E2E subagents, D8/D9); and the
-  dreaming phase (lessons-learned emission + cold dreamer, D16). Out of scope per D6/D16.
+- **Dreaming phase — built (D30, 2026-07-07), live-validation pending.** The continuous-improvement
+  loop is implemented. **Emission:** every authoring agent calls `aind-emit-lesson.sh` at session end
+  (the exhaust twin of `aind-comment.sh`) — one record with front-matter (work item, agent, phase, a
+  **severity** enum `observation`/`suggestion`/`correction`/`blocker` keyed to how far a human had to
+  step in, a `source`, an optional `area`) + an **Observation** body only (what + why, never a
+  proposed fix — the remedy is the dreamer's). Records write via **throwaway-index git plumbing** (no
+  checkout) onto a dedicated **orphan branch** `aind/lessons` (`AIND_LESSONS_BRANCH` optional, default
+  `aind/lessons`) that never merges into integration. Human PR feedback becomes lessons through the
+  planner/coder *revise* runs (already read the threads → emit a `correction`/`suggestion` sourced to
+  the thread) — realising D16's deferred human-override capture without a gate prompt. **Synthesis:**
+  the manual command **`/aind:dream`** (warm orchestrator) spawns the cold `aind-dreamer` **twice** —
+  an *analyze* pass clusters unprocessed lessons and judges each on **severity × recurrence ×
+  factualness** (a rubric, not a counter; borderline clusters surfaced with a confidence label, not
+  dropped); the **human curates the clusters** (Gate 1); an *author* pass turns approved clusters into
+  `.claude` edits → **one PR** (Gate 2). Lifecycle is directory-based (`new/` → `archive/`/`rejected/`
+  on the lessons branch). **Scope = any behavior file under the project's `.claude/`** (rules, skills,
+  rubric, project agents, project dev scripts/hooks) — scope-by-default, **not** a hardcoded folder
+  allowlist — with four carve-outs it must **never** edit (→ parking-lot instead): the **flow** (status
+  model, gates, AIND operational rules), its own **guardrails** (`settings*.json`, enforcement/signing
+  hooks — told from a dev hook by *purpose*, not name), **secrets** (`aind.env`), and anything
+  **outside `.claude/`** (product code). A structural problem or generic knowledge (→ the D25 standards
+  plugin) is a `aind-dream.sh note` parking-lot entry (`.aind/parking-lot.md`), never a diff. New scripts:
+  `aind-emit-lesson.sh`, `aind-dream.sh` (`digest`/`start`/`open-pr`/`consume`/`note`); new agent
+  `aind-dreamer`; `aind-common.sh` gains `aind_lessons_branch`/`aind_lessons_ref`/`aind_lessons_push`.
+  Offline-validated (plumbing leaves the working tree untouched); **live-validate next** on a testbed
+  where a `lint` skill runs an uninstalled eslint (probe: agent emits the defect → `/aind:dream`
+  proposes the skill fix).
+- **Not built yet:** the rest of the build phase — the cold **test-writer / E2E** subagents (D8/D9).
+  Out of scope per D6.
 - **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
-  lessons-learned emission (D16).
+  the dreamer's cross-repo path into the companion standards plugin (D25 — a parking-lot note for now).
 
 ## Architecture invariants that constrain how you work
 
@@ -260,6 +287,26 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
   touching the work item** if the rubric is missing (exit 2), empty (3), or has no objective
   criteria (4). The plugin seed is a copy-at-onboarding template, **not** a runtime fallback.
 
+**Lessons stream / dreaming plumbing (D30).**
+- **Emission must never disturb the agent's session.** `aind-emit-lesson.sh` (and `aind-dream.sh`
+  `consume`/`note`) write to the `aind/lessons` branch **without checking it out** — they build the
+  new tree in a throwaway `GIT_INDEX_FILE`, `git commit-tree` it onto the branch tip, `update-ref`,
+  and push (helpers `aind_lessons_ref`/`aind_lessons_push` in `aind-common.sh`). This is deliberate:
+  a coder can emit mid-implementation and stay on its feature branch, working tree untouched. Don't
+  "simplify" this to a `git checkout aind/lessons` — that would yank the agent off its branch.
+- **The lessons branch is an orphan** — no shared history with the code, so it can never merge into
+  or diff against integration. `aind_lessons_ref` resolves it remote-first (a fresh clone/other
+  machine may have emitted since), then local. A rejected push means a concurrent emit raced it →
+  the script fails so the caller re-runs (records are never silently lost).
+- **Lifecycle is directory-based, not a status field:** `.aind/lessons/new/` → `archive/` (folded
+  into a dream PR) or `rejected/` (curated out). Un-actioned lessons stay in `new/` on purpose — the
+  pool for future pattern detection. Don't add a `status:` front-matter field (it would be a second,
+  drift-prone source of truth).
+- **MSYS colon gotcha (dev only):** reading a file from the branch as `git show "<branch>:<path>"`
+  gets mangled by Git-Bash on Windows when the ref has slashes before the `:` (`aind/lessons:…` →
+  `aind\lessons;…`). The scripts avoid this by resolving to a **SHA first** and using `<sha>:<path>`
+  — do the same in any ad-hoc check.
+
 ## Conventions for editing & testing
 
 - **Language:** Bash scripts wrapping `az` + `gh` + `curl`/`jq` (portable to the future Linux/CI
@@ -311,5 +358,13 @@ agents/     reviewer.md (cold code-PR reviewer, D26); test-writer, E2E, dreamer 
    comment asking for a change (AB#19's unapplied `minHeight:44` suggestion is the ready-made case),
    re-run `/aind:implement 19`, and confirm it enters revise mode, applies **only** that change, pushes
    to the same PR, re-reviews, and never moves the tag — then `/aind:complete 19`.
-4. Then the rest of the **build phase**: the cold **test-writer / E2E** subagents in `agents/`
-   (D8/D9); then the **dreaming phase** (lessons-learned emission + cold dreamer, D16).
+4. **Live-validate the dreaming phase** (D30): on a testbed with a `lint` skill that runs an
+   uninstalled eslint, run `/aind:implement` and confirm the coder emits the missing-eslint defect as
+   an `observation` lesson (`aind-emit-lesson.sh` → `aind/lessons`), then run **`/aind:dream`** and
+   confirm the cold `aind-dreamer` clusters it, the human curates (Gate 1), and it proposes the
+   skill fix as one `.claude` PR (Gate 2). Exercise the `gh`-live phases of `aind-dream.sh`
+   (`start`/`open-pr`) and the human-PR-feedback→`correction`-lesson path via a `/aind:plan` or
+   `/aind:implement` revise run. Confirm the dreamer stays inside `.claude` and routes a structural
+   finding to `aind-dream.sh note` (`.aind/parking-lot.md`).
+5. Then the rest of the **build phase**: the cold **test-writer / E2E** subagents in `agents/`
+   (D8/D9).

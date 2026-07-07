@@ -15,6 +15,7 @@ e.g. `source .claude/aind.env` (copy `aind.env.sample`, keep the PAT out of git)
 | `AIND_GH_REPO` | `<owner>/<repo>` |
 | `AIND_INTEGRATION_BRANCH` | `<main \| develop \| …>` |
 | `AIND_PLAN_BRANCH_PREFIX` | `aind/plan/` (optional override) |
+| `AIND_LESSONS_BRANCH` | `aind/lessons` (optional override; dreaming-phase exhaust branch) |
 | `AZURE_DEVOPS_EXT_PAT` | *(a PAT with Work Items r/w + Code r/w — never commit)* |
 
 ## AIND operational rules (apply to every agent run here)

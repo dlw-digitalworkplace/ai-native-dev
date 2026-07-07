@@ -225,6 +225,36 @@ The tag stays `In implementation`; a human reads the PR threads and posts a verd
 that verdict, a human re-runs `/aind:implement` (revise mode, section B) — it applies the decision on
 the same PR and re-reviews; merging afterward is `/aind:complete`.
 
+## Emit lessons (dreaming phase)
+Before reporting, record what this run taught — the raw signal the cold dreamer later synthesises.
+**Emit concrete lessons only; skip if there is genuinely nothing reusable.** Each is one command with
+the Observation on stdin: state **what happened and why** (the cause), never a proposed fix.
+
+- **Coder self-report** (`observation`) — a recurring friction building to the plan: a skill or build
+  command that was wrong/missing, a rule that conflicted with the codebase, a pattern the plan
+  assumed that didn't exist:
+  ```bash
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" coder observation self-report "<.claude/… if known>" <<'EOF'
+  <what happened + why>
+  EOF
+  ```
+- **On the reviewer's behalf** (`observation`) — the cold reviewer never writes, so if the review
+  exposed a reusable signal (a class of finding that recurred, a rule/skill gap it kept citing),
+  emit it as agent `reviewer`, sourced to the PR:
+  ```bash
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" reviewer observation "<pr-url>" "<.claude/…>" <<'EOF'
+  <the recurring finding + why it recurs>
+  EOF
+  ```
+- **Human steering (revise mode)** — the highest-value signal: when a human corrected you (a tiebreak
+  verdict, a rejected approach, a directed change), emit a `correction` (or `suggestion` for an
+  accepted nice-to-have), sourced to the thread/comment:
+  ```bash
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" coder correction "<pr-thread-url>" "<.claude/…>" <<'EOF'
+  <what the human decided and why — the call you'd want captured for next time>
+  EOF
+  ```
+
 ## Report
 Give the user the PR URL, a short summary of what you did, which **Definition-of-done** items are
 satisfied (and any not yet), any **deviations from the plan** (and why), and any assumptions you made.
