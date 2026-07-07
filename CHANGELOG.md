@@ -9,6 +9,35 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.9.0] — 2026-07-07
+
+### Added
+- **Dreaming phase — continuous improvement loop** (D30, realises D16). The flow now closes the loop
+  on improving its own `.claude` config.
+  - **Emission** — a new signed script `aind-emit-lesson.sh` (the exhaust twin of `aind-comment.sh`)
+    that every authoring agent calls at session end. Each *lessons-learned* record is front-matter
+    (work item, agent, phase, a **severity** enum — `observation`/`suggestion`/`correction`/`blocker`
+    keyed to how far a human had to step in, a `source`, an optional `area`) plus an **Observation**
+    body only (what happened and *why* — never a proposed fix; the remedy is the dreamer's). Records
+    write to a dedicated **orphan branch** (`aind/lessons`, `AIND_LESSONS_BRANCH` optional) via
+    throwaway-index git plumbing, so an agent emits mid-run without leaving its branch. Wired into
+    `/aind:intake`, `/aind:plan`, and `/aind:implement`; **human PR feedback becomes lessons** through
+    the planner/coder revise runs (a correction/suggestion sourced to the thread).
+  - **Synthesis** — the manual command **`/aind:dream`** (a warm orchestrator) spawns a new cold
+    subagent `aind-dreamer` twice: an *analyze* pass clusters the unprocessed lessons and judges each
+    on **severity × recurrence × factualness** (a rubric, not a counter; borderline clusters surfaced
+    with a confidence label), the **human curates the clusters** (gate 1), and an *author* pass turns
+    approved clusters into `.claude` edits that land as **one PR** (gate 2). New mechanics script
+    `aind-dream.sh` (`digest`/`start`/`open-pr`/`consume`/`note`); directory-based lesson lifecycle
+    (`new/` → `archive/`/`rejected/`).
+  - **Scope** is any behavior file under the project's `.claude/` (scope-by-default, not a folder
+    allowlist) minus four carve-outs it never edits: the **flow** (status model, gates, operational
+    rules), its own **guardrails** (`settings*.json`, enforcement/signing hooks — told from a dev hook
+    by purpose, not name), **secrets** (`aind.env`), and anything **outside `.claude/`**. A structural
+    problem or generic reusable knowledge (→ the companion standards plugin, D25) is a `aind-dream.sh
+    note` parking-lot entry, never a diff.
+- New optional config `AIND_LESSONS_BRANCH` (GitHub-side; defaults to `aind/lessons`).
+
 ## [0.8.1] — 2026-07-06
 
 ### Fixed

@@ -12,9 +12,9 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 > **coding** (`/aind:implement`, which builds the code PR then drives an independent **code review**
 > to a verdict, and on a re-run **revises** the open PR from the human's steering) and **close-out**
 > (`/aind:complete`, which verifies the merged PR and writes the terminal status) — run locally via
-> **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). A test-writer, the dreaming
-> phase, and unattended automation are designed but not yet built — see
-> [Implementation status](#implementation-status).
+> **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The **dreaming phase**
+> (`/aind:dream`) is now built and live-validated. A test-writer and unattended automation are
+> designed but not yet built — see [Implementation status](#implementation-status).
 
 ## What it does
 
@@ -32,8 +32,9 @@ agents:
   PR** on a re-run (apply a picked suggestion or a tiebreak verdict — revise mode); once a human
   merges, **`/aind:complete`** verifies the merge and writes the terminal `Implementation complete`
   status. A test-writer is designed but not yet built.
-- **Dreaming phase** *(designed, not built)*: a cold "dreamer" learns from the flow's exhaust
-  and proposes config improvements.
+- **Dreaming phase** *(built)*: agents emit lessons-learned to a dedicated branch as they run; the
+  manual **`/aind:dream`** command has a cold "dreamer" cluster that exhaust into patterns, a human
+  curates the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
 
 State is tracked by a single `AIND status - <state>` tag on the ADO work item; the GitHub PRs
 own the fine-grained iteration.
@@ -64,12 +65,12 @@ Rationale for every choice is in `design-log.md` (decisions **D1–D29**).
 ```
 .claude-plugin/plugin.json   Claude Code manifest (name: aind)
 .github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
-commands/                    onboard, intake, plan, approve-plan, implement, complete  (human entry points)
+commands/                    onboard, intake, plan, approve-plan, implement, complete, dream  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
-agents/                      reviewer.md (cold code-PR reviewer); test-writer/E2E/dreamer land here next
+agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser); test-writer/E2E land here next
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
 design-doc.md, design-log.md The design and the decisions (D1–D29)
@@ -96,13 +97,13 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
 | Build | Code-revision loop — `/aind:implement` revise mode | ✅ | ✅ | Re-run on a story with an open code PR enters revise mode: check out the PR branch, read the steering digest, apply **only** human-directed changes (a picked suggestion, a tiebreak verdict, a touch-up), reply on threads (never resolve), push to the same PR, re-review by default (D28). Live-validated on a real story: applied only the directed change, re-reviewed CLEAN, tag unmoved. |
 | Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
-| Dreaming | Lessons-learned emission | ⬜ | — | Out of scope this iteration (D16). |
-| Dreaming | Dreamer agent (cold) | ⬜ | — | Out of scope this iteration (D16). |
+| Dreaming | Lessons-learned emission — `aind-emit-lesson.sh` | ✅ | ✅ | Live-validated: each agent emits a signed record (severity enum + observation) to the `aind/lessons` orphan branch at session end, via worktree-safe git plumbing; human PR feedback becomes correction/suggestion lessons through the revise runs (D30). |
+| Dreaming | Dreamer agent (cold) — `/aind:dream` | ✅ | ✅ | Live-validated end-to-end: the cold dreamer clusters unprocessed lessons and judges them (severity × recurrence × factualness), a human curates the clusters (gate 1), and approved clusters land as one `.claude` PR (gate 2). Caught a seeded lint-skill defect **and** surfaced genuine project-rule gaps (e.g. backend input-file-type validation); scope stays within `.claude`, structural findings → parking-lot (D30). |
 
 ## Docs
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D26 with rationale.
+- **`design-log.md`** — decisions D1–D30 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
