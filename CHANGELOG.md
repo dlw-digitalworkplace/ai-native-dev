@@ -9,6 +9,34 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.10.0] — 2026-07-08
+
+### Added
+- **Greenfield onboarding — `/aind:kickstart`** (D31), the sibling of `/aind:onboard` for a **new
+  project with no code to scan**. Instead of reading a codebase, it elicits the project's shape
+  through a **guided conversation** across three lenses — functional/domain, technical layers,
+  cross-cutting concerns — plus operational config (integration branch, ADO/GitHub targets, intended
+  tooling), reading any design docs you point it at. It then drafts the *same* `.claude/` config
+  onboarding produces: rule files per **decided** area, a wired `CLAUDE.md`, placeholder skills, and
+  a seed-rubric + env-sample copy. It **proposes the whole `.claude/` tree for validation before
+  writing**, runs preflight, and summarizes next steps.
+  - **Warm in-session command, no new scripts** — it reuses onboarding's tooling (`_TEMPLATE.md`,
+    `project-template/CLAUDE.md`, the seed-rubric/env copy, `aind-preflight.sh`). Same gate as
+    onboard: suggest-don't-assert, GREENFIELD DRAFT files, config-layer only (never the flow).
+  - **The one greenfield-specific rule: never fabricate a convention.** Because a new project's
+    answers are often decisions not yet made, an undecided point becomes an explicit `TODO` / open
+    question in the draft, not an authoritative rule. Skills carry the *intended* command marked
+    unverified (the toolchain may not exist yet).
+  - **Complementary to onboard:** kickstart bootstraps config *before* code exists; re-run
+    `/aind:onboard` once real code lands to reconcile the drafts against the actual codebase.
+
+### Changed
+- **Skills are no longer framed as just build/test/run.** Both `/aind:kickstart` and `/aind:onboard`
+  now stub the broader set of deterministic dev workflows — build/test/run/lint as the common core
+  plus deploy, DB migrations, data seeding, codegen/scaffolding, formatting, starting local
+  dependencies, API-client generation, e2e — while keeping the discipline (onboard stubs only what it
+  finds in the repo; kickstart stubs only what the user intends).
+
 ## [0.9.0] — 2026-07-07
 
 ### Added

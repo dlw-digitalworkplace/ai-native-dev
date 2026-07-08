@@ -16,6 +16,10 @@ authoritative.
 Run from the project root. Do not overwrite existing `.claude/` files without saying so —
 if a file already exists, write the suggestion alongside as `<name>.aind-draft` and note it.
 
+**New project with little or no code yet?** There's nothing to scan — use `/aind:kickstart`
+instead, which elicits the project's shape through a guided conversation. (Come back and run
+`/aind:onboard` once real code exists, to reconcile those intended-design drafts against reality.)
+
 ## Procedure
 
 ### 1. Survey the codebase
@@ -72,11 +76,14 @@ Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, then:
   rule files you created** in step 3 — no more, no fewer.
 
 ### 5. Stub discovered project skills → `.claude/skills/<name>/SKILL.md`
-From the manifests/CI, extract the real **build**, **test**, and **run-app** commands and
-stub a skill per command you find (e.g. `build`, `test`, `run-app`, `lint`). Put the actual
-command in the skill body and mark assumptions as DRAFT. These feed the planner and the
-future build phase ("what can be scripted should be scripted"). Only create skills for
-commands you actually found.
+From the manifests/CI/scripts, extract the real **deterministic dev workflows** and stub a skill
+per command you find. **Build / test / run-app / lint are the common core**, but skills are not
+limited to them — also stub any other scriptable, repeatable workflow the repo actually has:
+e.g. `deploy`, `migrate` (DB migrations), `seed` (test/dev data), `codegen` / `scaffold`, `format`,
+`start-deps` (docker-compose / local dependencies), `generate-client` (API client), `e2e`. Put the
+actual command in each skill body and mark assumptions as DRAFT. These feed the planner and the
+build phase ("what can be scripted should be scripted"). **Evidence-only:** only create a skill for
+a command you actually found in the repo — don't emit a `deploy` skill just because deploy is common.
 
 ### 6. Copy the seed rubric and env sample
 ```bash

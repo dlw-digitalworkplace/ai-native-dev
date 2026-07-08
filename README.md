@@ -22,7 +22,8 @@ A **user story** is the unit of work. The flow moves it through phases, each wit
 agents:
 
 - **Onboarding** (one-time, pre-flow): reads an existing codebase and drafts the project's
-  `.claude/` config (rules, skills, rubric copy).
+  `.claude/` config (rules, skills, rubric copy). For a **new/greenfield** project with no code to
+  scan, a companion **kickstart** step elicits the same config through a guided conversation.
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric; a **planner**
   turns an approved story into an implementation plan delivered as a GitHub PR; a human
   reviews and approves it.
@@ -58,14 +59,14 @@ own the fine-grained iteration.
   review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
   reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D29**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D31**).
 
 ## Repository layout
 
 ```
 .claude-plugin/plugin.json   Claude Code manifest (name: aind)
 .github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
-commands/                    onboard, intake, plan, approve-plan, implement, complete, dream  (human entry points)
+commands/                    onboard, kickstart, intake, plan, approve-plan, implement, complete, dream  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
@@ -73,7 +74,7 @@ rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser); test-writer/E2E land here next
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D29)
+design-doc.md, design-log.md The design and the decisions (D1–D31)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -85,6 +86,7 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Phase | Step / agent | Implemented | Tested | Notes |
 |---|---|:--:|:--:|---|
 | Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18). |
+| Onboarding (pre-flow) | Kickstart agent — `/aind:kickstart` | ✅ | ✅ | Greenfield twin of onboard (D31): guided conversation → drafts the same `.claude/` config when there's no code to scan; skills cover build/test/run **and** other dev workflows (deploy, migrate, seed, …); undecided items become TODOs, never fabricated rules. Live-validated (session run). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. |
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
@@ -104,6 +106,6 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D30 with rationale.
+- **`design-log.md`** — decisions D1–D31 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
