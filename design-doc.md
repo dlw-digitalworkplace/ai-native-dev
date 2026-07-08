@@ -165,6 +165,8 @@ The baked-in core is:
 | Judgment (advisory) | Story is internally coherent — title, intent, and ACs agree |
 | Judgment (advisory) | Enough context for a planner to act on the *what* without guessing (the *how* is the planner's job) |
 
+Beyond the rubric, intake runs a **dependency gate**: it resolves the story's linked ADO *Predecessor* work items (the stories it depends on) and declines the story if any of them is not implemented yet — a story is "implemented" when it carries the terminal `Implementation complete` AIND status, or (for a dependency not tracked by AIND) a done-like ADO state. This is a *command-level* gate, **not** a rubric criterion: it is orthogonal to the readiness score, so a perfectly-defined story can score 100 and still be declined solely because a story it depends on is unbuilt. It complements the rubric's objective criterion that dependencies be *named* — that catches a story which never declares its dependencies (a text gap the author fixes); the gate catches declared-and-linked dependencies that aren't *done* yet (a sequencing state that needs no story edit — the story becomes ready when the dependency lands and intake is re-run). See `design-log.md` D32.
+
 The outcome is either `Intake approved` or `Intake declined`. A declined story is edited by the human and resubmitted as `Ready for intake`, which re-runs intake. The gate is unskippable: a fixed story always passes back through intake before planning.
 
 ### Phase 1 — Planning

@@ -340,8 +340,8 @@ const NODES = {
     kind:'gate', phase:'plan', temp:'auto', shape:'rect',
     title:'Intake agent', role:'scores the story · GATE 1',
     status:'Ready for intake',
-    body:`<p><strong>The first of three gates</strong>, and the only unskippable one. The intake agent scores the story against a readiness rubric and records its reasoning as comments on the work item.</p><p>It <strong>suggests</strong> fixes but never edits the story — the human owns the story text. The rubric at <em>.claude/intake-rubric.md</em> is two-layer (baked-in core + per-project extensions) and hybrid: objective criteria are pass/fail, judgment criteria are advisory comments.</p><p>Outcome: <em>Intake approved</em> or <em>Intake declined</em>.</p>`,
-    decisions:[['D2','Intake agent scores; suggests but does not author.'],['D11','Two-layer hybrid readiness rubric.']],
+    body:`<p><strong>The first of three gates</strong>, and the only unskippable one. The intake agent scores the story against a readiness rubric and records its reasoning as comments on the work item.</p><p>It <strong>suggests</strong> fixes but never edits the story — the human owns the story text. The rubric at <em>.claude/intake-rubric.md</em> is two-layer (baked-in core + per-project extensions) and hybrid: objective criteria are pass/fail, judgment criteria are advisory comments.</p><p>Beyond the rubric, a <strong>dependency gate</strong> declines the story if a linked ADO predecessor isn't implemented yet — orthogonal to the score, so a perfectly-defined story can score 100 and still be declined until the story it depends on is done.</p><p>Outcome: <em>Intake approved</em> or <em>Intake declined</em>.</p>`,
+    decisions:[['D2','Intake agent scores; suggests but does not author.'],['D11','Two-layer hybrid readiness rubric.'],['D32','Dependency gate: unmet dependency declines the story, orthogonal to the score.']],
     related:['story','editstory','planner']
   },
   editstory:{

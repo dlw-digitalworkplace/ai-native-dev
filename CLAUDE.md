@@ -62,6 +62,17 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   Skills are framed as **deterministic dev workflows** — build/test/run/lint as the common core plus
   deploy/migrate/seed/codegen/format/e2e where intended — not just build/test/run (same broadening
   applied to `/aind:onboard`). **Live-validated** in a session run; shipped in v0.10.0.
+- **Intake dependency gate — built (D32, 2026-07-08), live-validation pending (v0.10.1).** Intake
+  now validates that a story's *dependencies are implemented*, not just *named* (the O5 rubric
+  criterion only checks naming). New script `aind-deps.sh` resolves the item's ADO **Predecessor**
+  links, classifies each linked story `IMPLEMENTED`/`NOT IMPLEMENTED`/`UNKNOWN` (implemented = AIND
+  `Implementation complete` tag, or a done-like ADO state for a non-AIND dependency), and emits
+  `DEPS_VERDICT: NONE|MET|UNMET`. `commands/intake.md` gains this as **step 4**, a *command-level*
+  gate (not a rubric criterion): an `UNMET` verdict **declines** the story **without touching the
+  readiness score** — a flawless story can score 100 and still be declined for an unbuilt
+  dependency, with the unmet stories named in a **Dependencies** comment section. Offline-validated
+  (jq picks only `Dependency-Reverse`; helpers unit-checked); live-validate next against a story with
+  a linked, unfinished predecessor.
 - **Plan phase = implemented & live-exercised.** **Intake is live-validated** end-to-end
   (fail→fix→pass, signed comments, tag transitions, scoring, table output). **Onboarding
   (`/aind:onboard`) is validated.** **Planner create-path validated** (plan PR + assumption
