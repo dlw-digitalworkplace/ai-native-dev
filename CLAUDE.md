@@ -30,7 +30,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ```
 .claude-plugin/plugin.json   manifest (name: aind)
-commands/   onboard, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
+commands/   onboard, kickstart, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
@@ -40,13 +40,28 @@ project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a proj
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30); test-writer, E2E land here later
 ```
 
-## Current status (2026-07-07)
+## Current status (2026-07-08)
 
 - **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
   (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
   (`hooks.claude.json` / `hooks.copilot.json`) absorb the only incompatibility. Copilot needs Git's
   `bash` on PATH (Windows) — see the Copilot lesson below. Claude side re-validated (intake, WI 18,
   under the renamed hooks); Copilot intake E2E being confirmed.
+- **Greenfield onboarding — `/aind:kickstart` built & live-validated (D31, 2026-07-08).**
+  The greenfield twin of `/aind:onboard`: for a **new project with no code to scan**, it elicits
+  the project's shape through a **guided conversation** (three lenses — functional/domain, technical
+  layers, cross-cutting concerns — plus operational config, reading any design docs pointed at), then
+  drafts the *same* `.claude/` config onboarding produces. Warm in-session command (it authors; per
+  the warm/cold line), reusing onboarding's tooling — `_TEMPLATE.md`, `project-template/CLAUDE.md`,
+  the seed-rubric/env copy, `aind-preflight.sh` — so it added **no new scripts** (`commands/kickstart.md`
+  only). Same gate as onboard (suggest-don't-assert, GREENFIELD DRAFT files, config-layer only), with
+  one greenfield rule: **never fabricate a convention** — an undecided point becomes a visible `TODO`,
+  not a rule. Proposes the whole `.claude/` tree for validation before writing. Skills are stubs
+  carrying the *intended* build/test/run command marked unverified (no toolchain yet). Complementary
+  to onboard: kickstart bootstraps before code, `/aind:onboard` reconciles the drafts once code exists.
+  Skills are framed as **deterministic dev workflows** — build/test/run/lint as the common core plus
+  deploy/migrate/seed/codegen/format/e2e where intended — not just build/test/run (same broadening
+  applied to `/aind:onboard`). **Live-validated** in a session run; shipped in v0.10.0.
 - **Plan phase = implemented & live-exercised.** **Intake is live-validated** end-to-end
   (fail→fix→pass, signed comments, tag transitions, scoring, table output). **Onboarding
   (`/aind:onboard`) is validated.** **Planner create-path validated** (plan PR + assumption

@@ -5,7 +5,7 @@ How to set up and use AIND on an existing GitHub codebase. The smart order is **
 what's left to set up), then wire up the auth/config the flow needs.
 
 > **Command names are namespaced.** Plugin slash commands are prefixed with the plugin name:
-> `/aind:onboard`, `/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`. Bare `/onboard` won't
+> `/aind:onboard`, `/aind:kickstart`, `/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`. Bare `/onboard` won't
 > resolve — type `/aind` (or `/` and scroll) to see them. See [Troubleshooting](#troubleshooting).
 
 In the commands below, replace `<...>` placeholders with your own values: `<your-ado-org>` /
@@ -122,6 +122,12 @@ commands it finds, and a copy of the intake rubric. It finishes with a **preflig
 
 **No ADO/GitHub auth needed for this step.** When it's done, **review and edit the drafts**
 (marked `AIND ONBOARDING DRAFT`), then commit the ones you want.
+
+> **Starting a brand-new project with no code yet?** There's nothing for `/aind:onboard` to scan —
+> run **`/aind:kickstart`** instead. It elicits the project's goals, architecture, and conventions
+> through a guided conversation (point it at any design docs you have), then drafts the same
+> `.claude/` config, marking anything you haven't decided yet as a `TODO` rather than guessing.
+> Re-run `/aind:onboard` later, once real code exists, to reconcile those drafts against the codebase.
 
 ## 3. Fill in config
 
