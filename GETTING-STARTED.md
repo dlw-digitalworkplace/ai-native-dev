@@ -156,7 +156,7 @@ the build phase's coding step:
 
 | Command | Phase | Effect |
 |---|---|---|
-| `/aind:intake <id>`       | 0 | Score the story; post a signed verdict + readiness score; tag → `Intake approved` / `Intake declined`. |
+| `/aind:intake <id>`       | 0 | Score the story; check its linked dependencies are implemented; post a signed verdict + readiness score; tag → `Intake approved` / `Intake declined`. A story declines if any story it depends on isn't done yet — even at a perfect score. |
 | `/aind:plan <id>`         | 1 | Write `plans/<id>/plan.md`; open the plan PR (`AB#`, `AIND-LINKS`); post assumptions as resolvable threads; tag → `Plan ready for review`. |
 | `/aind:approve-plan <id>` | 2 | After you approve **and merge** the plan PR in GitHub: tag → `Ready for implementation`. |
 | `/aind:implement <id>`    | 3 | Ground from the merged plan; implement + polish in-context; build; open the code PR (`AB#`, `AIND-LINKS` incl. plan-PR URL). Tag → `In implementation` (stays there — review/merge are separate, not-yet-built steps). |

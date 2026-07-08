@@ -9,6 +9,28 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.10.1] — 2026-07-08
+
+### Fixed
+- **Intake now validates that a story's dependencies are actually _implemented_, not merely
+  _named_** (D32). Previously intake read only the story text — rubric criterion O5 checks that
+  dependencies/blockers are named or explicitly "none" — but never inspected the **linked**
+  predecessor stories, so a well-formed story could pass intake and enter planning while a story
+  it depends on was still unbuilt. `/aind:intake` gains a **dependency gate**: it resolves the
+  item's ADO **Predecessor** links, checks each linked story's status, and **declines** the story
+  if any dependency is not implemented yet.
+  - **The gate is orthogonal to the readiness score.** A perfectly-defined story can score **100**
+    and still be declined solely because a story it depends on isn't done — the verdict comment
+    names the unmet dependencies in a dedicated **Dependencies** section, and the score is untouched.
+  - **"Implemented"** = the dependency carries the AIND status `Implementation complete`, or — for a
+    dependency not tracked by AIND — a done-like ADO state (Closed / Done / Resolved / Completed).
+    An unreadable link (deleted / no access) is treated as unmet (fail-safe).
+  - **A story declined only for an unmet dependency needs no text edit** — it becomes ready once the
+    dependency lands and the human re-runs `/aind:intake`; the report says so.
+  - **New script:** `scripts/aind-deps.sh` (resolves Predecessor links → per-dependency status →
+    `DEPS_VERDICT: NONE|MET|UNMET`). `commands/intake.md` gains the gate as step 4. Only
+    Predecessor (`Dependency-Reverse`) links gate; Successor/Hierarchy/Related links are ignored.
+
 ## [0.10.0] — 2026-07-08
 
 ### Added

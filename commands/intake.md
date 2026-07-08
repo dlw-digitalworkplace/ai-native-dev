@@ -52,8 +52,9 @@ Work item: **$1**
 3. **Score each criterion and compute the verdict + readiness score.**
    - **Objective:** PASS / FAIL (state the specific gap on a FAIL).
    - **Judgment:** rate **Good / Partial / Poor** with a short note.
-   - **Verdict:** `Intake approved` **iff every objective criterion passes**; otherwise
-     `Intake declined`. Judgment criteria never block on their own.
+   - **Verdict:** `Intake approved` **iff every objective criterion passes _and_ the dependency
+     gate (step 4) is clear**; otherwise `Intake declined`. Judgment criteria never block on
+     their own.
    - **Readiness score (0–100, informational only — it does NOT change the gate).** Computed
      generically over whatever the rubric contains:
      - `objective_fraction` = (objective criteria passed) / (objective criteria total); use `1`
@@ -62,9 +63,33 @@ Work item: **$1**
        **Good = 1, Partial = 0.5, Poor = 0**; use `1` if there are no judgment criteria.
      - `score = round( 100 × (0.5 × objective_fraction + 0.5 × judgment_fraction) )`.
      A story can score well and still be **declined** if any objective criterion fails — the
-     score reflects design quality, the verdict is the gate.
+     score reflects design quality, the verdict is the gate. **The dependency gate (step 4)
+     does not enter this formula at all:** a story that is perfectly defined can score **100**
+     and still be declined solely because a story it depends on is not implemented yet.
 
-4. **Post the signed verdict as a table** via the signing script (never post comments any other
+4. **Run the dependency gate (a hard gate, separate from the rubric and the score).** A story
+   that links to other stories it *depends on* (ADO **Predecessor** links) must not enter the
+   flow before those dependencies are actually implemented — planning and building on top of
+   unfinished work is the failure this catches. Resolve them deterministically:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-deps.sh" "$1"
+   ```
+   The script lists each dependency with its ADO state and AIND status, classifies it
+   `IMPLEMENTED` / `NOT IMPLEMENTED` / `UNKNOWN` (implemented = AIND status
+   `Implementation complete`, or — for a dependency not tracked by AIND — a done-like ADO
+   state), and prints a final `DEPS_VERDICT:` line. Apply it:
+   - **`DEPS_VERDICT: NONE`** (no dependency links) or **`MET`** (all implemented) → the gate is
+     clear; the verdict is decided by the objective criteria alone.
+   - **`DEPS_VERDICT: UNMET`** (any `NOT IMPLEMENTED` or `UNKNOWN`) → **the verdict is
+     `Intake declined`**, *even if every objective criterion passes and the readiness score is
+     100*. The story text may be flawless; it simply isn't ready to start yet.
+
+   This gate **never changes the readiness score** (that stays purely rubric-driven) — it only
+   affects the verdict, and the comment must say *why* (the specific unmet dependencies). It is
+   also **not** a rubric criterion, so don't add a row for it in the score table; report it in
+   its own section (below).
+
+5. **Post the signed verdict as a table** via the signing script (never post comments any other
    way — a hook blocks unsigned comment calls). Feed the body as a **direct heredoc** to the
    script (one command, no `cat |` pipe) and emit **one row per criterion as defined in the
    rubric**:
@@ -80,8 +105,20 @@ Work item: **$1**
    | <criterion text from rubric> | Judgment | <Good\|Partial\|Poor> | <note> |
    <…one row per rubric criterion, objective rows then judgment rows…>
 
+   ### Dependencies
+   <If there are no dependency links, write "No linked dependencies." Otherwise list each
+   dependency and its status, and — when the story is declined for an unmet dependency — state
+   plainly that the story is well-defined but cannot start until the dependency below is
+   implemented. Omit this section only if there are no dependency links AND nothing to note.>
+
+   | Dependency | Status | Notes |
+   |---|---|---|
+   | AB#<id> — <title> | <IMPLEMENTED\|NOT IMPLEMENTED\|UNKNOWN> | <ADO state / AIND status> |
+
    ### Suggested fixes
-   <concrete, actionable suggestions for the author; omit if approved and clean>
+   <concrete, actionable suggestions for the author; omit if approved and clean. An unmet
+   dependency is a sequencing issue, not a story-text fix — note it in Dependencies above, not
+   here, unless the story fails to even declare the dependency.>
    EOF
    ```
    Fill in the **real** criteria and results from the rubric — do not post the template
@@ -91,12 +128,12 @@ Work item: **$1**
      headings, `-`/`1.` lists, `**bold**`, `` `code` ``, paragraphs, and **pipe tables** (as
      above). Stay within it; avoid nested lists and links.
 
-5. **Set the status tag** to match the verdict:
+6. **Set the status tag** to match the verdict:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Intake approved"   # or "Intake declined"
    ```
 
-6. **Emit a lesson if the run taught you something reusable** (dreaming phase). If scoring surfaced a
+7. **Emit a lesson if the run taught you something reusable** (dreaming phase). If scoring surfaced a
    real, recurring signal — a rubric criterion that is ambiguous or hard to apply, a story-format gap
    you keep hitting — record it as a self-report so the dreamer can later synthesise it. **Emit
    nothing if there is no genuine lesson** (don't manufacture noise). State what happened and *why*,
@@ -107,11 +144,15 @@ Work item: **$1**
    EOF
    ```
 
-7. **Report** a one-line summary to the user: the verdict, the readiness score, and (if
-   declined) the failing objective criteria.
+8. **Report** a one-line summary to the user: the verdict, the readiness score, and (if
+   declined) the failing objective criteria **and/or the unmet dependencies**.
 
 ## Notes
 - A declined story is edited by the human and resubmitted as `Ready for intake`, which
   re-runs `/intake`. The gate is unskippable.
+- **A story declined only for an unmet dependency needs no text edit** — nothing is wrong with
+  it. It becomes ready once the dependency is implemented; the human re-runs `/intake` then and
+  the dependency gate clears. Say this in the report so the author doesn't hunt for a story
+  problem that isn't there.
 - Keep the comment factual and specific; cite the exact missing/weak element so the author
   can act without guessing.
