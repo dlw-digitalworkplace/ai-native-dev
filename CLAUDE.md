@@ -168,7 +168,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   Offline-validated (plumbing leaves the working tree untouched); **live-validate next** on a testbed
   where a `lint` skill runs an uninstalled eslint (probe: agent emits the defect → `/aind:dream`
   proposes the skill fix).
-- **Testing — redesigned (D33, 2026-07-09), supersedes D8/D9/D14/D15; prompt-wiring not yet built.**
+- **Testing — redesigned (D33, 2026-07-09), supersedes D8/D9/D14/D15; wired, live-validation pending.**
   The cold test-writer, its same-branch red→green machinery, and the live/E2E agent are **removed
   from the design**. Testing is now: the **planner** records a per-story **test strategy** (whether —
   gated on the project having a test practice, read from its skills/rules — at what altitude, and a
@@ -179,9 +179,10 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   survives only as an optional Definition-of-done line satisfied by a human PR signal (no agent, no
   E2E CI gate — running the app is a project **skill**). Accepted residual: a diff-reading reviewer
   reduces but doesn't eliminate test-gaming/inflation — **mutation testing** in the project's CI is
-  the named-not-built mechanical upgrade. **Docs updated (design-log D33, design-doc, README, this
-  file); the code changes are next** — `agents/reviewer.md` (test-quality mandate), the planner
-  (`commands/plan.md`) test-strategy output, and `commands/implement.md` (coder authors tests).
+  the named-not-built mechanical upgrade. **Docs *and* prompts done (v0.11.0):** `agents/reviewer.md`
+  (test-quality mandate — coverage/fidelity block, green suite is never evidence), the planner
+  (`commands/plan.md`) test-strategy output, `commands/implement.md` + `commands/approve-plan.md`
+  (coder authors tests; approve ratifies the strategy). **Live-validation is the only step left.**
 - **Deferred by design:** GitHub Actions automation + service identity (D6);
   the dreamer's cross-repo path into the companion standards plugin (D25 — a parking-lot note for now).
 
@@ -404,11 +405,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
    (`start`/`open-pr`) and the human-PR-feedback→`correction`-lesson path via a `/aind:plan` or
    `/aind:implement` revise run. Confirm the dreamer stays inside `.claude` and routes a structural
    finding to `aind-dream.sh note` (`.aind/parking-lot.md`).
-5. Then wire up the **testing redesign** (D33) into the plugin code now that the docs are updated:
-   `agents/reviewer.md` gains the **test-quality mandate** (coverage + fidelity blocking;
-   meaningfulness/anti-inflation as suggestions; never treat a green suite as evidence), the planner
-   (`commands/plan.md`) emits the **test strategy** (whether/altitude/must-cover list, gated on the
-   project having a test practice, folded into Testing recommendations + Definition of done), and
-   `commands/implement.md` has the **coder author the tests** the strategy calls for. Then
-   live-validate: a story with a must-cover list → coder writes the tests → reviewer catches a missing
-   case / an assert-to-bug.
+5. **Live-validate the testing redesign** (D33, wired in v0.11.0): a story whose plan carries a
+   must-cover list → `/aind:implement` has the coder author the tests at the stated altitude → confirm
+   the cold reviewer catches a **missing must-cover case** (WARNING) and an **assert-to-bug** test
+   (CRITICAL — a green test masking a defect), and does *not* block on a taste-level test nit. Also
+   confirm the planner correctly recommends **no automated tests** on a project with no test practice,
+   and that the coder then writes none (no per-story framework bootstrap).
