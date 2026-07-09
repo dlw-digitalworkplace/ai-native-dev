@@ -100,8 +100,8 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   project build/run **skills** (D18 — dev skills are the project's, not the plugin's); its new plugin
   script is `aind-open-code-pr.sh` (the GitHub-flow twin of `aind-open-plan-pr.sh`). The coder
   **generates** its branch as `[type]/<id>-<short-name>`; the PR stays the only handle (D17).
-  `commands/implement.md` + the script are written; live validation is pending.
-- **Build phase — code reviewer built (D26, 2026-07-01), pending live validation.** Phase 4 review is
+  `commands/implement.md` + the script are written and **live-validated** end-to-end.
+- **Build phase — code reviewer built & live-validated (D26, 2026-07-01).** Phase 4 review is
   now implemented as a **cold reviewer subagent** (`agents/reviewer.md`, `name: aind-reviewer`,
   strong-model override) driven from **inside `/aind:implement`**: after the code PR is opened the
   command spawns the reviewer (via `Task`, passing only the work-item id + PR number — coldness is
@@ -114,7 +114,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   3-pass deadlock escalates to a human (PR summary + a signed `reviewer` ADO comment, tag unchanged);
   a reviewer that can't ground returns `CANNOT-REVIEW` → the coder raises `Needs attention` (D12). New
   plugin script: `aind-review-pr.sh` (`fetch`/`digest`/`summary`/`thread`/`resolve`/`reply`). **Scope
-  ends at reviewer-approval or human-tiebreak** — no merge, no terminal tag, no test authoring.
+  ends at reviewer-approval or human-tiebreak** — no merge, no terminal tag.
 - **Build phase — merge gate + terminal completion built & live-validated (D27, 2026-07-01).**
   The build phase closes out with the human-run command **`/aind:complete <id> [pr]`** — the twin of
   `/aind:approve-plan`. It **verifies the code PR is MERGED (refuses otherwise)**, writes the terminal
@@ -168,7 +168,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   Offline-validated (plumbing leaves the working tree untouched); **live-validate next** on a testbed
   where a `lint` skill runs an uninstalled eslint (probe: agent emits the defect → `/aind:dream`
   proposes the skill fix).
-- **Testing — redesigned (D33, 2026-07-09), supersedes D8/D9/D14/D15; wired, live-validation pending.**
+- **Testing — redesigned (D33, 2026-07-09), supersedes D8/D9/D14/D15; live-validated.**
   The cold test-writer, its same-branch red→green machinery, and the live/E2E agent are **removed
   from the design**. Testing is now: the **planner** records a per-story **test strategy** (whether —
   gated on the project having a test practice, read from its skills/rules — at what altitude, and a
@@ -182,7 +182,10 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   the named-not-built mechanical upgrade. **Docs *and* prompts done (v0.11.0):** `agents/reviewer.md`
   (test-quality mandate — coverage/fidelity block, green suite is never evidence), the planner
   (`commands/plan.md`) test-strategy output, `commands/implement.md` + `commands/approve-plan.md`
-  (coder authors tests; approve ratifies the strategy). **Live-validation is the only step left.**
+  (coder authors tests; approve ratifies the strategy). **Live-validated** on a real story: the
+  planner's strategy + must-cover list, the coder-authored tests, and the reviewer's coverage/fidelity
+  gate all behaved as designed. **With this, the whole build phase (D24 + D26 + D28 + D33) is now
+  fully live-tested.**
 - **Deferred by design:** GitHub Actions automation + service identity (D6);
   the dreamer's cross-repo path into the companion standards plugin (D25 — a parking-lot note for now).
 
@@ -387,17 +390,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
    threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
    (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-3. **Live-validate the build phase end-to-end** (D24 + D26 + D27): run `/aind:implement` on a real
-   `Ready for implementation` story — confirm it builds → opens the code PR → the cold reviewer
-   (`aind-reviewer`) challenges it → the coder fixes/rebuts across passes → the loop ends at a
-   `CLEAN` approval or a 3-pass human tiebreak (and that `CANNOT-REVIEW` raises `Needs attention`).
-   Exercise the `gh`-live phases of `aind-review-pr.sh` (`fetch`/`summary`/`thread`/`resolve`/`reply`)
-   that offline tests couldn't cover. (The **`/aind:complete`** close-out is already **live-validated**
-   on AB#19.) Then live-validate the **code-revision loop** (D28): with the code PR open, leave a PR
-   comment asking for a change (AB#19's unapplied `minHeight:44` suggestion is the ready-made case),
-   re-run `/aind:implement 19`, and confirm it enters revise mode, applies **only** that change, pushes
-   to the same PR, re-reviews, and never moves the tag — then `/aind:complete 19`.
-4. **Live-validate the dreaming phase** (D30): on a testbed with a `lint` skill that runs an
+3. **Live-validate the dreaming phase** (D30): on a testbed with a `lint` skill that runs an
    uninstalled eslint, run `/aind:implement` and confirm the coder emits the missing-eslint defect as
    an `observation` lesson (`aind-emit-lesson.sh` → `aind/lessons`), then run **`/aind:dream`** and
    confirm the cold `aind-dreamer` clusters it, the human curates (Gate 1), and it proposes the
@@ -405,9 +398,3 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
    (`start`/`open-pr`) and the human-PR-feedback→`correction`-lesson path via a `/aind:plan` or
    `/aind:implement` revise run. Confirm the dreamer stays inside `.claude` and routes a structural
    finding to `aind-dream.sh note` (`.aind/parking-lot.md`).
-5. **Live-validate the testing redesign** (D33, wired in v0.11.0): a story whose plan carries a
-   must-cover list → `/aind:implement` has the coder author the tests at the stated altitude → confirm
-   the cold reviewer catches a **missing must-cover case** (WARNING) and an **assert-to-bug** test
-   (CRITICAL — a green test masking a defect), and does *not* block on a taste-level test nit. Also
-   confirm the planner correctly recommends **no automated tests** on a project with no test practice,
-   and that the coder then writes none (no per-story framework bootstrap).

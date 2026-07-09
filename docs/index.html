@@ -308,7 +308,7 @@ const TEMP = {
   warm: {label:'Warm agent', color:'var(--warm)'},
   cold: {label:'Cold agent', color:'var(--cold)'},
   auto: {label:'Automated',  color:'var(--plan)'},
-  ci:   {label:'CI / gate',  color:'var(--gate)'},
+  ci:   {label:'Needs attention', color:'var(--gate)'},
   dream:{label:'Dreamer (cold)',color:'var(--dream)'},
   term: {label:'Terminal',   color:'var(--terminal)'}
 };
@@ -372,7 +372,7 @@ const NODES = {
     kind:'gate', phase:'plan', temp:'human', shape:'diamond',
     title:'Human reviews plan', role:'plan gate · GATE 2',
     status:'Plan ready for review',
-    body:`<p><strong>The second gate</strong>, and a human one. The reviewer works through the plan PR — including every assumption / open-question thread, which the branch's "require conversation resolution" rule forces them to clear before merge.</p><p>Three outcomes route by root cause: a <strong>plan gap</strong> → the planner revises in the same PR (status unchanged); a <strong>story problem</strong> surfaced by the plan → close the PR, reroute to intake; <strong>approval</strong> → merge and set <em>Ready for implementation</em>, which also ratifies the two testing recommendations.</p>`,
+    body:`<p><strong>The second gate</strong>, and a human one. The reviewer works through the plan PR — including every assumption / open-question thread, which the branch's "require conversation resolution" rule forces them to clear before merge.</p><p>Three outcomes route by root cause: a <strong>plan gap</strong> → the planner revises in the same PR (status unchanged); a <strong>story problem</strong> surfaced by the plan → close the PR, reroute to intake; <strong>approval</strong> → merge and set <em>Ready for implementation</em>, which also ratifies the planner's test strategy.</p>`,
     decisions:[['D1','Route by root cause; story problem → close PR, re-intake.'],['D5','Assumption threads must resolve before merge.']],
     related:['planpr','reroute','planner','readyimpl']
   },
@@ -412,17 +412,9 @@ const NODES = {
     kind:'artifact', phase:'build', temp:'auto', shape:'rect',
     title:'Coder opens code PR', role:'implementation surface',
     status:'In implementation',
-    body:`<p>The coder opens a GitHub PR for the code — implementation plus any tests the plan's strategy called for.</p><p>Opening the PR triggers CI.</p><p>Like the plan PR, it is native-linked to the work item and carries an <em>AIND-LINKS</em> block — here also including the plan-PR URL — so the cold reviewer can resolve the spec and work item from the PR alone (D17).</p>`,
+    body:`<p>The coder opens a GitHub PR for the code — implementation plus any tests the plan's strategy called for. It opens the PR only after getting the project's build <strong>and</strong> the tests it authored green locally — that pre-PR check is the flow's objective gate; any CI a project runs on the PR is the project's own concern, orthogonal to AIND.</p><p>Like the plan PR, it is native-linked to the work item and carries an <em>AIND-LINKS</em> block — here also including the plan-PR URL — so the cold reviewer can resolve the spec and work item from the PR alone (D17).</p>`,
     decisions:[['D17','Native link + AIND-LINKS block (incl. plan-PR URL).']],
-    related:['polish','ci']
-  },
-  ci:{
-    kind:'gate', phase:'build', temp:'ci', shape:'diamond',
-    title:'CI gates', role:'objective checks',
-    status:'In implementation',
-    body:`<p>CI runs the objective gates: build, lint, coverage, security, and the test suite the coder authored.</p><p>A failure routes back to the coder like any other. A pass moves to code review.</p>`,
-    decisions:[['D33','Coder-authored tests run in CI.']],
-    related:['codepr','coder','review']
+    related:['polish','review']
   },
   review:{
     kind:'gate', phase:'build', temp:'cold', shape:'diamond',
@@ -430,7 +422,7 @@ const NODES = {
     status:'In implementation',
     body:`<p><strong>The third gate.</strong> A <strong>cold</strong> reviewer — separate invocation, re-grounded only from the PR diff, merged spec, and project rules, never the coder's transcript. Independence is enforced structurally, not by instruction.</p><p>Because the coder authored its own tests, the reviewer is also <strong>the independence gate on the tests</strong> (D33): <em>coverage</em> — every must-cover case has a test (blocking); <em>fidelity</em> — each test asserts the <strong>spec'd</strong> outcome, not whatever the code does, so a green suite is never taken as evidence (blocking; catches assert-to-bug); <em>meaningfulness</em> — tautological or padded tests are flagged as non-blocking suggestions. It also owns what tests can't express: coding style, auth, logging, and other cross-cutting concerns.</p><p>Given only the PR, it resolves the spec and work item by reading the <em>AIND-LINKS</em> block in the PR body — no ADO round-trip needed. If a stored link and a derived guess disagree, the stored link wins and it flags the mismatch (D17).</p>`,
     decisions:[['D7','Cold reviewer; structural independence.'],['D33','Reviewer is the independence gate on the coder\'s tests.'],['D17','Resolves spec/work item via AIND-LINKS.']],
-    related:['ci','fix','escalate','merged']
+    related:['codepr','fix','escalate','merged']
   },
   fix:{
     kind:'proc', phase:'build', temp:'warm', shape:'rect',
@@ -528,19 +520,18 @@ const L = {
   stuck:      {x:775, y:657, w:172,h:64, align:'r'},
   polish:     {x:SPINE,y:760, w:216,h:52},
   codepr:     {x:SPINE,y:856, w:216,h:50},
-  ci:         {x:SPINE,y:952, w:168,h:88, diamond:true},
-  review:     {x:SPINE,y:1080,w:176,h:94, diamond:true},
-  fix:        {x:190, y:1094,w:188,h:52, align:'l'},
-  escalate:   {x:775, y:1096,w:172,h:62, align:'r'},
-  merged:     {x:SPINE,y:1220,w:200,h:48},
+  review:     {x:SPINE,y:970, w:176,h:94, diamond:true},
+  fix:        {x:190, y:984, w:188,h:52, align:'l'},
+  escalate:   {x:775, y:986, w:172,h:62, align:'r'},
+  merged:     {x:SPINE,y:1110,w:200,h:48},
   // ---- dreaming phase: a horizontal row below the build spine (non-linear) ----
-  emithub:    {x:120, y:1392,w:188,h:66, align:'c'},
-  dreamer:    {x:368, y:1392,w:188,h:66, align:'c'},
-  dreampr:    {x:606, y:1392,w:176,h:66, align:'c'},
-  dreamdecide:{x:830, y:1388,w:178,h:96, diamond:true},
-  parklot:    {x:368, y:1514,w:200,h:60, align:'c'}
+  emithub:    {x:120, y:1282,w:188,h:66, align:'c'},
+  dreamer:    {x:368, y:1282,w:188,h:66, align:'c'},
+  dreampr:    {x:606, y:1282,w:176,h:66, align:'c'},
+  dreamdecide:{x:830, y:1278,w:178,h:96, diamond:true},
+  parklot:    {x:368, y:1404,w:200,h:60, align:'c'}
 };
-const CANVAS_H = 1600;
+const CANVAS_H = 1490;
 
 /* edges: [from,to, type, label, side, cat]
    type: 'flow' normal, 'loop' dashed back-edge
@@ -556,8 +547,7 @@ const EDGES = [
   ['readyimpl','coder',{route:'V'}],
   ['coder','polish',{route:'V'}],
   ['polish','codepr',{route:'V'}],
-  ['codepr','ci',{route:'V'}],
-  ['ci','review',{route:'V',label:'pass'}],           // CI passes -> straight to reviewer
+  ['codepr','review',{route:'V'}],                    // build+tests green pre-PR -> straight to the reviewer
   ['review','merged',{route:'V',label:'approve'}],
 
   // ---- forward side-trips to RIGHT nodes ----
@@ -579,7 +569,6 @@ const EDGES = [
   // ---- FAIL loops (amber) ----
   ['coder','stuck',{route:'toRightLevel',cat:'fail',label:'stuck'}],
   ['stuck','coder',{route:'fromRightLevel',cat:'fail',label:'resolved'}],
-  ['ci','coder',{route:'loopUpLeft',cat:'fail',lane:80,enterY:708,label:'fail'}],   // CI fail -> back to coder
 
   // ---- DREAMING PHASE (purple) ----
   // build phase hands its exhaust down into the emission hub
@@ -622,8 +611,8 @@ function buildSVG(){
 
   // phase swimlanes — full-width tinted bands BEHIND everything (can't be crossed)
   s += phaseBand('PLAN PHASE', 100, 522, 'var(--plan)');
-  s += phaseBand('BUILD PHASE', 600, 1300, 'var(--build)');
-  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1340, 1580, 'var(--dream)');
+  s += phaseBand('BUILD PHASE', 600, 1190, 'var(--build)');
+  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1230, 1470, 'var(--dream)');
 
   // edges (under nodes, over the bands)
   EDGES.forEach(e=> s += renderEdge(e));

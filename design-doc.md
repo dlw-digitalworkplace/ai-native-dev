@@ -19,7 +19,7 @@ It ends with an approved, merged plan — the item is `Ready for implementation`
 The **build phase** turns that plan into merged code:
 
 1. A **coding agent** implements the spec — and, where the plan's test strategy calls for tests, authors them as it goes; a **polish agent** does in-context cleanup.
-2. The coder opens a code PR; **CI** runs the objective gates (build, lint, coverage, security, and the test suite).
+2. The coder gets the project's build **and** the tests it authored green, then opens a code PR. (Getting build + tests green before the PR is the flow's objective gate; any CI a project runs on the PR is the project's own concern, orthogonal to AIND.)
 3. A **reviewer agent**, independent of the coder, reviews for spec alignment, missed edge cases, the cross-cutting concerns tests can't capture, **and the quality of the tests themselves** (do they cover the plan's must-cover cases, and do they assert the spec'd behavior rather than whatever the code happens to do); the two iterate in the PR, with a human breaking any deadlock.
 
 It ends with a merged PR — the item is `Implementation complete`. Throughout both phases, a single `AIND status` tag on the Azure DevOps work item records where the item is, while the GitHub PRs own the fine-grained iteration.
@@ -63,9 +63,7 @@ flowchart TD
     H --> I[Coding agent implements spec + tests]
     I --> J[Polish agent cleans up in-context]
     J --> K[Coder opens code PR]
-    K --> L{CI gates}
-    L -- fail --> I
-    L -- pass --> M{Reviewer agent reviews diff + tests}
+    K --> M{Reviewer agent reviews diff + tests}
     M -- comments --> N[Coder fixes or rebuts in thread]
     N --> M
     M -- unresolved after 3 passes --> O[Human posts verdict in PR]
@@ -80,7 +78,7 @@ The flow has three gates. **Intake** (an automated agent) sits at the front of t
 - A story that isn't ready returns to the author, who edits it and resubmits for scoring.
 - A plan with gaps is revised by the planner inside the same PR.
 - A story problem only surfaced once the plan exists sends the item all the way back to intake, and the plan PR is closed.
-- Once the plan is approved and merged, the coding agent implements it — authoring the tests the plan's test strategy called for as it goes — the polish agent cleans up, and the coder opens a code PR. CI runs the objective gates (build, lint, coverage, security, the test suite); the cold reviewer agent then reviews the diff *and the tests*, and the coder and reviewer iterate in the PR until the reviewer is satisfied or a human breaks the deadlock — after which the PR merges.
+- Once the plan is approved and merged, the coding agent implements it — authoring the tests the plan's test strategy called for as it goes — the polish agent cleans up, and the coder opens a code PR only after getting the project's build **and** those tests green (that pre-PR check is the flow's objective gate; any CI a project runs on the PR is orthogonal to AIND). The cold reviewer agent then reviews the diff *and the tests*, and the coder and reviewer iterate in the PR until the reviewer is satisfied or a human breaks the deadlock — after which the PR merges.
 
 ---
 
@@ -184,7 +182,7 @@ A human reviews the plan in the PR.
 
 When a story is `Ready for implementation` (its plan PR merged), the build phase begins; status becomes `In implementation`.
 
-**Implementation.** The coding agent implements the spec and, where the plan's test strategy calls for tests, **authors them in-context** — against the must-cover list and the seams it is building (warm and cheap: the coder is testing structure it is actively creating, so it knows the seams; authoring the tests cold would only re-derive that design intent for no independence gain — the independence lives at the reviewer, Phase 4). A **polish agent** then does in-context cleanup — code style, formatting, self-consistency — working from the coder's own context (warm). Note the asymmetry: polish is warm *by design* (it is the coder tidying work it already understands), so it is **not** an independent check. The coder then opens a GitHub PR for the code, and CI runs the objective gates (build, lint, coverage, security, and the test suite).
+**Implementation.** The coding agent implements the spec and, where the plan's test strategy calls for tests, **authors them in-context** — against the must-cover list and the seams it is building (warm and cheap: the coder is testing structure it is actively creating, so it knows the seams; authoring the tests cold would only re-derive that design intent for no independence gain — the independence lives at the reviewer, Phase 4). A **polish agent** then does in-context cleanup — code style, formatting, self-consistency — working from the coder's own context (warm). Note the asymmetry: polish is warm *by design* (it is the coder tidying work it already understands), so it is **not** an independent check. The coder gets the project's build **and** the tests it authored green, then opens a GitHub PR for the code. Getting build + tests green before the PR is the flow's objective gate; any CI a project runs on the PR (build, lint, coverage, security, the test suite) is the project's own and orthogonal to AIND (see `design-log.md` D34).
 
 **In current scope, the coding agent is a warm in-session command (`/aind:implement <work-item-id>`) that builds the plan into a code PR and then drives the code review (Phase 4) to a verdict** (see `design-log.md` D24 and D26). It grounds from the merged plan and the `rules/*.md` files each task cites (the artifact-link contract of §5 Phase 1 / D17) plus the project's build/run skills, implements the task breakdown against the plan's Definition of done, authors the tests the plan's strategy called for, runs the polish step in its own context, opens the code PR — generating a readable code branch (`[type]/<work-item-id>-<short-name>`) that every later agent reaches *through the PR*, never by reconstructing the name (D17) — and then spawns the cold reviewer for the review loop below. **Scope ends at reviewer approval or a human tiebreak**; the human merge gate and the terminal `Implementation complete` write (D13) are the close-out step (`/aind:complete`).
 
@@ -298,7 +296,7 @@ Both modes run the same `.claude` configuration, so an agent proven locally is i
 | Plan PR | The GitHub pull request carrying the implementation plan. |
 | Code PR | The GitHub pull request carrying the implementation. |
 | Artifact links / `AIND-LINKS` | The contract for navigating between a work item, its plan, and its PRs (see §5 Phase 1 and `design-log.md` D17): each PR is native-linked to the ADO work item (Azure Boards ↔ GitHub integration) **and** carries a fixed `AIND-LINKS` block in its body (an HTML comment listing the work-item URL, the plan path, and — on the code PR — the plan-PR URL). The native link is canonical and human-visible; the in-body block lets a cold agent resolve everything from artifacts alone. The work-item ID is the join value; branch names are never assumed (a branch is reached through its PR). |
-| CI | Continuous integration — runs the objective gates (build, lint, coverage, security, and the test suite) on the code PR. |
+| CI | Continuous integration — whatever automated pipeline a project runs on its PRs (build, lint, coverage, security, tests). It is **not part of the AIND flow**: AIND enforces nothing at CI, and a project with no pipeline runs the flow fine. The flow's own objective gate is the coder getting build + tests green *before* opening the PR; any project CI is orthogonal (see `design-log.md` D34). |
 | Cold / warm context | Warm = shares the coder's context (the polish agent, and the coder authoring its own tests); cold = a fresh invocation re-grounded from artifacts only, with no shared context (the reviewer and the dreamer). |
 | Test strategy | The planner's per-story testing decision recorded in the plan (Testing recommendations + Definition of done): whether to test (gated on the project having a test practice), at what altitude, and a conditional must-cover list of edge cases with their expected outcomes. The coder authors the tests; the cold reviewer checks them (see §5 and `design-log.md` D33). |
 | Behavioral / acceptance-level test | A test that asserts input→expected-behavior against the acceptance criteria, agnostic to internal code structure; one altitude the planner's test strategy may call for (see §5). |

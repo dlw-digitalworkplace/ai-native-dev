@@ -49,9 +49,12 @@ decision ID (e.g. D23).
 
 ### Validated
 - Offline: `claude plugin validate` passes (the one accepted root-`CLAUDE.md` warning), and the
-  shipped artifacts carry no decision-ID / design-log references. **Live-validation pending** — a
-  story with a must-cover list → coder authors the tests → reviewer catches a missing case or an
-  assert-to-bug.
+  shipped artifacts carry no decision-ID / design-log references.
+- **Live-validated** end-to-end on a real story with a unit-testing practice: the planner produced a
+  test strategy + must-cover list, the coder authored the tests in-context, and the cold reviewer's
+  coverage/fidelity gate behaved as designed (missing must-cover case → WARNING, assert-to-bug →
+  CRITICAL, test nits stayed non-blocking). With this the **whole build phase** (coder + cold
+  reviewer + revise loop + testing) is fully live-tested.
 
 ## [0.10.1] — 2026-07-08
 

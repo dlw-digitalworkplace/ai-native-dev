@@ -14,8 +14,8 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 > (`/aind:complete`, which verifies the merged PR and writes the terminal status) — run locally via
 > **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The **dreaming phase**
 > (`/aind:dream`) is now built and live-validated. The testing redesign (planner test strategy →
-> coder-authored tests → reviewer as the test-quality gate) is wired into the prompts and awaiting
-> live-validation; unattended automation is designed but not built — see
+> coder-authored tests → reviewer as the test-quality gate) is built and live-validated, completing
+> the build phase; unattended automation is designed but not built — see
 > [Implementation status](#implementation-status).
 
 ## What it does
@@ -36,8 +36,8 @@ agents:
   PR** on a re-run (apply a picked suggestion or a tiebreak verdict — revise mode); once a human
   merges, **`/aind:complete`** verifies the merge and writes the terminal `Implementation complete`
   status. **Testing** (D33): the planner sets a per-story test strategy, the coder authors the tests
-  in-context, and the cold reviewer is the independence gate on test quality — wired into the prompts,
-  live-validation pending.
+  in-context, and the cold reviewer is the independence gate on test quality — built and
+  live-validated.
 - **Dreaming phase** *(built)*: agents emit lessons-learned to a dedicated branch as they run; the
   manual **`/aind:dream`** command has a cold "dreamer" cluster that exhaust into patterns, a human
   curates the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
@@ -97,10 +97,10 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
 | Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
-| Build | Testing — strategy + authorship + review (D33) | 🟡 | 🟡 | **Redesigned; supersedes D8/D9/D14/D15.** Planner sets a per-story test strategy (whether/altitude/must-cover list, gated on the project having a test practice); the coder authors the tests in-context; the cold reviewer is the independence gate (coverage + fidelity **blocking**, meaningfulness a suggestion). The cold test-writer + live/E2E agent are removed; live verification is an optional Definition-of-done line satisfied by a human PR signal. **Wired into planner/coder/reviewer prompts (offline-checked); live-validation pending.** |
+| Build | Testing — strategy + authorship + review (D33) | ✅ | ✅ | **Redesigned; supersedes D8/D9/D14/D15.** Planner sets a per-story test strategy (whether/altitude/must-cover list, gated on the project having a test practice); the coder authors the tests in-context; the cold reviewer is the independence gate (coverage + fidelity **blocking**, meaningfulness a suggestion). The cold test-writer + live/E2E agent are removed; live verification is an optional Definition-of-done line satisfied by a human PR signal. **Live-validated end-to-end:** planner strategy + must-cover list, coder-authored tests, reviewer coverage/fidelity gate. |
 | Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Now also drives the review loop below (D24) and is **mode-aware** — a re-run revises the open PR (D28); scope ends at reviewer approval / human tiebreak. |
 | Build | Polish (warm) — in `/aind:implement` | ✅ | ✅ | Final in-context phase of the coder — style/self-consistency only, no structural change. |
-| Build | CI gates | ⬜ | — | Coder runs the project build locally before the PR; CI-pipeline gates not built. |
+| Build | Objective gate — build + tests green (pre-PR) | ✅ | ✅ | The coder gets the project build **and** its authored tests green **before** opening the PR — that pre-PR check is the flow's objective gate; the cold reviewer is the judgment gate. Project CI on the PR is deliberately **out of scope** — orthogonal to AIND, which ships/requires no pipeline (D34). |
 | Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
 | Build | Code-revision loop — `/aind:implement` revise mode | ✅ | ✅ | Re-run on a story with an open code PR enters revise mode: check out the PR branch, read the steering digest, apply **only** human-directed changes (a picked suggestion, a tiebreak verdict, a touch-up), reply on threads (never resolve), push to the same PR, re-review by default (D28). Live-validated on a real story: applied only the directed change, re-reviewed CLEAN, tag unmoved. |
 | Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
