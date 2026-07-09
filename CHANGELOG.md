@@ -9,6 +9,50 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.11.0] — 2026-07-09
+
+### Changed
+- **Testing redesigned** (D33, supersedes D8/D9/D14/D15). Testing moves to: the **planner** sets a
+  per-story **test strategy**, the **coder authors the tests warm, in-context**, and the **cold
+  reviewer** is the independence gate on test quality.
+  - **Planner (`commands/plan.md`)** — the *Testing recommendations* section is now a test strategy:
+    **whether** to test (gated on the project actually having a test practice, read from its
+    skills/rules — no framework ⇒ *no automated tests*, and the coder never bootstraps one per
+    story), **at what altitude** (unit/integration/behavioral in the project's own vocabulary), and a
+    conditional, additive **must-cover list** of the edge cases/failure modes the ACs don't already
+    state, **each with its expected outcome** — dropped when the ACs already pin the behavior down.
+    Live verification, where needed, is a single Definition-of-done line a developer clears by hand.
+  - **Coder (`commands/implement.md`)** — now **authors the tests** the strategy calls for, covering
+    every must-cover case with an assertion tied to the plan's *expected outcome* (never to whatever
+    the code returns), and gets the build **and** the tests green before opening the PR. It does not
+    pad the suite; fixing a failing test means fixing the code or a genuinely wrong test — never
+    weakening a real assertion.
+  - **Reviewer (`agents/reviewer.md`)** — gains a **test-quality mandate**: *coverage* (every
+    must-cover case has a test) and *fidelity* (each test asserts the spec'd outcome — a green suite
+    is never taken as evidence, so an assert-to-bug test is a blocking finding) both **block**;
+    tautological / framework-testing / redundant-bulk tests are non-blocking **suggestions**.
+
+### Removed
+- The **cold test-writer agent** and its same-branch red→green machinery, and the **live/E2E test
+  agent** as a first-class actor (D33). Authoring meaningful *executable* tests before any code
+  exists is self-contradictory (the "cold" author ends up designing the code), and running the app is
+  a per-project concern — so "how to run the app / E2E" is a project **skill**, never plugin
+  machinery. Live verification survives only as an optional Definition-of-done line satisfied by a
+  human PR signal.
+
+### Notes
+- **Prompt-only change — no scripts touched.** Accepted residual: a diff-reading reviewer *reduces*
+  but does not eliminate test-gaming/inflation; **mutation testing** in a project's CI is the
+  named-not-built mechanical upgrade a team can add (objective gates are CI's job).
+- Docs updated in lockstep: `design-log.md` (D33 + D8/D9/D14/D15 marked superseded), `design-doc.md`,
+  `README.md`, `CLAUDE.md`, and the flow diagram (`docs/index.html`).
+
+### Validated
+- Offline: `claude plugin validate` passes (the one accepted root-`CLAUDE.md` warning), and the
+  shipped artifacts carry no decision-ID / design-log references. **Live-validation pending** — a
+  story with a must-cover list → coder authors the tests → reviewer catches a missing case or an
+  assert-to-bug.
+
 ## [0.10.1] — 2026-07-08
 
 ### Fixed

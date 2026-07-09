@@ -80,9 +80,24 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
      differently, it is an **open question**, not a consideration — put it under *Assumptions & open
      questions* so it gets a thread. **When in doubt, make it an open question**: a thread is cheap,
      a silently-dropped decision is not. Omit a bullet rather than padding with generic advice.
-   - **Testing recommendations** — two orthogonal calls, each yes/no with a reason:
-     *Spec-level (behavioral) tests?* and *Live / end-to-end test?* The human ratifies both at
-     plan review.
+   - **Testing recommendations** — the **test strategy** the coder will follow (the human ratifies
+     it at plan review). You set *strategy*, never a designed suite:
+     - **Whether to test.** Check the project's skills/rules for an existing **test practice** (a
+       test framework, a `test`/e2e skill, a testing rule). If there is **none**, say so and
+       recommend *no automated tests* — the coder must **not** bootstrap a framework per story
+       (optionally note under *Considerations* that the project could adopt one). If there **is**,
+       continue:
+     - **At what altitude** — unit / integration / behavioral, in the project's own vocabulary.
+     - **Must-cover list** *(conditional, additive)* — only the specific edge cases and failure
+       modes the acceptance criteria don't already state (empty input, boundaries, error paths, auth
+       failures, …), **each with its expected outcome** (e.g. *empty input → returns `[]`, not an
+       error*), so the coder has a target and the reviewer a spec-anchored checklist. **Drop the
+       list** when the ACs already pin down the testable behavior — do not pad it with "test each
+       AC" filler.
+     - **Live verification** *(only if genuinely needed)* — if the story needs the running app
+       exercised before merge, add one **Definition-of-done** line ("needs manual live verification
+       before merge"); a developer clears it by hand in the PR. There is no live/E2E agent — how to
+       run the app is a project concern.
    - **Definition of done** — a `- [ ]` checklist the coder validates against before the story is
      done. Derive **every** item from a real source — an acceptance criterion, the "what done
      looks like" bar of a rule a task cited, an invariant a change must uphold, or a ratified
@@ -141,9 +156,9 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    alike. Keep the **Assumptions & open questions** section honest: update or drop items the
    feedback has settled, and add any genuinely new question your revision introduces. When the
    feedback changes the shape of the work, update the **Keep it simple**, **Task breakdown** (tasks,
-   order, rule citations), **Data contracts**, and **Considerations** sections, and re-check the
-   **Definition of done** so they all still match the plan — keep every section honest, not just the
-   assumptions.
+   order, rule citations), **Data contracts**, **Testing recommendations** (altitude / must-cover
+   list), and **Considerations** sections, and re-check the **Definition of done** so they all still
+   match the plan — keep every section honest, not just the assumptions.
 
 3. **Reply on each `[OPEN]` thread** using its `thread=<id>` from the digest. **Never resolve a
    thread yourself — resolution is the human's merge gate.**

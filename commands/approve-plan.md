@@ -37,7 +37,7 @@ This completes the plan phase; the build phase (out of scope for this iteration)
 `Ready for implementation`.
 
 ## Notes
-- Approving the plan also ratifies the planner's two testing recommendations (spec-level and
-  live/E2E) recorded in the plan — these drive the build phase later.
+- Approving the plan also ratifies the planner's **test strategy** recorded in the plan (whether to
+  test, at what altitude, and the must-cover cases) — this drives the build phase later.
 - If plan review instead surfaced a **story-level** problem, do not approve: close the plan PR
   and reroute the item to `Ready for intake` so the story can be fixed and re-scored.

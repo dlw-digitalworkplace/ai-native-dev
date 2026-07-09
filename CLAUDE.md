@@ -37,10 +37,10 @@ hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
 project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
-agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30); test-writer, E2E land here later
+agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-08)
+## Current status (2026-07-09)
 
 - **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
   (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
@@ -168,9 +168,22 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   Offline-validated (plumbing leaves the working tree untouched); **live-validate next** on a testbed
   where a `lint` skill runs an uninstalled eslint (probe: agent emits the defect → `/aind:dream`
   proposes the skill fix).
-- **Not built yet:** the rest of the build phase — the cold **test-writer / E2E** subagents (D8/D9).
-  Out of scope per D6.
-- **Deferred by design:** GitHub Actions automation + service identity (D6); automated E2E (D15);
+- **Testing — redesigned (D33, 2026-07-09), supersedes D8/D9/D14/D15; wired, live-validation pending.**
+  The cold test-writer, its same-branch red→green machinery, and the live/E2E agent are **removed
+  from the design**. Testing is now: the **planner** records a per-story **test strategy** (whether —
+  gated on the project having a test practice, read from its skills/rules — at what altitude, and a
+  conditional additive **must-cover list** with expected outcomes, folded into Testing recommendations
+  + Definition of done); the **coder authors the tests warm, in-context**; and the **cold reviewer**
+  is the independence gate (coverage + fidelity **blocking**, meaningfulness/anti-inflation as
+  non-blocking suggestions — the must-cover list is the objective/taste boundary). Live verification
+  survives only as an optional Definition-of-done line satisfied by a human PR signal (no agent, no
+  E2E CI gate — running the app is a project **skill**). Accepted residual: a diff-reading reviewer
+  reduces but doesn't eliminate test-gaming/inflation — **mutation testing** in the project's CI is
+  the named-not-built mechanical upgrade. **Docs *and* prompts done (v0.11.0):** `agents/reviewer.md`
+  (test-quality mandate — coverage/fidelity block, green suite is never evidence), the planner
+  (`commands/plan.md`) test-strategy output, `commands/implement.md` + `commands/approve-plan.md`
+  (coder authors tests; approve ratifies the strategy). **Live-validation is the only step left.**
+- **Deferred by design:** GitHub Actions automation + service identity (D6);
   the dreamer's cross-repo path into the companion standards plugin (D25 — a parking-lot note for now).
 
 ## Architecture invariants that constrain how you work
@@ -179,7 +192,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 - **Config layer vs. flow.** Agents may shape the `.claude` config; they must never change the
   flow (status model, gates, D1–D15). Onboarder bootstraps config from the codebase; dreamer
   evolves it from exhaust — both human-gated, both barred from the flow.
-- **Cold vs. warm.** **Cold** roles are the independent **checks** — reviewer, test-writer, E2E,
+- **Cold vs. warm.** **Cold** roles are the independent **checks** — reviewer and
   dreamer: a separate invocation re-grounded from artifacts only, so their judgment isn't
   contaminated by the work they're checking → these are **subagents** in `agents/`. **Warm** roles
   are human-facing **authoring/entry** roles with nothing to stay independent *from* (a human
@@ -392,5 +405,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
    (`start`/`open-pr`) and the human-PR-feedback→`correction`-lesson path via a `/aind:plan` or
    `/aind:implement` revise run. Confirm the dreamer stays inside `.claude` and routes a structural
    finding to `aind-dream.sh note` (`.aind/parking-lot.md`).
-5. Then the rest of the **build phase**: the cold **test-writer / E2E** subagents in `agents/`
-   (D8/D9).
+5. **Live-validate the testing redesign** (D33, wired in v0.11.0): a story whose plan carries a
+   must-cover list → `/aind:implement` has the coder author the tests at the stated altitude → confirm
+   the cold reviewer catches a **missing must-cover case** (WARNING) and an **assert-to-bug** test
+   (CRITICAL — a green test masking a defect), and does *not* block on a taste-level test nit. Also
+   confirm the planner correctly recommends **no automated tests** on a project with no test practice,
+   and that the coder then writes none (no per-story framework bootstrap).

@@ -12,7 +12,7 @@ human's steering on the PR. **Pick the mode first.** Either way you then **drive
 review to a verdict** — a cold reviewer challenges your work and you fix or rebut its findings, up to a
 hard cap. You never block waiting for an answer — where you hit a genuine choice, proceed on a
 reasonable assumption and note it in the PR. **Your scope ends when the reviewer approves or a human
-tiebreak is needed:** you do not merge, and in this iteration you do not write tests.
+tiebreak is needed:** you do not merge (that is `/aind:complete`).
 
 Work item: **$1**
 
@@ -44,10 +44,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "In implementation"
 ### A2. Ground from the merged plan
 Read the spec at `plans/$1/plan.md` — it merged to the integration branch as living documentation
 and is the source of truth for this story. It carries the **Task breakdown**, any **Data
-contracts**, and the **Definition of done** you implement against. Then, before coding:
+contracts**, the **Testing recommendations** (the test strategy — whether to test, at what altitude,
+and the must-cover list with each case's expected outcome), and the **Definition of done** you
+implement against. Then, before coding:
 - For each task, read the **project rule file(s) it cites** (`.claude/rules/*.md`) — those hold the
   conventions and the "what done looks like" bar that task must obey.
-- Read the relevant project **skills** (`.claude/skills/`) for the project's build/run commands.
+- Read the relevant project **skills** (`.claude/skills/`) for the project's build/test/run commands.
 - Explore the real code the tasks touch, so you reuse existing utilities and patterns rather than
   inventing new ones. For each new thing you will create (a service, a component, an endpoint, a
   migration, …), **find and read one existing implementation of that same type first** and mirror
@@ -78,8 +80,14 @@ Work the plan's tasks **in order** (dependencies first). For each task:
 Where the rules describe a multi-project / deployment topology, land each change in the right
 project/unit. Check your work against the plan's **Definition of done** as you go.
 
-*This iteration writes no tests — neither behavioral nor unit. Leave testing to the later build
-steps.*
+**Author the tests the plan's test strategy calls for.** If the plan recommended tests, write them
+in-context at the stated altitude, covering **every must-cover case** with an assertion tied to that
+case's **expected outcome from the plan** — never to whatever the code currently happens to return.
+A test-first rhythm works well where it fits: write the test for a must-cover case, watch it fail,
+implement, watch it pass. Do **not** pad the suite with tautological or framework-testing tests to
+inflate the count — the cold reviewer judges the tests' coverage *and* fidelity against the plan, and
+a green test that asserts the wrong thing is a blocking finding. If the plan recommended **no** tests
+(the project has no test practice), write none and do not bootstrap a framework.
 
 ### A5. Polish (in-context)
 Before opening the PR, re-read the cited rule files and make a light pass over your own diff:
@@ -90,11 +98,14 @@ make no structural or behavioral change.** Commit the polish.
 Before opening the PR, do a final pass over your own work:
 - **Self-check against the Definition of done.** Re-read the plan's Definition-of-done checklist
   and confirm each item is met — parameters present, response shapes correct, the conventions from
-  every cited rule applied. Fix any gaps now.
-- **Build it.** Run the project's build command (from its skills / rules) and get a clean build.
-  This is fail-fast, not test authoring. If the build fails, fix and re-run; if you cannot get a
-  clean build after a couple of focused attempts, stop — see **Stuck-state** — rather than opening
-  a PR on code that does not compile.
+  every cited rule applied, and (where the strategy called for tests) a test for every must-cover
+  case. Fix any gaps now.
+- **Build it and run the tests.** Run the project's build command (from its skills / rules) and get
+  a clean build; then, where you authored tests, run the project's test command and get the suite
+  **green**. If the build or a test fails, fix and re-run; if you cannot get a clean build and
+  passing tests after a couple of focused attempts, stop — see **Stuck-state** — rather than opening
+  a PR on code that does not compile or whose tests fail. (Fixing a failing test means correcting the
+  *code* or a genuinely wrong test — never weakening an assertion to make a real failure disappear.)
 
 ### A7. Open the code PR
 ```bash
@@ -270,8 +281,9 @@ on. Then state the **review outcome**:
 
 ## Stuck-state
 If you cannot make progress — the plan is too underspecified to implement even on reasonable
-assumptions, a task is blocked by something genuinely missing, you cannot get a clean build after a
-couple of attempts, a merge conflict you cannot resolve, or the **reviewer returns `CANNOT-REVIEW`**
+assumptions, a task is blocked by something genuinely missing, you cannot get a clean build or the
+tests passing after a couple of attempts, a merge conflict you cannot resolve, or the **reviewer
+returns `CANNOT-REVIEW`**
 (it could not ground itself — a genuine blocker, distinct from a review *disagreement*, which does
 not move the tag) — do **not** loop or open a half-baked PR. Stop, set `Needs attention`, and post
 the trail (feed the body as a direct heredoc — one command, no `cat |` pipe):
@@ -297,5 +309,6 @@ to `Needs attention` if that single attempt fails.
   changes, you execute.
 - The reviewer is **independent**: pass it only the work-item id and PR number, never your reasoning
   — its coldness is the point of the gate. Each pass is a fresh reviewer that re-reads the PR.
-- This command's scope ends at reviewer approval (or a human tiebreak): no test authoring, no merge,
-  no terminal tag — merging and `Implementation complete` are `/aind:complete`.
+- This command's scope ends at reviewer approval (or a human tiebreak): no merge, no terminal tag —
+  merging and `Implementation complete` are `/aind:complete`. (You author the tests the plan called
+  for; you do not merge.)

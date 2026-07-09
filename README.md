@@ -13,8 +13,10 @@ This README covers **what it is** and **where it stands**. To set it up and use 
 > to a verdict, and on a re-run **revises** the open PR from the human's steering) and **close-out**
 > (`/aind:complete`, which verifies the merged PR and writes the terminal status) — run locally via
 > **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The **dreaming phase**
-> (`/aind:dream`) is now built and live-validated. A test-writer and unattended automation are
-> designed but not yet built — see [Implementation status](#implementation-status).
+> (`/aind:dream`) is now built and live-validated. The testing redesign (planner test strategy →
+> coder-authored tests → reviewer as the test-quality gate) is wired into the prompts and awaiting
+> live-validation; unattended automation is designed but not built — see
+> [Implementation status](#implementation-status).
 
 ## What it does
 
@@ -33,7 +35,9 @@ agents:
   **reviewer** challenges it and the two iterate to a verdict; a human can **steer the coder from the
   PR** on a re-run (apply a picked suggestion or a tiebreak verdict — revise mode); once a human
   merges, **`/aind:complete`** verifies the merge and writes the terminal `Implementation complete`
-  status. A test-writer is designed but not yet built.
+  status. **Testing** (D33): the planner sets a per-story test strategy, the coder authors the tests
+  in-context, and the cold reviewer is the independence gate on test quality — wired into the prompts,
+  live-validation pending.
 - **Dreaming phase** *(built)*: agents emit lessons-learned to a dedicated branch as they run; the
   manual **`/aind:dream`** command has a cold "dreamer" cluster that exhaust into patterns, a human
   curates the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
@@ -49,9 +53,10 @@ own the fine-grained iteration.
   `.claude/`.
 - **Agents suggest, humans decide.** Intake, the planner, the onboarder, and the dreamer all
   *propose* — a human ratifies (a verdict, a plan merge, a config change).
-- **Cold vs. warm.** Independent checks (reviewer, test-writer, dreamer) run *cold* — a separate
+- **Cold vs. warm.** Independent checks (reviewer, dreamer) run *cold* — a separate
   invocation re-grounded from artifacts only — so they can't rubber-stamp the work they review.
-  Entry/authoring agents run *warm* (in-session).
+  Entry/authoring agents run *warm* (in-session); the coder authors its own tests warm, and the cold
+  reviewer is what independently checks them.
 - **Config layer vs. the flow.** Agents may shape the `.claude` config; they never change the
   flow itself (the status model, the gates, the structural decisions).
 - **Deterministic mechanics are scripted.** Agents make judgments; all ADO/GitHub side-effects
@@ -60,7 +65,7 @@ own the fine-grained iteration.
   review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
   reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D32**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D33**).
 
 ## Repository layout
 
@@ -72,10 +77,10 @@ skills/                      aind-workitem, aind-status, aind-comment, aind-plan
 scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
-agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser); test-writer/E2E land here next
+agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D32)
+design-doc.md, design-log.md The design and the decisions (D1–D33)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -92,11 +97,10 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
 | Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
 | Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
-| Build | Test-writer agent (optional, cold) | ⬜ | — | Not built; test authoring deferred this iteration (D8). |
+| Build | Testing — strategy + authorship + review (D33) | 🟡 | 🟡 | **Redesigned; supersedes D8/D9/D14/D15.** Planner sets a per-story test strategy (whether/altitude/must-cover list, gated on the project having a test practice); the coder authors the tests in-context; the cold reviewer is the independence gate (coverage + fidelity **blocking**, meaningfulness a suggestion). The cold test-writer + live/E2E agent are removed; live verification is an optional Definition-of-done line satisfied by a human PR signal. **Wired into planner/coder/reviewer prompts (offline-checked); live-validation pending.** |
 | Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Now also drives the review loop below (D24) and is **mode-aware** — a re-run revises the open PR (D28); scope ends at reviewer approval / human tiebreak. |
 | Build | Polish (warm) — in `/aind:implement` | ✅ | ✅ | Final in-context phase of the coder — style/self-consistency only, no structural change. |
 | Build | CI gates | ⬜ | — | Coder runs the project build locally before the PR; CI-pipeline gates not built. |
-| Build | Live / E2E gate (optional) | ⬜ | — | Manual path is the design target for v0 (D15); not built. |
 | Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
 | Build | Code-revision loop — `/aind:implement` revise mode | ✅ | ✅ | Re-run on a story with an open code PR enters revise mode: check out the PR branch, read the steering digest, apply **only** human-directed changes (a picked suggestion, a tiebreak verdict, a touch-up), reply on threads (never resolve), push to the same PR, re-review by default (D28). Live-validated on a real story: applied only the directed change, re-reviewed CLEAN, tag unmoved. |
 | Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
@@ -107,6 +111,6 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D32 with rationale.
+- **`design-log.md`** — decisions D1–D33 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
