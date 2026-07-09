@@ -271,7 +271,7 @@
     <div class="canvas" id="canvas">
       <div class="scopebanner">
         <span class="ic">▲</span>
-        <span class="t"><b>Current scope: manual execution only.</b> The flow runs from the Claude Code CLI under a developer's own credentials. Unattended automation (GitHub Actions, service identity) and the automated E2E path are designed but descoped for now.</span>
+        <span class="t"><b>Current scope: manual execution only.</b> The flow runs from the Claude Code CLI under a developer's own credentials. Unattended automation (GitHub Actions, service identity) is designed but descoped for now. Live/E2E verification is a per-project skill (a manual Definition-of-done check), not a flow agent.</span>
       </div>
       <div class="canvas-inner" id="chartHost"></div>
       <!-- legend injected after svg -->
@@ -356,7 +356,7 @@ const NODES = {
     kind:'proc', phase:'plan', temp:'auto', shape:'rect',
     title:'Planner agent', role:'drafts the implementation plan',
     status:'Generating plan',
-    body:`<p>On <em>Intake approved</em>, the planner turns the story into an implementation plan — markdown at <em>/plans/&lt;id&gt;/plan.md</em> — and opens it as its own GitHub PR. Status is <em>Generating plan</em> while it works.</p><p>It never blocks waiting for an answer. Where it hits a genuine choice it proceeds on a reasonable assumption and records each assumption / open question <strong>both</strong> under a heading in the plan <strong>and</strong> as an individual resolvable PR review thread — so none can be silently skipped before merge.</p><p>It also records two orthogonal testing recommendations: whether the story warrants spec-level tests (D8) and a live/E2E test (D9).</p><p>Opening the plan PR also establishes the <strong>artifact links</strong> (D17): the PR is native-linked to the work item (Azure Boards ↔ GitHub integration) and carries an <em>AIND-LINKS</em> block in its body. The work-item ID is the join value; branch names are never assumed.</p>`,
+    body:`<p>On <em>Intake approved</em>, the planner turns the story into an implementation plan — markdown at <em>/plans/&lt;id&gt;/plan.md</em> — and opens it as its own GitHub PR. Status is <em>Generating plan</em> while it works.</p><p>It never blocks waiting for an answer. Where it hits a genuine choice it proceeds on a reasonable assumption and records each assumption / open question <strong>both</strong> under a heading in the plan <strong>and</strong> as an individual resolvable PR review thread — so none can be silently skipped before merge.</p><p>It also records a <strong>test strategy</strong> for the build phase (folded into Testing recommendations + Definition of done): whether the story warrants tests (gated on the project having a test practice), at what altitude, and a conditional must-cover list of edge cases with their expected outcomes. Strategy, never a designed suite.</p><p>Opening the plan PR also establishes the <strong>artifact links</strong> (D17): the PR is native-linked to the work item (Azure Boards ↔ GitHub integration) and carries an <em>AIND-LINKS</em> block in its body. The work-item ID is the join value; branch names are never assumed.</p>`,
     decisions:[['D5','Plan reviewed as a GitHub PR; assumptions as resolvable threads.'],['D10','Separate plan-PR, merged to the integration branch first.'],['D17','Establishes the work-item↔plan↔PR links.']],
     related:['intake','planpr','planrev']
   },
@@ -388,41 +388,17 @@ const NODES = {
     kind:'milestone', phase:'plan', temp:'human', shape:'round',
     title:'Ready for implementation', role:'plan phase complete',
     status:'Ready for implementation',
-    body:`<p>The plan is approved and merged; the plan phase is done. The human sets <em>Ready for implementation</em> and the build phase may begin.</p><p>This single human action also <strong>ratifies the planner's two testing recommendations</strong> — whether spec-level tests and a live/E2E test run in the build phase.</p>`,
-    decisions:[['D8','Spec-test recommendation ratified here.'],['D9','Live-test recommendation ratified here.']],
-    related:['planrev','testq']
-  },
-  testq:{
-    kind:'branch', phase:'build', temp:'auto', shape:'diamond',
-    title:'Plan calls for spec tests?', role:'planner-gated',
-    status:'In implementation',
-    body:`<p>The build phase opens; status becomes <em>In implementation</em> and stays there through everything below (coarse/fine split — the tag tracks the phase, the PR owns the iteration).</p><p>If the plan called for spec-level tests, the optional test-writer step runs first. If not, the flow skips straight to the coder.</p>`,
-    decisions:[['D4','Coarse tag vs. fine PR iteration.'],['D8','Optional, planner-gated test-first step.']],
-    related:['readyimpl','testwriter','coder']
-  },
-  testwriter:{
-    kind:'proc', phase:'build', temp:'cold', shape:'rect',
-    title:'Test-writer drafts behavioral tests', role:'cold · independent',
-    status:'In implementation',
-    body:`<p>A <strong>cold</strong> agent — separate invocation, re-grounded only from the merged spec & plan, never the coder's context. It writes <strong>failing behavioral / acceptance-level tests</strong>: input→expected-behavior, tied to the ACs, agnostic to internal structure.</p><p>It deliberately does <strong>not</strong> write unit tests — those presuppose implementation seams that don't exist yet, and writing them from the spec alone would mean silently designing the code.</p><p>The suite lands on the <strong>same branch</strong> as the upcoming code (not a separate test-PR), as the first commits.</p>`,
-    decisions:[['D8','Cold test-writer; behavioral level; no unit tests.'],['D14','Suite on the same branch as the code.']],
-    related:['testq','testrev','coder']
-  },
-  testrev:{
-    kind:'gate', phase:'build', temp:'human', shape:'rect',
-    title:'Human reviews test suite', role:'before any code',
-    status:'In implementation',
-    body:`<p>A human reviews the behavioral suite <strong>before implementation starts</strong>, at the test-only state of the branch. This review lives inside the implementation phase — no separate PR, no new status.</p><p>Reviewing behavioral (not unit) tests is what makes this possible: you can meaningfully review tests for code that doesn't exist yet only when they assert behavior, not internal seams.</p>`,
-    decisions:[['D8','Suite reviewed pre-impl, inside the phase.'],['D14','Reviewed at the test-only commit on the branch.']],
-    related:['testwriter','coder']
+    body:`<p>The plan is approved and merged; the plan phase is done. The human sets <em>Ready for implementation</em> and the build phase may begin.</p><p>This single human action also <strong>ratifies the planner's test strategy</strong> — whether tests are written, at what altitude, and the must-cover cases the coder must cover.</p>`,
+    decisions:[['D33','Test strategy ratified here.']],
+    related:['planrev','coder']
   },
   coder:{
     kind:'proc', phase:'build', temp:'warm', shape:'rect',
-    title:'Coding agent implements spec', role:'warm · builds the code',
+    title:'Coding agent implements spec + tests', role:'warm · builds the code',
     status:'In implementation',
-    body:`<p>The coder implements the spec — against a red behavioral suite where one exists — and writes its own <strong>unit-level tests</strong> for the seams it creates (warm and cheap: it's testing structure it is actively building).</p><p>If it cannot get the behavioral suite green after its retry cap, it stops and raises <em>Needs attention</em> rather than looping. A merge conflict from concurrent work gets one automated rebase attempt before the same escalation.</p>`,
-    decisions:[['D7','Coder implements; warm unit tests.'],['D8','Coder writes units; cold writer wrote behavior.'],['D12','Stuck → Needs attention (one rebase try for conflicts).']],
-    related:['testrev','polish','stuck']
+    body:`<p>The build phase opens; status becomes <em>In implementation</em> and stays there through everything below (coarse/fine split — the tag tracks the phase, the PR owns the iteration).</p><p>The coder implements the spec and, where the plan's test strategy called for tests, <strong>authors them in-context</strong> against the must-cover list and the seams it builds (warm and cheap: it knows the seams it is creating; authoring the tests cold would only re-derive that intent — the independence lives at the reviewer).</p><p>If it cannot get the tests passing after its retry cap, it stops and raises <em>Needs attention</em> rather than looping. A merge conflict from concurrent work gets one automated rebase attempt before the same escalation.</p>`,
+    decisions:[['D4','Coarse tag vs. fine PR iteration.'],['D33','Coder authors tests warm; reviewer checks them.'],['D12','Stuck → Needs attention (one rebase try for conflicts).']],
+    related:['readyimpl','polish','stuck']
   },
   polish:{
     kind:'proc', phase:'build', temp:'warm', shape:'rect',
@@ -436,41 +412,25 @@ const NODES = {
     kind:'artifact', phase:'build', temp:'auto', shape:'rect',
     title:'Coder opens code PR', role:'implementation surface',
     status:'In implementation',
-    body:`<p>The coder opens a GitHub PR for the code. It carries the whole red→green history — the behavioral suite as the first commits, implementation on top.</p><p>Opening the PR triggers CI.</p><p>Like the plan PR, it is native-linked to the work item and carries an <em>AIND-LINKS</em> block — here also including the plan-PR URL — so the cold reviewer and E2E agent can resolve the spec and work item from the PR alone (D17).</p>`,
-    decisions:[['D14','One PR carries red→green; tests + code together.'],['D17','Native link + AIND-LINKS block (incl. plan-PR URL).']],
+    body:`<p>The coder opens a GitHub PR for the code — implementation plus any tests the plan's strategy called for.</p><p>Opening the PR triggers CI.</p><p>Like the plan PR, it is native-linked to the work item and carries an <em>AIND-LINKS</em> block — here also including the plan-PR URL — so the cold reviewer can resolve the spec and work item from the PR alone (D17).</p>`,
+    decisions:[['D17','Native link + AIND-LINKS block (incl. plan-PR URL).']],
     related:['polish','ci']
   },
   ci:{
     kind:'gate', phase:'build', temp:'ci', shape:'diamond',
     title:'CI gates', role:'objective checks',
     status:'In implementation',
-    body:`<p>CI runs the objective gates: build, lint, coverage, security, and the test suite — the cold writer's behavioral tests plus the coder's unit tests. (Until the testing strategy was defined, CI's test gate had nothing behind it.)</p><p>A failure routes back to the coder like any other. A pass moves to the live-test question.</p>`,
-    decisions:[['D8','CI test gate now runs behavioral + unit suites.']],
-    related:['codepr','coder','e2eq']
-  },
-  e2eq:{
-    kind:'branch', phase:'build', temp:'auto', shape:'diamond',
-    title:'Plan calls for live tests?', role:'planner-gated',
-    status:'In implementation',
-    body:`<p>If the plan called for a live/end-to-end test, a pre-merge blocking gate runs on the code PR. If not, the flow goes straight to code review.</p><p>The two test recommendations are orthogonal — a backend story might get spec tests but no live test; a UI change the reverse.</p>`,
-    decisions:[['D9','Optional, planner-gated, pre-merge live gate.']],
-    related:['ci','e2e','review']
-  },
-  e2e:{
-    kind:'gate', phase:'build', temp:'cold', shape:'rect',
-    title:'E2E gate: agent or manual', role:'live test · pre-merge',
-    status:'In implementation',
-    body:`<p>The running application is exercised through user-visible scenarios tied to the ACs; a failure blocks merge. How the gate is cleared is left per-project because running the app is inherently per-repo.</p><p><strong>In current scope only the manual path is available:</strong> a developer runs the app locally and signals the pass in the PR. The automated cold-E2E-agent path is deferred — it needs the descoped automation layer and a deployment/preview story.</p>`,
-    decisions:[['D9','Cold E2E agent OR manual developer pass.'],['D15','Manual path now; automated path deferred.']],
-    related:['e2eq','coder','review']
+    body:`<p>CI runs the objective gates: build, lint, coverage, security, and the test suite the coder authored.</p><p>A failure routes back to the coder like any other. A pass moves to code review.</p>`,
+    decisions:[['D33','Coder-authored tests run in CI.']],
+    related:['codepr','coder','review']
   },
   review:{
     kind:'gate', phase:'build', temp:'cold', shape:'diamond',
-    title:'Reviewer agent reviews diff', role:'code gate · GATE 3',
+    title:'Reviewer agent reviews diff + tests', role:'code gate · GATE 3',
     status:'In implementation',
-    body:`<p><strong>The third gate.</strong> A <strong>cold</strong> reviewer — separate invocation, re-grounded only from the PR diff, merged spec, and project rules, never the coder's transcript. Independence is enforced structurally, not by instruction.</p><p>Where a behavioral suite exists, conformance is partly enforced by red→green, so the reviewer refocuses on what tests can't express — coding style, auth, logging, and other cross-cutting concerns — plus spec edge cases the suite missed. It also flags any unexplained change to the behavioral test files.</p><p>Given only the PR, it resolves the spec and work item by reading the <em>AIND-LINKS</em> block in the PR body — no ADO round-trip needed. If a stored link and a derived guess disagree, the stored link wins and it flags the mismatch (D17).</p>`,
-    decisions:[['D7','Cold reviewer; structural independence.'],['D8','Reviewer refocuses on cross-cutting concerns.'],['D14','Flags unexplained test-file changes.'],['D17','Resolves spec/work item via AIND-LINKS.']],
-    related:['e2e','fix','escalate','merged']
+    body:`<p><strong>The third gate.</strong> A <strong>cold</strong> reviewer — separate invocation, re-grounded only from the PR diff, merged spec, and project rules, never the coder's transcript. Independence is enforced structurally, not by instruction.</p><p>Because the coder authored its own tests, the reviewer is also <strong>the independence gate on the tests</strong> (D33): <em>coverage</em> — every must-cover case has a test (blocking); <em>fidelity</em> — each test asserts the <strong>spec'd</strong> outcome, not whatever the code does, so a green suite is never taken as evidence (blocking; catches assert-to-bug); <em>meaningfulness</em> — tautological or padded tests are flagged as non-blocking suggestions. It also owns what tests can't express: coding style, auth, logging, and other cross-cutting concerns.</p><p>Given only the PR, it resolves the spec and work item by reading the <em>AIND-LINKS</em> block in the PR body — no ADO round-trip needed. If a stored link and a derived guess disagree, the stored link wins and it flags the mismatch (D17).</p>`,
+    decisions:[['D7','Cold reviewer; structural independence.'],['D33','Reviewer is the independence gate on the coder\'s tests.'],['D17','Resolves spec/work item via AIND-LINKS.']],
+    related:['ci','fix','escalate','merged']
   },
   fix:{
     kind:'proc', phase:'build', temp:'warm', shape:'rect',
@@ -510,7 +470,7 @@ const NODES = {
     kind:'artifact', phase:'dream', temp:'warm', shape:'rect',
     title:'Lessons-learned records', role:'warm emission · every agent',
     status:'No per-story tag — cross-story',
-    body:`<p>Every automated agent — intake, planner, test-writer, coder, polish, reviewer, E2E — ends its session by emitting a structured <strong>lessons-learned record</strong>: what it tried, where it iterated and why, and what it would do differently.</p><p>This emission is deliberately <strong>warm</strong> — the agent reflecting on its own run, the only party that knows <em>why</em> it did what it did. Warm self-report is fine here because emission only contributes raw signal; it does not <strong>decide</strong> anything. (That is the same reason warm self-grading is forbidden for <em>gating</em> but allowed for <em>emission</em>.)</p><p>These records accumulate across many stories and are the raw material the dreamer synthesises.</p>`,
+    body:`<p>Every automated agent — intake, planner, coder, polish, reviewer — ends its session by emitting a structured <strong>lessons-learned record</strong>: what it tried, where it iterated and why, and what it would do differently.</p><p>This emission is deliberately <strong>warm</strong> — the agent reflecting on its own run, the only party that knows <em>why</em> it did what it did. Warm self-report is fine here because emission only contributes raw signal; it does not <strong>decide</strong> anything. (That is the same reason warm self-grading is forbidden for <em>gating</em> but allowed for <em>emission</em>.)</p><p>These records accumulate across many stories and are the raw material the dreamer synthesises.</p>`,
     decisions:[['D16','Warm per-agent emission; raw signal only.']],
     related:['dreamer','planner','coder','review']
   },
@@ -518,7 +478,7 @@ const NODES = {
     kind:'proc', phase:'dream', temp:'dream', shape:'rect',
     title:'Dreamer synthesises lessons', role:'cold · cross-story',
     status:'No per-story tag — cross-story',
-    body:`<p>On a regular cadence, a <strong>cold dreamer agent</strong> reviews the accumulated lessons-learned records and proposes improvements. It is <strong>cold</strong> — a separate invocation re-grounded only from the emitted lessons plus artifacts, never any agent's running context — the same re-grounding contract as the reviewer, test-writer, and E2E agent.</p><p>The phase's shape is <strong>reflect-warm / synthesise-cold</strong>: warmth where it is cheap (an agent reporting its own run), independence where it counts (deciding whether a lesson is a real, recurring pattern or a one-off). The dreamer's coldness is what keeps the synthesis of those warm reports honest.</p><p><strong>Cadence</strong> is left open at the framework level — e.g. every X <em>Implementation complete</em> items; the exact number is a tuning detail, like the retry-cap N.</p>`,
+    body:`<p>On a regular cadence, a <strong>cold dreamer agent</strong> reviews the accumulated lessons-learned records and proposes improvements. It is <strong>cold</strong> — a separate invocation re-grounded only from the emitted lessons plus artifacts, never any agent's running context — the same re-grounding contract as the reviewer.</p><p>The phase's shape is <strong>reflect-warm / synthesise-cold</strong>: warmth where it is cheap (an agent reporting its own run), independence where it counts (deciding whether a lesson is a real, recurring pattern or a one-off). The dreamer's coldness is what keeps the synthesis of those warm reports honest.</p><p><strong>Cadence</strong> is left open at the framework level — e.g. every X <em>Implementation complete</em> items; the exact number is a tuning detail, like the retry-cap N.</p>`,
     decisions:[['D16','Cold dreamer; reflect-warm / synthesise-cold; cadence left open.']],
     related:['emithub','dreampr','parklot']
   },
@@ -564,28 +524,23 @@ const L = {
   planrev:    {x:SPINE,y:432, w:168,h:88, diamond:true},
   reroute:    {x:205, y:506, w:178,h:58, align:'l'},
   readyimpl:  {x:SPINE,y:560, w:220,h:50},
-  testq:      {x:SPINE,y:652, w:182,h:90, diamond:true},
-  testwriter: {x:205, y:665, w:196,h:64, align:'l'},
-  testrev:    {x:205, y:752, w:196,h:50, align:'l'},
-  coder:      {x:SPINE,y:782, w:216,h:66},
-  polish:     {x:SPINE,y:884, w:216,h:52},
-  stuck:      {x:775, y:783, w:172,h:64, align:'r'},
-  codepr:     {x:SPINE,y:980, w:216,h:50},
-  ci:         {x:SPINE,y:1074,w:168,h:88, diamond:true},
-  e2eq:       {x:SPINE,y:1200,w:182,h:90, diamond:true},
-  e2e:        {x:205, y:1213,w:196,h:64, align:'l'},
-  review:     {x:SPINE,y:1332,w:176,h:94, diamond:true},
-  fix:        {x:190, y:1346,w:188,h:52, align:'l'},
-  escalate:   {x:775, y:1348,w:172,h:62, align:'r'},
-  merged:     {x:SPINE,y:1470,w:200,h:48},
+  coder:      {x:SPINE,y:656, w:216,h:66},
+  stuck:      {x:775, y:657, w:172,h:64, align:'r'},
+  polish:     {x:SPINE,y:760, w:216,h:52},
+  codepr:     {x:SPINE,y:856, w:216,h:50},
+  ci:         {x:SPINE,y:952, w:168,h:88, diamond:true},
+  review:     {x:SPINE,y:1080,w:176,h:94, diamond:true},
+  fix:        {x:190, y:1094,w:188,h:52, align:'l'},
+  escalate:   {x:775, y:1096,w:172,h:62, align:'r'},
+  merged:     {x:SPINE,y:1220,w:200,h:48},
   // ---- dreaming phase: a horizontal row below the build spine (non-linear) ----
-  emithub:    {x:120, y:1640,w:188,h:66, align:'c'},
-  dreamer:    {x:368, y:1640,w:188,h:66, align:'c'},
-  dreampr:    {x:606, y:1640,w:176,h:66, align:'c'},
-  dreamdecide:{x:830, y:1636,w:178,h:96, diamond:true},
-  parklot:    {x:368, y:1762,w:200,h:60, align:'c'}
+  emithub:    {x:120, y:1392,w:188,h:66, align:'c'},
+  dreamer:    {x:368, y:1392,w:188,h:66, align:'c'},
+  dreampr:    {x:606, y:1392,w:176,h:66, align:'c'},
+  dreamdecide:{x:830, y:1388,w:178,h:96, diamond:true},
+  parklot:    {x:368, y:1514,w:200,h:60, align:'c'}
 };
-const CANVAS_H = 1850;
+const CANVAS_H = 1600;
 
 /* edges: [from,to, type, label, side, cat]
    type: 'flow' normal, 'loop' dashed back-edge
@@ -598,21 +553,12 @@ const EDGES = [
   ['planner','planpr',{route:'V'}],
   ['planpr','planrev',{route:'V'}],
   ['planrev','readyimpl',{route:'V',label:'approve'}],
-  ['readyimpl','testq',{route:'V'}],
-  ['testq','coder',{route:'V',label:'no'}],          // spec-tests? no -> straight to coder
+  ['readyimpl','coder',{route:'V'}],
   ['coder','polish',{route:'V'}],
   ['polish','codepr',{route:'V'}],
   ['codepr','ci',{route:'V'}],
-  ['ci','e2eq',{route:'V',label:'pass'}],
-  ['e2eq','review',{route:'V',label:'no'}],           // live? no -> straight to reviewer
+  ['ci','review',{route:'V',label:'pass'}],           // CI passes -> straight to reviewer
   ['review','merged',{route:'V',label:'approve'}],
-
-  // ---- forward side-trips to LEFT nodes (out, down, back) using a left re-join lane ----
-  ['testq','testwriter',{route:'toLeft',label:'yes'}],   // diamond -> left node
-  ['testwriter','testrev',{route:'leftStack'}],          // left node -> left node (straight down)
-  ['testrev','coder',{route:'fromLeft',lane:340,enterY:798}],       // enters coder left-upper
-  ['e2eq','e2e',{route:'toLeft',label:'yes'}],
-  ['e2e','review',{route:'downToReviewTop',label:'pass'}],
 
   // ---- forward side-trips to RIGHT nodes ----
   ['review','escalate',{route:'toRight',label:'3× no',cat:'rework'}],
@@ -633,8 +579,7 @@ const EDGES = [
   // ---- FAIL loops (amber) ----
   ['coder','stuck',{route:'toRightLevel',cat:'fail',label:'stuck'}],
   ['stuck','coder',{route:'fromRightLevel',cat:'fail',label:'resolved'}],
-  ['ci','coder',{route:'loopUpLeft',cat:'fail',lane:80,enterY:834,label:'fail'}],   // inner lane -> bottom entry
-  ['e2e','coder',{route:'loopUpLeft',cat:'fail',lane:55,enterY:816,label:'fail'}],   // outer lane -> middle entry
+  ['ci','coder',{route:'loopUpLeft',cat:'fail',lane:80,enterY:708,label:'fail'}],   // CI fail -> back to coder
 
   // ---- DREAMING PHASE (purple) ----
   // build phase hands its exhaust down into the emission hub
@@ -677,8 +622,8 @@ function buildSVG(){
 
   // phase swimlanes — full-width tinted bands BEHIND everything (can't be crossed)
   s += phaseBand('PLAN PHASE', 100, 522, 'var(--plan)');
-  s += phaseBand('BUILD PHASE', 600, 1518, 'var(--build)');
-  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1596, 1836, 'var(--dream)');
+  s += phaseBand('BUILD PHASE', 600, 1300, 'var(--build)');
+  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1340, 1580, 'var(--dream)');
 
   // edges (under nodes, over the bands)
   EDGES.forEach(e=> s += renderEdge(e));
