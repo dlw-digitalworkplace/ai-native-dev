@@ -115,6 +115,14 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   a reviewer that can't ground returns `CANNOT-REVIEW` → the coder raises `Needs attention` (D12). New
   plugin script: `aind-review-pr.sh` (`fetch`/`digest`/`summary`/`thread`/`resolve`/`reply`). **Scope
   ends at reviewer-approval or human-tiebreak** — no merge, no terminal tag.
+  **Reviewer does not run build/lint/test (D35, 2026-07-09, prompt-only fix).** The reviewer had
+  `Bash` (for `aind-review-pr.sh`) and was told to read the project skills, but the prompt never
+  said whether to *run* their build/lint/test commands — so it improvised and re-ran them every
+  pass, duplicating the coder's pre-PR A6 gate up to 3×. `agents/reviewer.md` now states the
+  boundary (Constraint §7 + skills-step/Bash-line clarifiers): the reviewer **reviews by reading the
+  diff**; a code-won't-build / test-won't-pass is a *finding to report* (`file:line`), not something
+  it executes. The coder still runs build+tests (the objective gate lives with it, D34); a green
+  suite is never the reviewer's evidence anyway (D33).
 - **Build phase — merge gate + terminal completion built & live-validated (D27, 2026-07-01).**
   The build phase closes out with the human-run command **`/aind:complete <id> [pr]`** — the twin of
   `/aind:approve-plan`. It **verifies the code PR is MERGED (refuses otherwise)**, writes the terminal

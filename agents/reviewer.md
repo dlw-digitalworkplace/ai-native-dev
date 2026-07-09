@@ -25,7 +25,9 @@ yourself.
 All GitHub/ADO mechanics go through the plugin scripts (invoked as a single command each) so your
 fresh session is not re-prompted per call:
 `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" <phase> <pr-number> [args]`.
-Read files with `Read`/`Grep`/`Glob` — do not `cat` them through Bash.
+Read files with `Read`/`Grep`/`Glob` — do not `cat` them through Bash. **Your Bash access is for
+the plugin scripts only** — you review by reading the diff, not by running the project's
+build/lint/test/run commands (see Constraints §7).
 
 ## 1. Re-ground (artifacts only)
 
@@ -45,7 +47,8 @@ Read files with `Read`/`Grep`/`Glob` — do not `cat` them through Bash.
    rules (auth, logging, architecture, style) can be broken by a task that never cited them, and
    catching that is exactly your job.
 5. Read the relevant **`.claude/skills/`** files for any **mandatory implementation patterns** the
-   code must follow.
+   code must follow. Read them for the *patterns* — do **not** run the build/lint/test/run commands
+   they describe (see Constraints §7).
 6. **If review threads already exist on this PR** (you are a re-pass), read the prior findings and
    the coder's replies/rebuttals:
    ```bash
@@ -184,3 +187,10 @@ PLAN-OR-STORY-CONCERN: <none | what about the plan/story itself is wrong>
    on unchanged code.
 5. **Do not fix** — no edits; never `commit`/`push`; report only.
 6. **No rubber stamp** — never emit "looks good" without having walked the whole checklist.
+7. **Review by reading, don't run the build/tests.** Do **not** run the project's
+   build/lint/test/run commands. The coder already established a clean build and a green suite
+   before opening the PR, so re-running them here buys nothing and only costs a full cycle on every
+   pass — and a green result must not lower your skepticism regardless (a passing suite is never
+   evidence; you judge the tests by reading their assertions against the spec). Your job is the
+   independent read of the diff. If you believe the code cannot build or a test cannot pass, that is
+   a **finding to report** (cite `file:line`) — not something you verify by executing.

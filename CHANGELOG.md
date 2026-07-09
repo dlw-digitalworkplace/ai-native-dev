@@ -9,6 +9,26 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.11.1] — 2026-07-09
+
+### Fixed
+- **The cold reviewer no longer runs the project's build / lint / test commands** (D35). The
+  reviewer has `Bash` access (needed for the `aind-review-pr.sh` mechanics) and is told to read the
+  project's `.claude/skills/`, but the prompt never said whether to *run* the build/lint/test
+  commands those skills describe — so it improvised and re-ran them on every review pass, redundantly
+  duplicating the coder's pre-PR build+tests gate up to 3× per story.
+  - `agents/reviewer.md` now states the boundary: the reviewer **reviews by reading the diff** and
+    does **not** run build/lint/test/run (new **Constraint §7**, plus clarifiers on the
+    skills-reading step and the Bash-usage note). A code-won't-build / test-won't-pass is a
+    **finding to report** (`file:line`), not something the reviewer executes.
+  - The coder still runs build **and** tests before opening the PR — the objective build-green gate
+    lives with the coder (D34) — and a green suite is never the reviewer's evidence regardless (D33),
+    so re-running bought nothing and only cost a full cycle each pass.
+
+### Notes
+- **Prompt-only change — no scripts touched.** Docs updated in lockstep: `design-log.md` (D35) and
+  `CLAUDE.md`.
+
 ## [0.11.0] — 2026-07-09
 
 ### Changed
