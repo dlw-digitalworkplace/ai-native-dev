@@ -27,28 +27,29 @@
 # human's merge gate.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 ID="${1:-}"
 PHASE="${2:-}"
 [[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-plan-pr.sh <work-item-id> <status|begin|reply|push|cleanup> [args]"
-aind_require_env AIND_GH_REPO
-aind_require_cmd git gh
+aind_require_cmd git
+forge_require
 
 BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
 
 # Print the number of the open plan PR for this work item (empty if none).
 pr_number() {
-  gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state open \
-    --json number --jq '.[0].number // empty'
+  local row
+  row="$(forge_pr_list open "$BRANCH")"; row="${row%%$'\n'*}"
+  printf '%s' "$row" | cut -f2
 }
 
 case "$PHASE" in
   status)
     n="$(pr_number)"
     [[ -n "$n" ]] || { echo "aind: no open plan PR for work item $ID (branch $BRANCH)"; exit 9; }
-    url="$(gh pr view "$n" --repo "$AIND_GH_REPO" --json url --jq .url)"
+    url="$(forge_pr_meta "$n" | cut -f2)"
     echo "$n $url"
     ;;
 
@@ -66,30 +67,10 @@ case "$PHASE" in
     echo
     echo "===== REVIEW FEEDBACK — address each [OPEN] item in the plan, reply on its thread (clarify or 'addressed'), then run: push ====="
     echo "--- PR comments ---"
-    gh pr view "$n" --repo "$AIND_GH_REPO" --json comments \
-      --jq '.comments[] | "[\(.author.login)] \(.body)"' 2>/dev/null || true
+    forge_comment_list "$n"
     echo
     echo "--- Review threads (assumptions / inline comments) ---"
-    owner="${AIND_GH_REPO%%/*}"; repo="${AIND_GH_REPO##*/}"
-    gh api graphql -f owner="$owner" -f repo="$repo" -F pr="$n" -f query='
-      query($owner:String!,$repo:String!,$pr:Int!){
-        repository(owner:$owner,name:$repo){
-          pullRequest(number:$pr){
-            reviewThreads(first:100){ nodes{
-              id
-              isResolved
-              path
-              line
-              comments(first:50){ nodes{ author{login} body } }
-            }}
-          }
-        }
-      }' --jq '
-      .data.repository.pullRequest.reviewThreads.nodes[]
-      | (if .isResolved then "[RESOLVED]" else "[OPEN]" end) as $state
-      | "\($state) thread=\(.id) \(.path):\(.line // "?")\n"
-        + ([.comments.nodes[] | "    \(.author.login): \(.body)"] | join("\n"))
-      ' 2>/dev/null || echo "(could not read review threads)"
+    forge_thread_list "$n"
     echo
     echo "================================================================================="
     ;;
@@ -104,11 +85,12 @@ case "$PHASE" in
     git push origin "$BRANCH" --quiet
     n="$(pr_number)"
     if [[ -n "$SUMMARY" && -n "$n" ]]; then
-      SUMMARY="${SUMMARY}$(aind_gh_signature planner)"   # plan revision is always the planner
-      printf '%s\n' "$SUMMARY" | gh pr comment "$n" --repo "$AIND_GH_REPO" --body-file -
+      SUMMARY="${SUMMARY}$(aind_pr_signature planner)"   # plan revision is always the planner
+      _tmp="$(mktemp)"; printf '%s\n' "$SUMMARY" > "$_tmp"
+      forge_comment "$n" "$_tmp"; rm -f "$_tmp"
     fi
     url=""
-    [[ -n "$n" ]] && url="$(gh pr view "$n" --repo "$AIND_GH_REPO" --json url --jq .url 2>/dev/null || true)"
+    [[ -n "$n" ]] && url="$(forge_pr_meta "$n" | cut -f2 2>/dev/null || true)"
     echo "aind: revised plan pushed to PR ${n:+#$n} ${url}"
     ;;
 
@@ -118,20 +100,17 @@ case "$PHASE" in
     BODY="${4:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty reply body"
-    BODY="${BODY}$(aind_gh_signature planner)"   # plan-PR thread replies are always the planner
-    gh api graphql -f threadId="$THREAD_ID" -f body="$BODY" -f query='
-      mutation($threadId:ID!,$body:String!){
-        addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$threadId, body:$body}){
-          comment{ url }
-        }
-      }' --jq '.data.addPullRequestReviewThreadReply.comment.url'
+    BODY="${BODY}$(aind_pr_signature planner)"   # plan-PR thread replies are always the planner
+    n="$(pr_number)"
+    _tmp="$(mktemp)"; printf '%s\n' "$BODY" > "$_tmp"
+    forge_reply "${n:-0}" "$THREAD_ID" "$_tmp"; rm -f "$_tmp"
     echo "aind: replied to thread $THREAD_ID (not resolved — resolution is the human's gate)"
     ;;
 
   cleanup)
-    info="$(gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state all --json number,state --jq '.[0] // empty | "\(.number) \(.state)"' 2>/dev/null || true)"
-    [[ -n "$info" ]] || aind_die "no plan PR found for $BRANCH — refusing to delete the branch (nothing proves it was merged)"
-    num="${info%% *}"; st="${info##* }"
+    row="$(forge_pr_list all "$BRANCH")"; row="${row%%$'\n'*}"
+    [[ -n "$row" ]] || aind_die "no plan PR found for $BRANCH — refusing to delete the branch (nothing proves it was merged)"
+    st="$(printf '%s' "$row" | cut -f1)"; num="$(printf '%s' "$row" | cut -f2)"
     [[ "$st" == "MERGED" ]] || aind_die "plan PR #$num for $BRANCH is '$st', not MERGED — refusing to delete the plan branch (merge it first)"
     echo "aind: plan PR #$num is MERGED — cleaning up $BRANCH"
     if git push origin --delete "$BRANCH" --quiet 2>/dev/null; then

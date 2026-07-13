@@ -1,8 +1,14 @@
 # Getting started
 
-How to set up and use AIND on an existing GitHub codebase. The smart order is **onboard first**
+How to set up and use AIND on an existing codebase — with its code + pull requests on **GitHub or
+Azure DevOps Repos** (work items always live in Azure DevOps). The smart order is **onboard first**
 (it only reads your code and writes draft config — no auth needed — then tells you exactly
 what's left to set up), then wire up the auth/config the flow needs.
+
+> **Code host.** AIND stores the plan/code PRs on GitHub *or* Azure DevOps Repos, chosen per-project
+> with `AIND_CODE_HOST` (`github` default, or `ado`). `/aind:onboard` detects it from your git
+> remote; `/aind:kickstart` asks. Everything below that says "GitHub" applies to the GitHub host;
+> the ADO-host equivalents are called out inline.
 
 > **Command names are namespaced.** Plugin slash commands are prefixed with the plugin name:
 > `/aind:onboard`, `/aind:kickstart`, `/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`. Bare `/onboard` won't
@@ -10,7 +16,7 @@ what's left to set up), then wire up the auth/config the flow needs.
 
 In the commands below, replace `<...>` placeholders with your own values: `<your-ado-org>` /
 `<your-ado-project>` = your Azure DevOps org and project; `<owner>/<repo>` = **your project's**
-GitHub repo (the codebase you're onboarding).
+GitHub repo (on the GitHub code host), or `<your-ado-repo>` = your ADO repo name (on the ADO code host).
 
 ---
 
@@ -19,17 +25,24 @@ GitHub repo (the codebase you're onboarding).
 Most of these are checked automatically by `/aind:onboard`'s preflight probe, which reports
 what's missing.
 
-- **Tools:** `az` (+ the `azure-devops` extension), `gh`, `git`, `curl`, `jq`, `bash`.
+- **Tools:** `az` (+ the `azure-devops` extension), `git`, `curl`, `jq`, `bash` — always; plus the
+  code-host CLI: **`gh`** on the GitHub host, or `az repos` (the `azure-devops` extension) on the ADO host.
   - Install `jq`: `winget install jqlang.jq` (Windows) · `brew install jq` (macOS) · `apt install jq` (Linux).
-- **GitHub auth:** `gh` authenticated as an account that can access your repo — verify with
-  `gh repo view <owner>/<repo>`. (`gh auth login` / `gh auth switch` if needed.)
+- **Code-host auth:**
+  - *GitHub host:* `gh` authenticated as an account that can access your repo — verify with
+    `gh repo view <owner>/<repo>`. (`gh auth login` / `gh auth switch` if needed.)
+  - *ADO host:* the ADO PAT below just needs **Code (Read & Write)** in addition to Work Items — the
+    forge adapter uses the same PAT for the ADO Repos PR/comment APIs (no separate GitHub auth).
 - **ADO auth:** a Personal Access Token with **Work Items (Read & Write)** + **Code (Read & Write)**.
   It goes in `.claude/aind.env` as `AZURE_DEVOPS_EXT_PAT` (see step 3) — the scripts read it from there.
-- **Azure Boards ↔ GitHub integration** connected, so a PR mentioning `AB#<id>` links to the work
-  item (D17). Confirm with a test PR.
-- **Branch protection** on your integration branch: enable **"require conversation resolution
-  before merging"** (D5) — this is what makes the planner's assumption threads block the plan-PR
-  merge until you resolve them.
+- **Native work-item linking:**
+  - *GitHub host:* the **Azure Boards ↔ GitHub integration** connected, so a PR mentioning `AB#<id>`
+    links to the work item (D17). Confirm with a test PR.
+  - *ADO host:* nothing to set up — the PR is linked to the work item natively (same platform).
+- **Comment-resolution merge gate** on your integration branch — this is what makes the planner's
+  assumption threads block the plan-PR merge until you resolve them (D5):
+  - *GitHub host:* enable branch protection **"require conversation resolution before merging"**.
+  - *ADO host:* add a branch policy that **requires all comments to be resolved** before completion.
 - **Test suite in CI (recommended once your project has one).** The per-story gates check tests
   *before* a code PR is opened — the coder builds and runs the suite **green**, and the reviewer
   reads the tests for coverage and fidelity — but nothing re-runs the suite on the **merged**
@@ -142,8 +155,9 @@ commands it finds, and a copy of the intake rubric. It finishes with a **preflig
 
 ```bash
 cp .claude/aind.env.sample .claude/aind.env     # onboard placed the sample
-# edit .claude/aind.env: set AIND_ADO_ORG, AIND_ADO_PROJECT, AIND_GH_REPO,
-#   AIND_INTEGRATION_BRANCH, and AZURE_DEVOPS_EXT_PAT
+# edit .claude/aind.env: set AIND_ADO_ORG, AIND_ADO_PROJECT, AIND_CODE_HOST (github|ado),
+#   AIND_GH_REPO (github host) or AIND_ADO_REPO (ado host), AIND_INTEGRATION_BRANCH,
+#   and AZURE_DEVOPS_EXT_PAT
 echo ".claude/aind.env" >> .gitignore           # holds the secret PAT — never commit it
 ```
 

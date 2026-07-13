@@ -49,8 +49,10 @@ the project will handle it in a specific or non-standard way a planner must resp
 
 ### 3. Elicit — operational level *(seeds CLAUDE.md config + skills)*
 Cover: the **repo / branch strategy** (integration branch name, branch naming); the **ADO org +
-project** and the **GitHub repo** (which may not exist yet — that's fine, note it as a prerequisite);
-and the **intended dev workflows** and CI/CD plans. Build / test / run tooling is the common core,
+project** (work items always live in ADO); the **code host** — where the code + pull requests will
+live, **GitHub** or **Azure DevOps Repos** — and the matching repo target (the GitHub `<owner>/<repo>`
+or the ADO repo name), which may not exist yet (that's fine, note it as a prerequisite); and the
+**intended dev workflows** and CI/CD plans. Build / test / run tooling is the common core,
 but ask about any other scriptable, repeatable workflow the project will have — deploy, DB
 migrations, dev/test data seeding, codegen/scaffolding, formatting, starting local dependencies
 (docker-compose), generating an API client, e2e. These are usually *intentions* on a greenfield
@@ -60,8 +62,8 @@ project — capture them as such (and as decided-vs-not-yet-decided, per step 4)
 Aim for **comprehensive coverage, not maximum question count.** Group questions by theme and ask in
 rounds; let the user skip or defer. Adapt — don't ask about a test framework the user just said is
 undecided; don't re-ask what a design doc answered. Use **`AskUserQuestion`** for the enumerable
-choices (language, test framework, branch strategy, DB, hosting) and prose for the open-ended domain
-description. For **every** unresolved point, decide explicitly: **decided** → it can become a rule;
+choices (language, test framework, branch strategy, DB, hosting, **code host: GitHub vs Azure DevOps
+Repos**) and prose for the open-ended domain description. For **every** unresolved point, decide explicitly: **decided** → it can become a rule;
 **not-yet-decided** → it becomes a `TODO` / open question in the draft, never a fabricated rule. When
 in doubt, ask one more question rather than guess.
 
@@ -88,9 +90,10 @@ and note it.
    open questions — no empty stubs for common categories.
 2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`. Keep the
    **AIND operational rules** block verbatim. Fill the config table with what's decided
-   (`AIND_INTEGRATION_BRANCH`, `AIND_GH_REPO` if the repo exists) and leave the rest as placeholders.
-   Replace the `@rules/*` placeholders with one `@rules/<area>.md` line for **exactly** the files you
-   created — no more, no fewer.
+   (`AIND_INTEGRATION_BRANCH`; `AIND_CODE_HOST` from the code-host choice, and the matching repo var —
+   `AIND_GH_REPO` for GitHub or `AIND_ADO_REPO` for ADO — if that repo target is known; set only the
+   one that matches the chosen host) and leave the rest as placeholders. Replace the `@rules/*`
+   placeholders with one `@rules/<area>.md` line for **exactly** the files you created — no more, no fewer.
 3. **`.claude/skills/<name>/SKILL.md`** — **placeholder stubs** for the intended dev workflows.
    Build / test / run-app / lint are the common core, but don't stop there — stub any scriptable,
    repeatable workflow the project intends (e.g. `deploy`, `migrate`, `seed`, `codegen` / `scaffold`,
@@ -117,8 +120,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
   decision / no evidence yet), plus the **open questions / TODOs** the drafts still carry.
 - The skills you stubbed and the intended command behind each (all marked unverified).
 - The preflight status, with `[FAIL]`/`[MANUAL]` items called out as the team's setup steps (create
-  the GitHub repo / ADO project, ADO PAT, gh access, jq, Azure Boards↔GitHub integration, branch
-  protection).
+  the ADO project and the code-host repo, ADO PAT, code-host access — `gh` for GitHub or `az repos`
+  for ADO — jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub
+  integration and the branch policy requiring comment resolution before merge).
 - A clear next-steps note: **these are intended-design drafts — review and edit, then commit**; fill
   `.claude/aind.env`; create the first stories and run `/aind:intake <id>`; and **once real code
   exists, run `/aind:onboard` to reconcile these drafts against the actual codebase.**

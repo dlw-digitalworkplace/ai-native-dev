@@ -29,23 +29,22 @@
 #   aind-complete.sh cleanup 123 45
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 MODE="${1:-}"
 ID="${2:-}"
 [[ -n "$MODE" && -n "$ID" ]] || aind_die "usage: aind-complete.sh verify|cleanup <work-item-id> [pr-number]"
 [[ "$ID" =~ ^[0-9]+$ ]] || aind_die "work-item id must be numeric, got '$ID'"
-aind_require_env AIND_GH_REPO
-aind_require_cmd gh
+forge_require
 
 # Print "<number> <url> <head-ref>" for PR <n>, only if it is MERGED; otherwise die with its state.
 # Used by the explicit-[pr-number] path and re-used by cleanup's merge re-confirmation.
 merged_pr_line() {
   local n="$1" line state
-  line="$(gh pr view "$n" --repo "$AIND_GH_REPO" --json number,url,state,headRefName \
-    --jq '[(.number|tostring),.url,.headRefName,.state] | @tsv' 2>/dev/null)" \
-    || aind_die "could not read PR #$n from $AIND_GH_REPO (does it exist?)"
+  # forge_pr_meta returns: number \t url \t head \t state
+  line="$(forge_pr_meta "$n" 2>/dev/null)" \
+    || aind_die "could not read PR #$n from the code host (does it exist?)"
   state="$(printf '%s' "$line" | cut -f4)"
   [[ "$state" == "MERGED" ]] \
     || aind_die "PR #$n is '$state', not MERGED — merge the code PR first, then re-run"
@@ -62,7 +61,7 @@ case "$MODE" in
       # Resolve by marker-search (shared helper), then require a single MERGED match.
       cands="$(aind_find_code_prs "$ID")"
       [[ -n "${cands//[$'\n\t ']/}" ]] \
-        || aind_die "no code PR found for AB#$ID in $AIND_GH_REPO — pass the PR number explicitly: aind-complete.sh verify $ID <pr>"
+        || aind_die "no code PR found for AB#$ID on the code host — pass the PR number explicitly: aind-complete.sh verify $ID <pr>"
       merged="$(printf '%s\n' "$cands" | awk -F'\t' '$1=="MERGED"')"
       mcount="$(printf '%s\n' "$merged" | awk 'NF{c++} END{print c+0}')"
       if (( mcount == 0 )); then
@@ -74,7 +73,7 @@ case "$MODE" in
     fi
 
     # Authoritative merge-commit SHA for the completion note (empty if the field is unavailable).
-    sha="$(gh pr view "$num" --repo "$AIND_GH_REPO" --json mergeCommit --jq '.mergeCommit.oid // ""' 2>/dev/null || true)"
+    sha="$(forge_pr_field "$num" mergecommit 2>/dev/null || true)"
     printf '%s %s %s %s\n' "$num" "$url" "$head" "$sha"
     ;;
 

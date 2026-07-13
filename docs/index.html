@@ -259,7 +259,7 @@
     <div class="titlewrap">
       <div class="eyebrow">AI-Native Dev Flow · Plan + Build + Dream</div>
       <h1>One story, <span class="dim">two phases, three gates</span> — plus a dreaming loop</h1>
-      <div class="sub">An agentic pipeline on Azure DevOps + Claude Code + GitHub, with a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
+      <div class="sub">An agentic pipeline on Azure DevOps + Claude Code (or GitHub Copilot CLI), with pull requests on GitHub or Azure DevOps Repos, plus a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
     </div>
     <div class="statuswrap">
       <div class="lbl">AIND status tag</div>
@@ -357,12 +357,12 @@ const NODES = {
     title:'Planner agent', role:'drafts the implementation plan',
     status:'Generating plan',
     body:`<p>On <em>Intake approved</em>, the planner turns the story into an implementation plan — markdown at <em>/plans/&lt;id&gt;/plan.md</em> — and opens it as its own GitHub PR. Status is <em>Generating plan</em> while it works.</p><p>It never blocks waiting for an answer. Where it hits a genuine choice it proceeds on a reasonable assumption and records each assumption / open question <strong>both</strong> under a heading in the plan <strong>and</strong> as an individual resolvable PR review thread — so none can be silently skipped before merge.</p><p>It also records a <strong>test strategy</strong> for the build phase (folded into Testing recommendations + Definition of done): whether the story warrants tests (gated on the project having a test practice), at what altitude, and a conditional must-cover list of edge cases with their expected outcomes. Strategy, never a designed suite.</p><p>Opening the plan PR also establishes the <strong>artifact links</strong> (D17): the PR is native-linked to the work item (Azure Boards ↔ GitHub integration) and carries an <em>AIND-LINKS</em> block in its body. The work-item ID is the join value; branch names are never assumed.</p>`,
-    decisions:[['D5','Plan reviewed as a GitHub PR; assumptions as resolvable threads.'],['D10','Separate plan-PR, merged to the integration branch first.'],['D17','Establishes the work-item↔plan↔PR links.']],
+    decisions:[['D5','Plan reviewed as a PR; assumptions as resolvable threads.'],['D10','Separate plan-PR, merged to the integration branch first.'],['D17','Establishes the work-item↔plan↔PR links.'],['D36','Code host is pluggable: GitHub or Azure DevOps Repos.']],
     related:['intake','planpr','planrev']
   },
   planpr:{
     kind:'artifact', phase:'plan', temp:'auto', shape:'rect',
-    title:'Plan opened as GitHub PR', role:'review surface',
+    title:'Plan opened as a PR', role:'review surface (GitHub or ADO Repos)',
     status:'Plan ready for review',
     body:`<p>The plan PR is the review surface — inline comments, request-changes, revision diffs. Once it is open, status becomes <em>Plan ready for review</em>.</p><p>It is a <strong>separate</strong> PR that merges to the project's integration branch <strong>before any code branch exists</strong>. This is what makes "the merged spec" a frozen, immutable artifact the build phase's cold agents can re-ground from. The merged plan stays in the repo as living documentation.</p><p>The PR is native-linked to the ADO work item and carries an <em>AIND-LINKS</em> block in its body (work-item URL + plan path), so later agents can navigate back from the PR (D17).</p>`,
     decisions:[['D10','Separate plan-PR merged first; frozen spec; living docs.'],['D17','Native link + AIND-LINKS block in the PR body.']],

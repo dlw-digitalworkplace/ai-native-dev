@@ -13,30 +13,23 @@
 # Usage: aind-thread.sh 42 "plans/123/plan.md" 31 planner "Assumed Postgres; confirm vs MySQL?"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 PR="${1:-}"
 PATH_IN_DIFF="${2:-}"
 LINE="${3:-}"
 AGENT="${4:-}"
 [[ -n "$PR" && -n "$PATH_IN_DIFF" && -n "$LINE" && -n "$AGENT" ]] || aind_die "usage: aind-thread.sh <pr-number> <path> <line> <agent> [message]"
-aind_require_env AIND_GH_REPO
-aind_require_cmd gh
+forge_require
 
 if [[ $# -ge 5 ]]; then BODY="$5"; else BODY="$(cat)"; fi
 [[ -n "$BODY" ]] || aind_die "empty thread message"
-BODY="${BODY}$(aind_gh_signature "$AGENT")"
+BODY="${BODY}$(aind_pr_signature "$AGENT")"
 
-# Anchor to the PR head commit so the comment lands on the current diff.
-SHA="$(gh pr view "$PR" --repo "$AIND_GH_REPO" --json headRefOid -q .headRefOid)"
-[[ -n "$SHA" ]] || aind_die "could not resolve head commit for PR $PR"
-
-gh api "repos/${AIND_GH_REPO}/pulls/${PR}/comments" \
-  -f body="$BODY" \
-  -f commit_id="$SHA" \
-  -f path="$PATH_IN_DIFF" \
-  -F line="$LINE" \
-  -f side=RIGHT >/dev/null
+# Post via the forge adapter (it anchors to the PR head commit on the current diff, host-specifically).
+TMP_BODY="$(mktemp)"; trap 'rm -f "$TMP_BODY"' EXIT
+printf '%s' "$BODY" > "$TMP_BODY"
+forge_thread "$PR" "$PATH_IN_DIFF" "$LINE" "$TMP_BODY" >/dev/null
 
 echo "aind: posted resolvable review thread on PR $PR ($PATH_IN_DIFF:$LINE)"

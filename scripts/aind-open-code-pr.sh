@@ -21,8 +21,8 @@
 #   aind-open-code-pr.sh open  123 feat/123-csv-export "Add CSV export to the reports page"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 MODE="${1:-}"
 ID="${2:-}"
@@ -30,7 +30,8 @@ BRANCH="${3:-}"
 [[ -n "$MODE" && -n "$ID" && -n "$BRANCH" ]] \
   || aind_die "usage: aind-open-code-pr.sh start|open <work-item-id> <branch> [pr-title]"
 
-aind_require_cmd git gh
+aind_require_cmd git
+forge_require
 
 # Enforce the branch convention: <type>/<id>-<short-name>. Keeping the id in the branch makes it
 # traceable; the type prefix matches conventional branch naming. (The framework still reaches the
@@ -39,15 +40,15 @@ aind_require_cmd git gh
   || aind_die "branch '$BRANCH' must follow <type>/${ID}-<short-name> (e.g. feat/${ID}-new-component)"
 
 # A code PR already open for this branch means a re-run of the CREATE path, which would conflict on
-# push / gh pr create. Revising an open PR is a separate flow: re-run /aind:implement, which detects
+# push / PR creation. Revising an open PR is a separate flow: re-run /aind:implement, which detects
 # the open PR and enters revise mode (aind-revise-code-pr.sh) instead of opening a second PR.
 code_pr_exists() {
-  [[ -n "$(gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]]
+  [[ -n "$(forge_pr_list open "$BRANCH")" ]]
 }
 
 case "$MODE" in
   start)
-    aind_require_env AIND_GH_REPO AIND_INTEGRATION_BRANCH
+    aind_require_env AIND_INTEGRATION_BRANCH
     code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
     # Don't clobber a dirty working tree: branching off integration with uncommitted tracked
     # changes would drag them onto the new branch. Refuse and let the developer decide — never
@@ -63,7 +64,7 @@ case "$MODE" in
 
   open)
     TITLE="${4:-}"
-    aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_GH_REPO AIND_INTEGRATION_BRANCH
+    aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH
     [[ -n "$TITLE" ]] || TITLE="Implementation for work item ${ID}"
 
     code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
@@ -78,7 +79,8 @@ case "$MODE" in
 
     # Resolve the (now merged) plan PR URL so the code PR's AIND-LINKS can point back to the spec.
     PLAN_BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
-    PLAN_PR_URL="$(gh pr list --repo "$AIND_GH_REPO" --head "$PLAN_BRANCH" --state all --json url --jq '.[0].url // empty')"
+    PLAN_PR_ROW="$(forge_pr_list all "$PLAN_BRANCH")"; PLAN_PR_ROW="${PLAN_PR_ROW%%$'\n'*}"
+    PLAN_PR_URL="$(printf '%s' "$PLAN_PR_ROW" | cut -f3)"
 
     LINKS_BLOCK="$(bash "$SCRIPT_DIR/aind-links.sh" write "$ID" "$PLAN_PR_URL")"
     BODY_FILE="$(mktemp)"
@@ -92,12 +94,7 @@ data contracts, and the definition of done this PR is validated against.
 ${LINKS_BLOCK}
 EOF
 
-    PR_URL="$(gh pr create \
-      --repo "$AIND_GH_REPO" \
-      --base "$AIND_INTEGRATION_BRANCH" \
-      --head "$BRANCH" \
-      --title "Implement: ${TITLE} (AB#${ID})" \
-      --body-file "$BODY_FILE")"
+    PR_URL="$(forge_pr_create "$AIND_INTEGRATION_BRANCH" "$BRANCH" "Implement: ${TITLE} (AB#${ID})" "$BODY_FILE" "$ID")"
 
     echo "aind: opened code PR for work item $ID"
     echo "$PR_URL"

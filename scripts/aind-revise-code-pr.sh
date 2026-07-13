@@ -32,15 +32,15 @@
 #                           scope creep) after confirming the cited source is human-authored.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 ID="${1:-}"
 PHASE="${2:-}"
 [[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-code-pr.sh <work-item-id> <status|begin|push|deviation> [args]"
 [[ "$ID" =~ ^[0-9]+$ ]] || aind_die "work-item id must be numeric, got '$ID'"
-aind_require_env AIND_GH_REPO
-aind_require_cmd git gh
+aind_require_cmd git
+forge_require
 
 # Resolve the single OPEN code PR for <id> (or the explicit [pr] if given and OPEN). On success sets
 # R_NUM/R_URL/R_HEAD and returns 0. Returns 1 (none) or 2 (more than one OPEN) without output, so the
@@ -49,8 +49,8 @@ resolve_open() {
   local explicit="${1:-}" line st cands open n
   if [[ -n "$explicit" ]]; then
     [[ "$explicit" =~ ^[0-9]+$ ]] || aind_die "pr-number must be numeric, got '$explicit'"
-    if ! line="$(gh pr view "$explicit" --repo "$AIND_GH_REPO" \
-        --json number,url,state,headRefName --jq '[(.number|tostring),.url,.headRefName,.state]|@tsv' 2>/dev/null)"; then
+    # forge_pr_meta returns: number \t url \t head \t state
+    if ! line="$(forge_pr_meta "$explicit" 2>/dev/null)"; then
       return 1
     fi
     st="$(printf '%s' "$line" | cut -f4)"
@@ -107,8 +107,9 @@ case "$PHASE" in
     if [[ -n "$SUMMARY" ]]; then
       rc=0; resolve_open "" || rc=$?
       if [[ "$rc" -eq 0 ]]; then
-        SUMMARY="${SUMMARY}$(aind_gh_signature coder)"   # revise mode is always the warm coder
-        printf '%s\n' "$SUMMARY" | gh pr comment "$R_NUM" --repo "$AIND_GH_REPO" --body-file -
+        SUMMARY="${SUMMARY}$(aind_pr_signature coder)"   # revise mode is always the warm coder
+        _tmp="$(mktemp)"; printf '%s\n' "$SUMMARY" > "$_tmp"
+        forge_comment "$R_NUM" "$_tmp"; rm -f "$_tmp"
       else
         echo "aind: [WARN] pushed, but could not resolve a single open PR to post the summary comment — skipped" >&2
       fi
@@ -123,7 +124,7 @@ case "$PHASE" in
     [[ "$DPR" =~ ^[0-9]+$ ]] || aind_die "pr-number must be numeric, got '$DPR'"
     START='<!-- AIND-DEVIATIONS:START -->'
     END='<!-- AIND-DEVIATIONS:END -->'
-    body="$(gh pr view "$DPR" --repo "$AIND_GH_REPO" --json body --jq .body 2>/dev/null | tr -d '\r')" \
+    body="$(forge_pr_field "$DPR" body 2>/dev/null | tr -d '\r')" \
       || aind_die "could not read PR #$DPR body"
     line="- ${TEXT} (human: ${CITE})"
     if printf '%s' "$body" | grep -qF "$START"; then
@@ -135,7 +136,7 @@ case "$PHASE" in
         "$body" "$START" "$line" "$END")"
     fi
     tmp="$(mktemp)"; printf '%s\n' "$new" > "$tmp"
-    gh pr edit "$DPR" --repo "$AIND_GH_REPO" --body-file "$tmp" >/dev/null \
+    forge_pr_edit_body "$DPR" "$tmp" \
       || { rm -f "$tmp"; aind_die "could not update PR #$DPR body with the deviation"; }
     rm -f "$tmp"
     echo "aind: recorded directed deviation on PR #$DPR (cite: $CITE)"

@@ -15,14 +15,15 @@
 # Usage: aind-open-plan-pr.sh 123 "Add CSV export to the reports page"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 ID="${1:-}"
 TITLE="${2:-}"
 [[ -n "$ID" ]] || aind_die "usage: aind-open-plan-pr.sh <work-item-id> [pr-title]"
-aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_GH_REPO AIND_INTEGRATION_BRANCH
-aind_require_cmd git gh
+aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH
+aind_require_cmd git
+forge_require
 
 PLAN_PATH="plans/${ID}/plan.md"
 [[ -f "$PLAN_PATH" ]] || aind_die "plan not found at $PLAN_PATH — write the plan before opening the PR"
@@ -32,8 +33,8 @@ BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
 
 # Refuse to clobber an existing plan PR — revisions iterate the same PR via
 # aind-revise-plan-pr.sh, never a second open. (Re-running create here would conflict on the
-# branch push and fail `gh pr create`.)
-if [[ -n "$(gh pr list --repo "$AIND_GH_REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]]; then
+# branch push and fail PR creation.)
+if [[ -n "$(forge_pr_list open "$BRANCH")" ]]; then
   aind_die "a plan PR already exists for $BRANCH — iterate it with aind-revise-plan-pr.sh (revise mode), don't re-open"
 fi
 
@@ -63,12 +64,7 @@ and must be resolved before merge.
 ${LINKS_BLOCK}
 EOF
 
-PR_URL="$(gh pr create \
-  --repo "$AIND_GH_REPO" \
-  --base "$AIND_INTEGRATION_BRANCH" \
-  --head "$BRANCH" \
-  --title "Plan: ${TITLE} (AB#${ID})" \
-  --body-file "$BODY_FILE")"
+PR_URL="$(forge_pr_create "$AIND_INTEGRATION_BRANCH" "$BRANCH" "Plan: ${TITLE} (AB#${ID})" "$BODY_FILE" "$ID")"
 
 echo "aind: opened plan PR for work item $ID"
 echo "$PR_URL"

@@ -9,6 +9,49 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.13.0] — 2026-07-13
+
+### Added
+- **Pluggable code host — Azure DevOps Repos as an alternative to GitHub** (D36). The code, its
+  pull requests, and its PR comments can now live in **ADO Repos** instead of GitHub, selected
+  per-project by `AIND_CODE_HOST=github|ado` (default `github`). This is a **script-only** change —
+  `commands/`, `skills/`, and `agents/` are unchanged, and an existing GitHub project keeps working
+  with no config change.
+  - **New forge adapter `scripts/aind-forge.sh`** — host-agnostic PR verbs (create / list / view /
+    diff / edit-body / comment / thread / thread-list / resolve / reply) that dispatch on
+    `AIND_CODE_HOST` to `gh` (GitHub) or `az repos` + the **ADO PR Threads REST API** (ADO), reusing
+    the existing `AZURE_DEVOPS_EXT_PAT` (no new credential). Opaque PR/thread tokens keep the
+    reviewer/coder prompts host-blind; PR/thread states normalise to one vocabulary
+    (`OPEN`/`MERGED`/`CLOSED`, `[OPEN]`/`[RESOLVED]`). ADO PR diffs are computed locally with git.
+  - All PR scripts (`aind-open-plan-pr`, `aind-open-code-pr`, `aind-review-pr`, `aind-thread`,
+    `aind-revise-plan-pr`, `aind-revise-code-pr`, `aind-complete`, and the dreaming config-PR opener
+    in `aind-dream`) are now thin callers of the adapter. `aind_gh_signature` →
+    host-aware `aind_pr_signature`; code-PR discovery moved into the adapter.
+  - **Native work-item linking** is simpler on ADO (same platform): `az repos pr create --work-items`
+    hard-links the PR — no Azure Boards ↔ GitHub app needed.
+  - **New config** `AIND_CODE_HOST` and `AIND_ADO_REPO`; `aind-preflight.sh` is host-conditional
+    (`gh`/auth for GitHub; `az repos` extension + PAT **Code** scope + repo reachability for ADO).
+    `/aind:onboard` detects the code host from the git remote and writes it; `/aind:kickstart` asks
+    (GitHub vs ADO Repos) and writes it.
+
+### Fixed
+- **ADO inline review threads anchored to a mangled path** (Windows/MSYS). The ADO code host anchored
+  plan/code review threads to e.g. `C:/Program Files/Git/plans/47/plan.md` (ADO then reported the
+  file missing): Git-Bash/MSYS rewrites any argv that starts with `/` into a Windows path before
+  native `jq.exe` sees it. Fixed by building the required leading-slash `filePath` **inside** jq, not
+  in the shell. The GitHub path was unaffected.
+
+### Notes
+- **Two orthogonal axes now:** the **agent host** (Claude Code vs GitHub Copilot CLI, D22) and the
+  **code host** (GitHub vs ADO Repos, D36). Docs updated in lockstep: `design-log.md` (D36),
+  `design-doc.md`, `README.md`, `GETTING-STARTED.md`, `docs/index.html`, `CLAUDE.md`, and the
+  project-template env sample / `CLAUDE.md`.
+
+### Validated
+- **Live-validated end-to-end on Azure DevOps Repos** — onboarding, kickstart, intake, and the full
+  plan → build → review → complete loop, plus the assumption/review threads landing on the correct
+  `plans/<id>/plan.md` lines. GitHub path re-validated (offline unit checks + live).
+
 ## [0.12.0] — 2026-07-13
 
 ### Added

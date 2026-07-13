@@ -32,7 +32,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 .claude-plugin/plugin.json   manifest (name: aind)
 commands/   onboard, kickstart, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer)
+scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
@@ -40,8 +40,17 @@ project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a proj
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-09)
+## Current status (2026-07-13)
 
+- **Pluggable code host — GitHub OR Azure DevOps Repos (D36, 2026-07-13, live-validated).** Code,
+  PRs, and PR comments can live on either host, selected per-project by `AIND_CODE_HOST=github|ado`
+  (+ `AIND_ADO_REPO`). Script-only change: a **forge adapter** (`scripts/aind-forge.sh`) dispatches
+  every PR/comment/thread verb to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO
+  PAT); `commands/`, `skills/`, `agents/` are unchanged. **Terminology:** this "code host" axis is
+  **distinct** from D22's "second host" (the *agent* host, Claude vs Copilot) — two orthogonal axes.
+  `aind_gh_signature` → host-aware `aind_pr_signature`; onboard detects the host from the git remote,
+  kickstart asks. Live-validated end-to-end on ADO Repos (plan→build→review→complete). Full plan in
+  `implementation-plan-ado-code-host.md`.
 - **Dual-host: runs on Claude Code AND GitHub Copilot CLI (D22, 2026-06-30).** One behavior layer
   (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks
   (`hooks.claude.json` / `hooks.copilot.json`) absorb the only incompatibility. Copilot needs Git's
@@ -247,6 +256,28 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   an already-set `AIND_ADO_ORG` wins (CI/parent override). `aind-preflight.sh` self-sources the
   same way inline (it deliberately does *not* source `aind-common.sh`, to avoid `set -e`).
   **No manual `source` needed** anywhere — don't reintroduce that instruction into docs.
+
+**Code host / forge (D36).**
+- **All PR/comment/thread mechanics go through `aind-forge.sh`** — never call `gh` or `az repos`
+  directly from a PR script. The verbs (`forge_pr_create/list/meta/field/diff/edit_body`,
+  `forge_comment`, `forge_thread`, `forge_thread_list`, `forge_comment_list`, `forge_resolve`,
+  `forge_reply`) dispatch on `AIND_CODE_HOST` to `_gh_*` / `_ado_*`. A PR script sources the forge
+  (which sources `aind-common.sh`), calls `forge_require`, then uses verbs. `aind-preflight.sh` may
+  probe `gh`/`az repos` directly — it's the one legitimate exception.
+- **Keep PR/thread tokens opaque** across the script↔command/agent boundary. The `thread=<id>` in a
+  digest is a GitHub GraphQL node id on one host and an ADO `threadId` on the other — commands/agents
+  must pass it back verbatim, never parse it. Don't reintroduce a host-specific field into a prompt.
+- **PR state is normalised** to `OPEN`/`MERGED`/`CLOSED` and thread state to `[OPEN]`/`[RESOLVED]` by
+  the adapter (GitHub already uses these; ADO `active/completed/abandoned` and `active/fixed/closed`
+  are mapped). Callers compare against the normalised values.
+- **Windows/MSYS leading-slash argv rewrite (bit us once).** Never pass a native `.exe` (jq, curl,
+  az) an argument that *starts with* `/` on Git-Bash: MSYS rewrites it to a Windows path
+  (`/plans/x` → `C:/Program Files/Git/plans/x`). The ADO inline-thread `filePath` requires a leading
+  `/`, so build that slash **inside** jq (`filePath:("/" + $p)`), never in the shell. Same family as
+  the UTF-8-via-`--data-binary` and `git show <branch>:<path>` colon gotchas above.
+- **ADO PR carrier is spike-defaulted:** the signature marker is a `display:none` span and the
+  `AIND-LINKS` block an HTML comment (validated to work on ADO); revisit those two carriers if ADO's
+  markdown sanitisation ever changes.
 
 **Plugin loading & commands.**
 - `claude --plugin-dir <repo-root>` loads this single plugin for the session.

@@ -1,6 +1,6 @@
 # AI-native dev flow — Design Document
 
-**Scope.** This document describes the **plan phase**, the **build phase**, and the **dreaming phase** of the flow — intake, planning, plan review, implementation, code review, how those steps are triggered and executed, and how the flow learns from its own exhaust to improve its agents. All three phases are **functionally designed**; phases that follow (deployment onward) are documented as they are decided. The rationale behind every choice recorded here is kept in the companion `design-log.md` (decisions D1–D33).
+**Scope.** This document describes the **plan phase**, the **build phase**, and the **dreaming phase** of the flow — intake, planning, plan review, implementation, code review, how those steps are triggered and executed, and how the flow learns from its own exhaust to improve its agents. All three phases are **functionally designed**; phases that follow (deployment onward) are documented as they are decided. The rationale behind every choice recorded here is kept in the companion `design-log.md` (decisions D1–D36).
 
 ---
 
@@ -25,6 +25,15 @@ The **build phase** turns that plan into merged code:
 It ends with a merged PR — the item is `Implementation complete`. Throughout both phases, a single `AIND status` tag on the Azure DevOps work item records where the item is, while the GitHub PRs own the fine-grained iteration.
 
 Running alongside both phases is the **dreaming phase** — a non-linear, cross-story improvement loop. Each agent emits a structured *lessons-learned* record at the end of its session; on a regular basis a separate, independent **dreamer agent** reviews the accumulated lessons and proposes improvements to the agent-config layer (skills, agent prompts, the readiness rubric, project rules) as a pull request against `.claude`. A human accepts or rejects each proposal. This is the flow's feedback path: the rest of the flow turns stories into code, while the dreaming phase turns the experience of doing so into better agents — without ever changing the flow itself.
+
+### Two independent axes: agent host and code host
+
+The flow runs on two orthogonal, per-project choices — don't conflate them:
+
+- **Agent host** — *where the agents run:* **Claude Code** or **GitHub Copilot CLI**. One behaviour layer, a per-host manifest + hook (see `design-log.md` D22).
+- **Code host** — *where the code and its pull requests live:* **GitHub** or **Azure DevOps Repos**, selected per-project by `AIND_CODE_HOST` (default `github`; `AIND_GH_REPO` for GitHub, `AIND_ADO_REPO` for ADO). A thin **forge-adapter** in the scripts layer absorbs the difference; commands, agents, and skills are identical on both (see `design-log.md` D36).
+
+Work items always live in **Azure DevOps** regardless of either choice. **This document says "GitHub PR" for brevity; read it as "the configured code host's pull request"** — the review surface, the assumption/review threads, the `AIND-LINKS` block, and the merge gate all work the same on GitHub and ADO Repos. The one host-appropriate detail is the machine-marker carrier (an HTML comment on GitHub; a hidden span on ADO) and the native work-item↔PR link (the Azure Boards ↔ GitHub integration for GitHub; ADO's built-in `--work-items` linking for ADO Repos).
 
 ---
 
@@ -293,9 +302,11 @@ Both modes run the same `.claude` configuration, so an agent proven locally is i
 | Dreaming phase | The non-linear, cross-story feedback loop: agents emit lessons → the cold dreamer synthesises them on a cadence → a PR against `.claude` proposes improvements → a human accepts or rejects (see §5 and `design-log.md` D16). |
 | Lessons-learned record | The structured self-report an automated agent emits at the end of its session (what it tried, where it iterated, what it would do differently); the warm raw signal the dreamer synthesises (see §5 Dreaming phase). |
 | Reflect-warm / synthesise-cold | The shape of the dreaming phase: emission is warm (an agent reporting its own run), synthesis is cold (an independent dreamer deciding what is a real pattern) — the D7 warm-vs-cold split applied to learning (see §5). |
-| Plan PR | The GitHub pull request carrying the implementation plan. |
-| Code PR | The GitHub pull request carrying the implementation. |
-| Artifact links / `AIND-LINKS` | The contract for navigating between a work item, its plan, and its PRs (see §5 Phase 1 and `design-log.md` D17): each PR is native-linked to the ADO work item (Azure Boards ↔ GitHub integration) **and** carries a fixed `AIND-LINKS` block in its body (an HTML comment listing the work-item URL, the plan path, and — on the code PR — the plan-PR URL). The native link is canonical and human-visible; the in-body block lets a cold agent resolve everything from artifacts alone. The work-item ID is the join value; branch names are never assumed (a branch is reached through its PR). |
+| Agent host | Where the agents run: **Claude Code** or **GitHub Copilot CLI** — one behaviour layer, a per-host manifest + hook (see §1 and `design-log.md` D22). Orthogonal to the code host. |
+| Code host / forge | Where the code and its PRs live: **GitHub** or **Azure DevOps Repos**, selected per-project by `AIND_CODE_HOST` (`AIND_GH_REPO` / `AIND_ADO_REPO`). A thin forge-adapter in the scripts absorbs the difference; commands, agents, and skills are identical on both. Work items always live in ADO (see §1 and `design-log.md` D36). |
+| Plan PR | The pull request carrying the implementation plan, on the configured code host (GitHub or ADO Repos). |
+| Code PR | The pull request carrying the implementation, on the configured code host (GitHub or ADO Repos). |
+| Artifact links / `AIND-LINKS` | The contract for navigating between a work item, its plan, and its PRs (see §5 Phase 1 and `design-log.md` D17): each PR is native-linked to the ADO work item (the Azure Boards ↔ GitHub integration on GitHub; ADO's built-in `--work-items` linking on ADO Repos) **and** carries a fixed `AIND-LINKS` block in its body (a hidden marker — an HTML comment on GitHub — listing the work-item URL, the plan path, and — on the code PR — the plan-PR URL). The native link is canonical and human-visible; the in-body block lets a cold agent resolve everything from artifacts alone. The work-item ID is the join value; branch names are never assumed (a branch is reached through its PR). |
 | CI | Continuous integration — whatever automated pipeline a project runs on its PRs (build, lint, coverage, security, tests). It is **not part of the AIND flow**: AIND enforces nothing at CI, and a project with no pipeline runs the flow fine. The flow's own objective gate is the coder getting build + tests green *before* opening the PR; any project CI is orthogonal (see `design-log.md` D34). |
 | Cold / warm context | Warm = shares the coder's context (the polish agent, and the coder authoring its own tests); cold = a fresh invocation re-grounded from artifacts only, with no shared context (the reviewer and the dreamer). |
 | Test strategy | The planner's per-story testing decision recorded in the plan (Testing recommendations + Definition of done): whether to test (gated on the project having a test practice), at what altitude, and a conditional must-cover list of edge cases with their expected outcomes. The coder authors the tests; the cold reviewer checks them (see §5 and `design-log.md` D33). |
@@ -307,4 +318,4 @@ Both modes run the same `.claude` configuration, so an agent proven locally is i
 
 ---
 
-*Rationale for the choices in this document is recorded in `design-log.md` (decisions D1–D33).*
+*Rationale for the choices in this document is recorded in `design-log.md` (decisions D1–D36).*

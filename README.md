@@ -4,6 +4,10 @@ An AI-native development flow — a multi-agent pipeline that carries an Azure D
 story from readiness check → implementation plan → build → review, plus a continuous-improvement
 loop — implemented as a reusable plugin that runs on **Claude Code** and **GitHub Copilot CLI**.
 
+Two independent, per-project choices: the **agent host** (where agents run — Claude Code or Copilot
+CLI) and the **code host** (where the code + pull requests live — **GitHub or Azure DevOps Repos**,
+selected by `AIND_CODE_HOST`). Work items always live in Azure DevOps.
+
 This README covers **what it is** and **where it stands**. To set it up and use it, see
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
 `design-log.md`, with the flow diagram in `docs/index.html`.
@@ -42,8 +46,8 @@ agents:
   manual **`/aind:dream`** command has a cold "dreamer" cluster that exhaust into patterns, a human
   curates the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
 
-State is tracked by a single `AIND status - <state>` tag on the ADO work item; the GitHub PRs
-own the fine-grained iteration.
+State is tracked by a single `AIND status - <state>` tag on the ADO work item; the code-host PRs
+(GitHub or ADO Repos) own the fine-grained iteration.
 
 ## Concepts
 
@@ -65,7 +69,7 @@ own the fine-grained iteration.
   review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
   reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D33**).
+Rationale for every choice is in `design-log.md` (decisions **D1–D36**).
 
 ## Repository layout
 
@@ -74,13 +78,13 @@ Rationale for every choice is in `design-log.md` (decisions **D1–D33**).
 .github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
 commands/                    onboard, kickstart, intake, plan, approve-plan, implement, complete, dream  (human entry points)
 skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/                     Bash mechanics over az + gh + curl (the deterministic layer)
+scripts/                     Bash mechanics over az + gh + curl (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter
 hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
 rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D33)
+design-doc.md, design-log.md The design and the decisions (D1–D36)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -106,11 +110,12 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
 | Dreaming | Lessons-learned emission — `aind-emit-lesson.sh` | ✅ | ✅ | Live-validated: each agent emits a signed record (severity enum + observation) to the `aind/lessons` orphan branch at session end, via worktree-safe git plumbing; human PR feedback becomes correction/suggestion lessons through the revise runs (D30). |
 | Dreaming | Dreamer agent (cold) — `/aind:dream` | ✅ | ✅ | Live-validated end-to-end: the cold dreamer clusters unprocessed lessons and judges them (severity × recurrence × factualness), a human curates the clusters (gate 1), and approved clusters land as one `.claude` PR (gate 2). Caught a seeded lint-skill defect **and** surfaced genuine project-rule gaps (e.g. backend input-file-type validation); scope stays within `.claude`, structural findings → parking-lot (D30). |
+| Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. Onboard detects the host from the git remote; kickstart asks. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
 
 ## Docs
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D33 with rationale.
+- **`design-log.md`** — decisions D1–D36 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
