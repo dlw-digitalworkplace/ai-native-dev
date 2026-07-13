@@ -23,9 +23,15 @@ byte-for-byte unchanged.
   host-conditional. `/aind:onboard` detects the code host from the git remote and writes
   `AIND_CODE_HOST` + the matching repo var; `/aind:kickstart` asks (GitHub vs ADO Repos) and writes
   the same.
-- **Phase 0 (spikes) + Phase 4 (docs) + Phase 5 (E2E): pending your live ADO validation.** The ADO
-  carrier defaults (signature span, AIND-LINKS HTML comment, thread anchoring offset 1, resolve
-  status `fixed`) are marked in-code and adjusted after the spikes.
+- **Phase 0 (spikes): DONE.** Live ADO run resolved them: ADO preserves the HTML-comment
+  `AIND-LINKS` block and the `display:none` signature span; thread anchoring works with the
+  leading-slash `filePath` (fixed for MSYS — build the slash inside jq); resolve status `fixed`
+  satisfies the "comments resolved" branch policy.
+- **Phase 4 (docs): DONE.** `design-doc.md` (agent-host vs code-host section + glossary), `README.md`,
+  `GETTING-STARTED.md`, `CHANGELOG.md` (0.13.0), `docs/index.html`, `CLAUDE.md`, and the
+  design-log D36 status all reframed.
+- **Phase 5 (E2E): DONE.** Live-validated end-to-end on ADO Repos (onboarding, kickstart, intake,
+  plan → build → review → complete); GitHub path re-validated. Shipped in v0.13.0.
 
 ---
 

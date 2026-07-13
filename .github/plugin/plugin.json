@@ -1,7 +1,7 @@
 {
   "name": "aind",
-  "version": "0.12.0",
-  "description": "AI-Native Dev flow for Azure DevOps + GitHub. Agents for onboarding, intake (readiness scoring), planning (delivers an implementation plan as a GitHub PR), and implementation (builds an approved plan into a GitHub code PR, drives an independent code review to a verdict, then closes out on merge with the terminal status), plus a dreaming phase that synthesises the flow's lessons-learned into proposed .claude config improvements as a human-gated PR — plus the shared, scripted ADO/GitHub mechanics they rely on.",
+  "version": "0.13.0",
+  "description": "AI-Native Dev flow for Azure DevOps, with pull requests on GitHub or Azure DevOps Repos (pluggable code host). Agents for onboarding, intake (readiness scoring), planning (delivers an implementation plan as a pull request), and implementation (builds an approved plan into a code PR, drives an independent code review to a verdict, then closes out on merge with the terminal status), plus a dreaming phase that synthesises the flow's lessons-learned into proposed .claude config improvements as a human-gated PR — plus the shared, scripted ADO/GitHub mechanics they rely on.",
   "author": {
     "name": "Robin Agten"
   },
