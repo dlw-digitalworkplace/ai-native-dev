@@ -18,10 +18,11 @@ byte-for-byte unchanged.
   work-item add`); local-git-diff for `forge_pr_diff`; ADO carrier defaults per the spikes below.
   All `bash -n` clean; the `aind_filter_code_prs` filter and every ADO `jq` program validated
   against sample JSON.
-- **Phase 3 — config/preflight: DONE for env + preflight.** `AIND_CODE_HOST`/`AIND_ADO_REPO` in
+- **Phase 3 — config/preflight/onboarding: DONE.** `AIND_CODE_HOST`/`AIND_ADO_REPO` in
   `aind-common.sh`, `aind.env.sample`, `project-template/CLAUDE.md`; `aind-preflight.sh` is
-  host-conditional. **Remaining:** have `/aind:onboard` + `/aind:kickstart` *ask* which code host
-  and write `AIND_CODE_HOST` (prompt-file edits).
+  host-conditional. `/aind:onboard` detects the code host from the git remote and writes
+  `AIND_CODE_HOST` + the matching repo var; `/aind:kickstart` asks (GitHub vs ADO Repos) and writes
+  the same.
 - **Phase 0 (spikes) + Phase 4 (docs) + Phase 5 (E2E): pending your live ADO validation.** The ADO
   carrier defaults (signature span, AIND-LINKS HTML comment, thread anchoring offset 1, resolve
   status `fixed`) are marked in-code and adjusted after the spikes.

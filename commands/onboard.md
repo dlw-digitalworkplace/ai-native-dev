@@ -69,9 +69,15 @@ and a section shape to follow — it is a guide, **not** a set of files to repro
 ### 4. Draft `.claude/CLAUDE.md`
 Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, then:
 - Keep the **AIND operational rules** block verbatim.
-- Fill the **AIND configuration** table with what you can detect: set `AIND_GH_REPO` from
-  `git remote get-url origin`, and propose `AIND_INTEGRATION_BRANCH` from the repo's default
-  branch. Leave the ADO org/project and PAT as placeholders for the human.
+- Fill the **AIND configuration** table with what you can detect. **Detect the code host** (where
+  the code + pull requests live) from `git remote get-url origin`:
+  - a `github.com` remote → `AIND_CODE_HOST=github` and `AIND_GH_REPO=<owner>/<repo>`;
+  - a `dev.azure.com` / `visualstudio.com` remote → `AIND_CODE_HOST=ado` and `AIND_ADO_REPO=<repo>`
+    (also derive `AIND_ADO_ORG` / `AIND_ADO_PROJECT` from the remote URL when you can).
+  - no remote or an unrecognised host → leave `AIND_CODE_HOST` as a placeholder for the human and
+    say so. Only set the repo var that matches the chosen host; leave the other unset.
+  Propose `AIND_INTEGRATION_BRANCH` from the repo's default branch. Leave the ADO org/project (when
+  not derivable) and the PAT as placeholders for the human.
 - Replace the placeholder `@rules/*` imports with one `@rules/<area>.md` line for **exactly the
   rule files you created** in step 3 — no more, no fewer.
 
@@ -105,8 +111,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
   evidence for it (e.g. "no testing rule: no test framework found").
 - The skills you stubbed and the commands behind them.
 - The prerequisite status from preflight, with the `[FAIL]`/`[MANUAL]` items called out as
-  the team's next setup steps (ADO PAT, gh access, jq, Azure Boards↔GitHub integration,
-  branch protection).
+  the team's next setup steps (ADO PAT, code-host access — `gh` for GitHub or `az repos` for ADO —
+  jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub integration
+  and the branch policy that requires comment resolution before merge).
 - A clear note: **these are drafts — review and edit before committing**, then run
   `/aind:intake <id>` on a story to start the flow.
 
