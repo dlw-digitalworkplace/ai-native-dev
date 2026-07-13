@@ -253,3 +253,7 @@ Never write "dual-host" unqualified. Say **agent host** (Claude/Copilot) or **co
 - **`az repos` diff ergonomics** — favour local git diff to avoid the iterations/changes API.
 - **Windows/MSYS UTF-8** — ADO REST bodies must go via temp file + `--data-binary` +
   `charset=utf-8`, exactly as `aind-comment.sh` already does.
+- **Windows/MSYS leading-slash argv rewrite** — never pass an argv that starts with `/` to a native
+  `.exe` (jq/curl/az) on Git-Bash: MSYS rewrites it to a Windows path (`/plans/x` →
+  `C:/Program Files/Git/plans/x`). Bit the ADO inline-thread `filePath` (fixed by prepending `/`
+  inside jq). Watch for it in any future ADO REST field that is a repo-root-relative path.

@@ -261,9 +261,13 @@ _gh_thread() {
 _ado_thread() {
   local pr="$1" path="$2" line="$3" bodyfile="$4" payload
   payload="$(mktemp)"
-  jq -Rs --arg p "/${path#/}" --argjson ln "$line" \
+  # ADO's filePath must be repo-root-relative with a leading "/". DON'T build that leading slash in
+  # the shell: an argv that starts with "/" is rewritten by Git-Bash/MSYS on Windows into a Windows
+  # path (e.g. "/plans/x" -> "C:/Program Files/Git/plans/x") before native jq.exe sees it. Pass the
+  # relative path and prepend "/" INSIDE jq, where MSYS path conversion never applies.
+  jq -Rs --arg p "${path#/}" --argjson ln "$line" \
     '{comments:[{parentCommentId:0,content:.,commentType:1}], status:"active",
-      threadContext:{filePath:$p, rightFileStart:{line:$ln,offset:1}, rightFileEnd:{line:$ln,offset:1}}}' \
+      threadContext:{filePath:("/" + $p), rightFileStart:{line:$ln,offset:1}, rightFileEnd:{line:$ln,offset:1}}}' \
     < "$bodyfile" > "$payload"
   _ado_api POST "$(_ado_base)/pullRequests/${pr}/threads?api-version=7.1" "$payload" \
     | jq -r '.id // empty'
