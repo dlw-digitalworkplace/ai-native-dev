@@ -147,7 +147,7 @@ Do **not** sweep up undirected reviewer SUGGESTIONs (the human chose to leave th
 re-implement beyond what was asked — the human decides *what* changes; you execute. Obey the cited
 rules and keep any data contract real on the wire, exactly as in build mode. Commit in logical steps.
 
-### B3. Reply on each acted thread
+### B3. Reply on each acted thread — and record scope-changing deviations
 Reply on each thread you addressed, using its `thread=<id>` from the digest — **never resolve it**
 (resolution is the human's merge gate):
 ```bash
@@ -157,6 +157,18 @@ EOF
 ```
 If a directed change is **unclear**, ask a clarifying question on the thread instead and leave that
 point unchanged until it's answered.
+
+**If a directed change adds to or diverges from the merged plan** — new scope the plan didn't call
+for (e.g. a test/E2E suite the human asked for on the PR), a removed item, or a changed contract —
+**record it as a directed deviation** so the cold reviewer treats it as authoritative and does not
+flag it as scope creep. A fix *within* the plan needs no deviation; only record real divergences:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-code-pr.sh" "$1" deviation "<pr-number>" "<thread=id-from-digest>" "<what changed, one line>"
+```
+Cite the **`thread=<id>`** the instruction came from (preferred — the reviewer verifies it in the
+digest); if the human directed it in a top-level PR comment with no thread, cite a short reference to
+that comment instead. Do **not** record undirected changes as deviations — a deviation must trace to
+something the human actually asked for.
 
 ### B4. Push to the same PR
 ```bash

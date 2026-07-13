@@ -9,6 +9,31 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.12.0] — 2026-07-13
+
+### Added
+- **Reviewer read-only contract is now hook-enforced, not just prompt-stated.** A new PreToolUse
+  hook (`hooks/check-claude-reviewer.sh`, wired via a second `Bash` entry in `hooks.claude.json`)
+  scopes the cold reviewer to an allowlist — it may run only `aind-review-pr.sh` — so a reviewer that
+  tries to `git push`, run tests, or otherwise mutate is blocked mechanically. `agents/reviewer.md`
+  also declares `disallowedTools: Edit, Write` in its frontmatter. The hook is **fail-open**: if the
+  calling agent can't be identified it never blocks anyone, so non-reviewer agents are unaffected.
+  *(Load-bearing on the live PreToolUse payload exposing the calling agent; a Copilot-CLI twin is not
+  yet built and remains a known cross-host hardening gap.)*
+- **Human-directed deviations from the plan are captured on the code PR.** `aind-revise-code-pr.sh`
+  gains a `deviation` op that maintains an idempotent `## Directed deviations` block in the code-PR
+  body; `/aind:implement` records a human-directed deviation there during revise mode, and the cold
+  reviewer reads and verifies that block (treating an unsigned entry as the human's) so a deliberate,
+  human-sanctioned departure from the plan is no longer flagged as scope creep.
+
+### Changed
+- **The planner now explicitly covers the human-authored story's acceptance criteria.** `commands/plan.md`
+  adds an AC-coverage pass and an `AC coverage` section so the plan can't silently narrow the story's
+  stated acceptance criteria, with tightened non-goals and either/or assumption-thread phrasing that
+  invites an unambiguous reply; `commands/approve-plan.md` ratifies AC coverage at approval.
+- **Getting-started guidance now recommends a CI / branch-protection test gate** at story merge
+  (`GETTING-STARTED.md`), the project-side complement to the reviewer's coverage/fidelity gate.
+
 ## [0.11.1] — 2026-07-09
 
 ### Fixed
