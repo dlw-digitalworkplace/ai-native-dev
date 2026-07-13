@@ -28,8 +28,8 @@
 # emitter (aind-common.sh), so no phase here ever checks out the lessons branch.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 PHASE="${1:-}"
 [[ -n "$PHASE" ]] || aind_die "usage: aind-dream.sh <digest|start|open-pr|consume|note> [args]"
@@ -80,8 +80,8 @@ case "$PHASE" in
     BRANCH="${2:-}"
     TITLE="${3:-}"
     [[ -n "$BRANCH" ]] || aind_die "usage: aind-dream.sh open-pr <dream-branch> [title]  (body on stdin)"
-    aind_require_env AIND_GH_REPO AIND_INTEGRATION_BRANCH
-    aind_require_cmd gh
+    aind_require_env AIND_INTEGRATION_BRANCH
+    forge_require
     [[ -n "$TITLE" ]] || TITLE="Dreaming: proposed .claude improvements"
 
     git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
@@ -102,12 +102,7 @@ case "$PHASE" in
       printf '%s\n' "$SUMMARY"
     } > "$BODY_FILE"
 
-    PR_URL="$(gh pr create \
-      --repo "$AIND_GH_REPO" \
-      --base "$AIND_INTEGRATION_BRANCH" \
-      --head "$BRANCH" \
-      --title "$TITLE" \
-      --body-file "$BODY_FILE")"
+    PR_URL="$(forge_pr_create "$AIND_INTEGRATION_BRANCH" "$BRANCH" "$TITLE" "$BODY_FILE")"
     echo "aind: opened dream PR"
     echo "$PR_URL"
     ;;

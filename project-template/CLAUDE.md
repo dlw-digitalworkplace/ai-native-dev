@@ -12,7 +12,9 @@ e.g. `source .claude/aind.env` (copy `aind.env.sample`, keep the PAT out of git)
 |---|---|
 | `AIND_ADO_ORG` | `https://dev.azure.com/<your-ado-org>` |
 | `AIND_ADO_PROJECT` | `<your-ado-project>` |
-| `AIND_GH_REPO` | `<owner>/<repo>` |
+| `AIND_CODE_HOST` | `github` (default) \| `ado` — where code + PRs live |
+| `AIND_GH_REPO` | `<owner>/<repo>` (when `AIND_CODE_HOST=github`) |
+| `AIND_ADO_REPO` | `<your-ado-repo>` (when `AIND_CODE_HOST=ado`) |
 | `AIND_INTEGRATION_BRANCH` | `<main \| develop \| …>` |
 | `AIND_PLAN_BRANCH_PREFIX` | `aind/plan/` (optional override) |
 | `AIND_LESSONS_BRANCH` | `aind/lessons` (optional override; dreaming-phase exhaust branch) |

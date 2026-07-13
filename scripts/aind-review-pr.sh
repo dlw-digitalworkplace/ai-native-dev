@@ -30,56 +30,35 @@
 #                                   reviewer note — signed by <agent>. Body via arg or stdin. Does NOT
 #                                   resolve the thread.
 #
-# Every posted comment/thread/reply is signed with the agent name (aind_gh_signature), so a PR
+# Every posted comment/thread/reply is signed with the agent name (aind_pr_signature), so a PR
 # comment is attributed to its author even though the coder and reviewer share one GitHub identity.
 #
 # The <pr> argument is kept on every phase for a uniform interface even where the underlying GraphQL
 # needs only the thread id. The reviewer never checks out or pushes anything — it reports only.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-forge.sh
+source "$SCRIPT_DIR/aind-forge.sh"
 
 PHASE="${1:-}"
 PR="${2:-}"
 [[ -n "$PHASE" && -n "$PR" ]] \
   || aind_die "usage: aind-review-pr.sh <fetch|digest|summary|thread|resolve|reply> <pr-number> [args]"
-aind_require_env AIND_GH_REPO
-aind_require_cmd gh
+forge_require
 
-# Print all review threads (state, node id, file:line, comments) then top-level PR comments.
+# Print all review threads (state, opaque id, file:line, comments) then top-level PR comments.
 print_digest() {
-  local owner="${AIND_GH_REPO%%/*}" repo="${AIND_GH_REPO##*/}"
   echo "--- Review threads (blocking findings + replies) ---"
-  gh api graphql -f owner="$owner" -f repo="$repo" -F pr="$PR" -f query='
-    query($owner:String!,$repo:String!,$pr:Int!){
-      repository(owner:$owner,name:$repo){
-        pullRequest(number:$pr){
-          reviewThreads(first:100){ nodes{
-            id
-            isResolved
-            path
-            line
-            comments(first:50){ nodes{ author{login} body } }
-          }}
-        }
-      }
-    }' --jq '
-    .data.repository.pullRequest.reviewThreads.nodes[]
-    | (if .isResolved then "[RESOLVED]" else "[OPEN]" end) as $state
-    | "\($state) thread=\(.id) \(.path):\(.line // "?")\n"
-      + ([.comments.nodes[] | "    \(.author.login): \(.body)"] | join("\n"))
-    ' 2>/dev/null || echo "(could not read review threads)"
+  forge_thread_list "$PR"
   echo
   echo "--- Top-level PR comments ---"
-  gh pr view "$PR" --repo "$AIND_GH_REPO" --json comments \
-    --jq '.comments[] | "[\(.author.login)] \(.body)"' 2>/dev/null || true
+  forge_comment_list "$PR"
 }
 
 case "$PHASE" in
   fetch)
-    title="$(gh pr view "$PR" --repo "$AIND_GH_REPO" --json title --jq .title)"
-    body="$(gh pr view "$PR" --repo "$AIND_GH_REPO" --json body --jq .body)"
+    title="$(forge_pr_field "$PR" title)"
+    body="$(forge_pr_field "$PR" body)"
     echo "===== PR #$PR — $title ====="
     echo "--- BODY ---"
     printf '%s\n' "$body"
@@ -88,7 +67,7 @@ case "$PHASE" in
     printf '%s\n' "$body" | bash "$SCRIPT_DIR/aind-links.sh" parse
     echo
     echo "--- DIFF ---"
-    gh pr diff "$PR" --repo "$AIND_GH_REPO"
+    forge_pr_diff "$PR"
     echo "====================================================================================="
     ;;
 
@@ -104,8 +83,9 @@ case "$PHASE" in
     BODY="${4:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty summary body"
-    BODY="${BODY}$(aind_gh_signature "$AGENT")"
-    printf '%s\n' "$BODY" | gh pr comment "$PR" --repo "$AIND_GH_REPO" --body-file -
+    BODY="${BODY}$(aind_pr_signature "$AGENT")"
+    _tmp="$(mktemp)"; printf '%s\n' "$BODY" > "$_tmp"
+    forge_comment "$PR" "$_tmp"; rm -f "$_tmp"
     echo "aind: posted signed $AGENT review summary comment on PR #$PR"
     ;;
 
@@ -123,10 +103,7 @@ case "$PHASE" in
   resolve)
     TID="${3:-}"
     [[ -n "$TID" ]] || aind_die "usage: aind-review-pr.sh resolve <pr> <thread-id>  (thread-id = thread=<id> from digest)"
-    gh api graphql -f threadId="$TID" -f query='
-      mutation($threadId:ID!){
-        resolveReviewThread(input:{threadId:$threadId}){ thread{ isResolved } }
-      }' --jq '.data.resolveReviewThread.thread.isResolved' >/dev/null
+    forge_resolve "$PR" "$TID"
     echo "aind: resolved review thread $TID on PR #$PR"
     ;;
 
@@ -138,13 +115,9 @@ case "$PHASE" in
     BODY="${5:-}"
     [[ -n "$BODY" ]] || BODY="$(cat)"
     [[ -n "$BODY" ]] || aind_die "empty reply body"
-    BODY="${BODY}$(aind_gh_signature "$AGENT")"
-    gh api graphql -f threadId="$TID" -f body="$BODY" -f query='
-      mutation($threadId:ID!,$body:String!){
-        addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$threadId, body:$body}){
-          comment{ url }
-        }
-      }' --jq '.data.addPullRequestReviewThreadReply.comment.url'
+    BODY="${BODY}$(aind_pr_signature "$AGENT")"
+    _tmp="$(mktemp)"; printf '%s\n' "$BODY" > "$_tmp"
+    forge_reply "$PR" "$TID" "$_tmp"; rm -f "$_tmp"
     echo "aind: posted signed $AGENT reply to thread $TID on PR #$PR (not resolved)"
     ;;
 

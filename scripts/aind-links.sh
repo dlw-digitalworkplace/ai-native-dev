@@ -7,6 +7,12 @@
 # plan from artifacts alone (no ADO round-trip). The work-item ID is the join value; branch
 # names are never encoded (a branch is reached through its PR).
 #
+# SPIKE (ADO code host): GitHub preserves HTML comments in PR bodies, so the block is invisible
+# there. If a live ADO run shows ADO strips HTML comments from PR descriptions, switch the ADO
+# carrier here to a display:none span (as aind-comment.sh uses for ADO work-item fields) or a
+# fenced marker, and make `parse` tolerant of that form. Both `write` and `parse` are host-neutral
+# today on the assumption ADO preserves the comment — validate before relying on invisibility.
+#
 #   write : emit the block to stdout (work-item URL + plan path [+ plan-PR URL]).
 #   parse : read a PR body on stdin, print the block's key: value lines.
 

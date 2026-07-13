@@ -29,6 +29,8 @@ if [[ -z "${AIND_ADO_ORG:-}" ]]; then
   unset _dir
 fi
 
+HOST="${AIND_CODE_HOST:-github}"
+
 pass=0; warn=0; fail=0
 
 ok()     { echo "[PASS] $*"; pass=$((pass+1)); }
@@ -40,33 +42,58 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 echo "AIND preflight — prerequisites for the plan phase"
 echo "-------------------------------------------------"
+echo "Code host: $HOST"
+echo
 
 echo "Tools:"
 for c in bash git curl; do
   if have "$c"; then ok "$c present"; else bad "$c not found (required)"; fi
 done
 if have az; then ok "az present ($(az version --query '"azure-cli"' -o tsv 2>/dev/null || echo '?'))"; else bad "az (Azure CLI) not found — required for ADO work items"; fi
-if have az && az extension show --name azure-devops >/dev/null 2>&1; then ok "az devops extension installed"; else warning "az 'azure-devops' extension not detected — install with: az extension add --name azure-devops"; fi
-if have gh; then ok "gh present"; else bad "gh (GitHub CLI) not found — required for plan PRs"; fi
+if have az && az extension show --name azure-devops >/dev/null 2>&1; then
+  ok "az devops extension installed"
+elif [[ "$HOST" == "ado" ]]; then
+  bad "az 'azure-devops' extension not detected — required for ADO code host (az repos). Install: az extension add --name azure-devops"
+else
+  warning "az 'azure-devops' extension not detected — install with: az extension add --name azure-devops"
+fi
+if [[ "$HOST" == "github" ]]; then
+  if have gh; then ok "gh present"; else bad "gh (GitHub CLI) not found — required for the GitHub code host"; fi
+elif have gh; then
+  ok "gh present (not required for the ADO code host)"
+fi
 if have jq; then ok "jq present"; else bad "jq not found — required by aind-comment (install: brew/apt/winget install jq)"; fi
 
 echo
 echo "Authentication:"
-if have gh; then
+if [[ "$HOST" == "github" ]] && have gh; then
   if gh auth status >/dev/null 2>&1; then ok "gh authenticated"; else bad "gh not authenticated — run: gh auth login"; fi
 fi
-if [[ -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then ok "AZURE_DEVOPS_EXT_PAT is set"; else bad "AZURE_DEVOPS_EXT_PAT not set — needed for ADO (Work Items r/w + Code r/w)"; fi
+if [[ -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
+  ok "AZURE_DEVOPS_EXT_PAT is set"
+else
+  bad "AZURE_DEVOPS_EXT_PAT not set — needed for ADO Work Items r/w${HOST:+ (and Code r/w for the ADO code host)}"
+fi
 
 echo
 echo "AIND configuration (env vars):"
-for v in AIND_ADO_ORG AIND_ADO_PROJECT AIND_GH_REPO AIND_INTEGRATION_BRANCH; do
+_cfg=(AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH)
+if [[ "$HOST" == "ado" ]]; then _cfg+=(AIND_ADO_REPO); else _cfg+=(AIND_GH_REPO); fi
+for v in "${_cfg[@]}"; do
   if [[ -n "${!v:-}" ]]; then ok "$v=${!v}"; else warning "$v not set (see .claude/aind.env)"; fi
 done
 
 echo
 echo "Connectivity (best-effort):"
-if have gh && [[ -n "${AIND_GH_REPO:-}" ]]; then
+if [[ "$HOST" == "github" ]] && have gh && [[ -n "${AIND_GH_REPO:-}" ]]; then
   if gh repo view "$AIND_GH_REPO" >/dev/null 2>&1; then ok "GitHub repo reachable: $AIND_GH_REPO"; else bad "cannot access GitHub repo $AIND_GH_REPO with the current gh account"; fi
+fi
+if [[ "$HOST" == "ado" ]] && have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_ADO_PROJECT:-}" && -n "${AIND_ADO_REPO:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
+  if az repos show --repository "$AIND_ADO_REPO" --org "$AIND_ADO_ORG" --project "$AIND_ADO_PROJECT" >/dev/null 2>&1; then
+    ok "ADO repo reachable: $AIND_ADO_REPO (project $AIND_ADO_PROJECT)"
+  else
+    bad "cannot access ADO repo $AIND_ADO_REPO (PAT 'Code' scope? repo/project name?) — needed for the ADO code host"
+  fi
 fi
 if have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_ADO_PROJECT:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
   # Probe work-item READ access with a project-scoped query (proves org reachability + PAT +
@@ -82,8 +109,12 @@ fi
 
 echo
 echo "Manual checks (cannot be auto-verified):"
-manual "Azure Boards <-> GitHub integration connected (so AB#<id> in a PR links to the work item)"
-manual "Integration branch has 'require conversation resolution before merging' enabled (so assumption threads gate the plan-PR merge)"
+if [[ "$HOST" == "github" ]]; then
+  manual "Azure Boards <-> GitHub integration connected (so AB#<id> in a PR links to the work item)"
+  manual "Integration branch has 'require conversation resolution before merging' enabled (so assumption threads gate the plan-PR merge)"
+else
+  manual "Integration branch has a branch policy requiring all comments resolved before completion (so assumption threads gate the plan-PR merge)"
+fi
 
 echo
 echo "-------------------------------------------------"
