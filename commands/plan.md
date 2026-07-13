@@ -49,7 +49,16 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
      **non-goals** (what this plan deliberately does *not* do), and where you weighed a heavier
      option, the simpler one you took and why it is sufficient. Each bullet names a concrete thing
      not being built; if there is genuinely nothing to fence off, drop the heading rather than
-     write platitudes.
+     write platitudes. A non-goal may fence off only **unrequested** scope — it must **never** be
+     used to drop, narrow, or reinterpret a stated acceptance criterion; that path goes through the
+     *AC coverage* pass below and becomes an open-question thread, not a silent non-goal.
+   - **AC coverage** — a compact map, **one row per story acceptance criterion**, showing how this
+     plan handles each. `| AC | Status | Where |` where Status is **covered** / **narrowed** /
+     **deferred** and Where points to the task, thread, or non-goal that handles it. Every AC marked
+     *narrowed* or *deferred* **must** also appear under *Assumptions & open questions* (→ a
+     resolvable thread), so the human consciously accepts the reduction before merge. This is a
+     coverage map, **not** a restatement of each AC as a task or done item — keep it terse, and never
+     drop an AC silently.
    - **Implementation approach** — the recommended approach (not a survey of alternatives),
      naming the concrete files/areas to change and existing utilities to reuse.
    - **Data contracts** *(include only when this change moves data across a boundary — API↔client,
@@ -73,6 +82,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
      ambiguity by **picking one reasonable option over another** — list it here *even though you
      proceeded on your choice*, because the reviewer may prefer the alternative and the thread is
      their chance to say so. "I made a decision" is not what moves an item out of this section.
+     Include here **every acceptance criterion this plan narrows or drops** (from the *AC coverage*
+     pass), and phrase each item as an **explicit either/or** (step 4) so a one-word reply is
+     unambiguous.
    - **Considerations** — non-blocking context for the reviewer: security implications, performance
      and edge cases, and risks the change introduces or brushes against. Use this **only** for pure
      FYI — context with no reasonable alternative the reviewer would choose (a risk to monitor, an
@@ -104,10 +116,19 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
      testing decision — and make each one binary and verifiable. No generic best-practice filler.
    - **Files/areas affected** — the concrete list.
 
-4. **Record assumptions in two places.** For every genuine choice or ambiguity, write a
+4. **Record assumptions & reconcile AC coverage.** For every genuine choice or ambiguity, write a
    bullet under **Assumptions & open questions** in the plan, *and* (after the PR is open)
-   post it as an individual resolvable review thread. This makes each one a checklist item the
-   reviewer must clear before merge.
+   post it as an individual resolvable review thread — each one a checklist item the reviewer must
+   clear before merge. Two rules govern what gets threaded and how:
+   - **Cover every acceptance criterion.** Run the AC-coverage pass (see the *AC coverage* heading):
+     classify each story AC as covered / narrowed / deferred. Any AC you **narrow, reinterpret, or
+     drop** is **not** a silent non-goal — it **must** become an open-question thread so the human
+     signs off on the reduction before merge. (A story-level problem you can't resolve by assumption
+     still stops the plan — see the guard at the end.)
+   - **Phrase every open question as an explicit either/or.** Name **both** options so a one-word
+     reply is unambiguous — e.g. *"<Option A> (recommended, because …) **or** <Option B>? Reply A or
+     B."* Never pose a yes/no against an unnamed alternative ("Prefer the alternative?", "OK?",
+     "Agree?"). This applies to **every** thread you open, in create **and** revise mode.
 
 5. **Open the plan PR** and post the threads (use the `aind-plan-pr` skill):
    ```bash

@@ -30,6 +30,15 @@ what's missing.
 - **Branch protection** on your integration branch: enable **"require conversation resolution
   before merging"** (D5) — this is what makes the planner's assumption threads block the plan-PR
   merge until you resolve them.
+- **Test suite in CI (recommended once your project has one).** The per-story gates check tests
+  *before* a code PR is opened — the coder builds and runs the suite **green**, and the reviewer
+  reads the tests for coverage and fidelity — but nothing re-runs the suite on the **merged**
+  integration branch. So a cross-story interaction can leave the integration branch red without any
+  single story noticing, and later stories inherit the failing baseline. When you adopt CI, wire your
+  project's **test and e2e skills** into it and enable branch protection **"require status checks to
+  pass"** + **"require branches to be up to date before merging"** on the integration branch — that
+  is what actually gates a red suite at merge. Until then, running the suites between stories is a
+  manual habit, not an enforced gate.
 
 ### Validate prerequisites — run the preflight
 

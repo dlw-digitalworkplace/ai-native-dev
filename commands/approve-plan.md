@@ -39,5 +39,8 @@ This completes the plan phase; the build phase (out of scope for this iteration)
 ## Notes
 - Approving the plan also ratifies the planner's **test strategy** recorded in the plan (whether to
   test, at what altitude, and the must-cover cases) — this drives the build phase later.
+- Approving also ratifies that **every story acceptance criterion is either covered by the plan or a
+  consciously-accepted narrowing** — each narrowing having been an open-question thread you resolved
+  before merging. The plan's *AC coverage* map records which; a merged plan means you accepted it.
 - If plan review instead surfaced a **story-level** problem, do not approve: close the plan PR
   and reroute the item to `Ready for intake` so the story can be fixed and re-scored.

@@ -21,6 +21,15 @@
 #                           logical commits first. If [summary] is given, also post it as a PR comment.
 #                           Does NOT create a PR and NEVER resolves threads (resolution is the human's
 #                           merge gate). Thread replies reuse `aind-review-pr.sh reply`.
+#   <id> deviation <pr> <human-cite> <text>
+#                           Record ONE human-directed deviation — a change the human steered on the PR
+#                           that adds to or diverges from the merged plan (new scope, a removed item, a
+#                           changed contract) — into a `## Directed deviations` block in the PR body
+#                           (idempotent: creates the block, or appends within it). <human-cite> is the
+#                           handle the reviewer can verify in the steering digest — a `thread=<id>`
+#                           (preferred) or a short reference to the human's PR comment. The reviewer
+#                           treats these as authoritative addenda to the plan (so the added work is NOT
+#                           scope creep) after confirming the cited source is human-authored.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=aind-common.sh
@@ -28,7 +37,7 @@ source "$SCRIPT_DIR/aind-common.sh"
 
 ID="${1:-}"
 PHASE="${2:-}"
-[[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-code-pr.sh <work-item-id> <status|begin|push> [args]"
+[[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-code-pr.sh <work-item-id> <status|begin|push|deviation> [args]"
 [[ "$ID" =~ ^[0-9]+$ ]] || aind_die "work-item id must be numeric, got '$ID'"
 aind_require_env AIND_GH_REPO
 aind_require_cmd git gh
@@ -107,7 +116,32 @@ case "$PHASE" in
     echo "aind: revised code pushed to branch $branch${R_URL:+ (PR $R_URL)}"
     ;;
 
+  deviation)
+    DPR="${3:-}"; CITE="${4:-}"; TEXT="${5:-}"
+    [[ -n "$DPR" && -n "$CITE" && -n "$TEXT" ]] \
+      || aind_die "usage: aind-revise-code-pr.sh <id> deviation <pr> <human-cite> <text>  (cite = thread=<id> or a ref to the human's PR comment)"
+    [[ "$DPR" =~ ^[0-9]+$ ]] || aind_die "pr-number must be numeric, got '$DPR'"
+    START='<!-- AIND-DEVIATIONS:START -->'
+    END='<!-- AIND-DEVIATIONS:END -->'
+    body="$(gh pr view "$DPR" --repo "$AIND_GH_REPO" --json body --jq .body 2>/dev/null | tr -d '\r')" \
+      || aind_die "could not read PR #$DPR body"
+    line="- ${TEXT} (human: ${CITE})"
+    if printf '%s' "$body" | grep -qF "$START"; then
+      # Block exists — insert the new line immediately before the END marker.
+      new="$(printf '%s' "$body" | awk -v ln="$line" -v end="$END" '$0==end{print ln} {print}')"
+    else
+      # No block yet — append a fresh one.
+      new="$(printf '%s\n\n## Directed deviations\n<!-- Human-directed changes on this PR, each citing the human thread/comment that authorised it. The reviewer treats these as authoritative addenda to the merged plan. -->\n%s\n%s\n%s\n' \
+        "$body" "$START" "$line" "$END")"
+    fi
+    tmp="$(mktemp)"; printf '%s\n' "$new" > "$tmp"
+    gh pr edit "$DPR" --repo "$AIND_GH_REPO" --body-file "$tmp" >/dev/null \
+      || { rm -f "$tmp"; aind_die "could not update PR #$DPR body with the deviation"; }
+    rm -f "$tmp"
+    echo "aind: recorded directed deviation on PR #$DPR (cite: $CITE)"
+    ;;
+
   *)
-    aind_die "unknown phase '$PHASE' (use: status | begin | push)"
+    aind_die "unknown phase '$PHASE' (use: status | begin | push | deviation)"
     ;;
 esac
