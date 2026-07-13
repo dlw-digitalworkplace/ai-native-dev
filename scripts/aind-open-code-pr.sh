@@ -43,7 +43,7 @@ forge_require
 # push / PR creation. Revising an open PR is a separate flow: re-run /aind:implement, which detects
 # the open PR and enters revise mode (aind-revise-code-pr.sh) instead of opening a second PR.
 code_pr_exists() {
-  [[ -n "$(forge_pr_list open "$BRANCH" | head -n1)" ]]
+  [[ -n "$(forge_pr_list open "$BRANCH")" ]]
 }
 
 case "$MODE" in
@@ -79,7 +79,8 @@ case "$MODE" in
 
     # Resolve the (now merged) plan PR URL so the code PR's AIND-LINKS can point back to the spec.
     PLAN_BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
-    PLAN_PR_URL="$(forge_pr_list all "$PLAN_BRANCH" | head -n1 | cut -f3)"
+    PLAN_PR_ROW="$(forge_pr_list all "$PLAN_BRANCH")"; PLAN_PR_ROW="${PLAN_PR_ROW%%$'\n'*}"
+    PLAN_PR_URL="$(printf '%s' "$PLAN_PR_ROW" | cut -f3)"
 
     LINKS_BLOCK="$(bash "$SCRIPT_DIR/aind-links.sh" write "$ID" "$PLAN_PR_URL")"
     BODY_FILE="$(mktemp)"

@@ -34,7 +34,7 @@ BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
 # Refuse to clobber an existing plan PR — revisions iterate the same PR via
 # aind-revise-plan-pr.sh, never a second open. (Re-running create here would conflict on the
 # branch push and fail PR creation.)
-if [[ -n "$(forge_pr_list open "$BRANCH" | head -n1)" ]]; then
+if [[ -n "$(forge_pr_list open "$BRANCH")" ]]; then
   aind_die "a plan PR already exists for $BRANCH — iterate it with aind-revise-plan-pr.sh (revise mode), don't re-open"
 fi
 

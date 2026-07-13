@@ -40,7 +40,9 @@ BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
 
 # Print the number of the open plan PR for this work item (empty if none).
 pr_number() {
-  forge_pr_list open "$BRANCH" | head -n1 | cut -f2
+  local row
+  row="$(forge_pr_list open "$BRANCH")"; row="${row%%$'\n'*}"
+  printf '%s' "$row" | cut -f2
 }
 
 case "$PHASE" in
@@ -106,7 +108,7 @@ case "$PHASE" in
     ;;
 
   cleanup)
-    row="$(forge_pr_list all "$BRANCH" | head -n1)"
+    row="$(forge_pr_list all "$BRANCH")"; row="${row%%$'\n'*}"
     [[ -n "$row" ]] || aind_die "no plan PR found for $BRANCH — refusing to delete the branch (nothing proves it was merged)"
     st="$(printf '%s' "$row" | cut -f1)"; num="$(printf '%s' "$row" | cut -f2)"
     [[ "$st" == "MERGED" ]] || aind_die "plan PR #$num for $BRANCH is '$st', not MERGED — refusing to delete the plan branch (merge it first)"
