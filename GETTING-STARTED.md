@@ -172,6 +172,36 @@ check", or run it directly):
 bash <plugin-dir>/scripts/aind-preflight.sh
 ```
 
+## 3b. (Optional) Enable parallel work with git worktrees
+
+To drive **multiple stories at once from one clone** — e.g. implement one while planning the next —
+opt into git worktrees. Onboard/kickstart drop a sample; turn it on by copying it into place:
+
+```bash
+cp .claude/aind-worktree.config.sample.json .claude/aind-worktree.config.json
+echo ".claude/worktrees/" >> .gitignore          # the worktrees themselves are never committed
+```
+
+```jsonc
+// .claude/aind-worktree.config.json — its PRESENCE is the opt-in; delete it to go back to single-tree
+{
+  "worktreeRoot": ".claude/worktrees",            // where per-phase worktrees are created
+  "copyFiles": [                                  // gitignored files/folders a fresh worktree lacks
+    ".claude/aind.env",                           //   config (incl. the PAT)
+    ".claude/settings.local.json",                //   your permission allowlist
+    ".env", ".vscode"                             //   any project runtime file/folder (optional)
+  ]
+}
+```
+
+With the feature on, `/aind:plan` and `/aind:implement` each run in their own worktree
+(`<id>-plan`, `<id>-impl`), and `/aind:approve-plan` / `/aind:complete` retire it. **Run every
+command from a terminal in the main checkout** — it stays on the integration branch and *drives* the
+worktree by path; parallelism is just opening a second main-checkout terminal for another story.
+Large dirs like `node_modules` are the project's concern (e.g. pnpm); AIND doesn't share them.
+Intake and `/aind:dream` stay single-tree by design. Leave the config file out and everything
+behaves exactly as before.
+
 ## 4. Run the flow
 
 Tag an ADO user story `AIND status - Ready for intake`, then drive it through the plan phase and

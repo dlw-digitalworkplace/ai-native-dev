@@ -111,11 +111,12 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 | Dreaming | Lessons-learned emission — `aind-emit-lesson.sh` | ✅ | ✅ | Live-validated: each agent emits a signed record (severity enum + observation) to the `aind/lessons` orphan branch at session end, via worktree-safe git plumbing; human PR feedback becomes correction/suggestion lessons through the revise runs (D30). |
 | Dreaming | Dreamer agent (cold) — `/aind:dream` | ✅ | ✅ | Live-validated end-to-end: the cold dreamer clusters unprocessed lessons and judges them (severity × recurrence × factualness), a human curates the clusters (gate 1), and approved clusters land as one `.claude` PR (gate 2). Caught a seeded lint-skill defect **and** surfaced genuine project-rule gaps (e.g. backend input-file-type validation); scope stays within `.claude`, structural findings → parking-lot (D30). |
 | Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. Onboard detects the host from the git remote; kickstart asks. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
+| Cross-cutting | Parallel work — opt-in git worktrees | ✅ | ✅ | Per-item git worktrees (D37) let one clone drive multiple stories at once. Opt-in by a `.claude/aind-worktree.config.json` (`worktreeRoot` + a `copyFiles` list of gitignored files/folders seeded into each fresh tree); `/aind:plan`→`<id>-plan` and `/aind:implement`→`<id>-impl` create a per-phase worktree, `/aind:approve-plan` and `/aind:complete` retire it. Portable git plumbing (`scripts/aind-worktree.sh`); **strict single-tree no-op when the config is absent.** Drive-from-main session model; intake and dreaming stay single-tree by design. **Live-exercised** (parallel implement → merge → conflict-resolve → complete); offline smoke test 18/18. |
 
 ## Docs
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D36 with rationale.
+- **`design-log.md`** — decisions D1–D37 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
