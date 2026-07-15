@@ -7,5 +7,8 @@ aind.zip
 # Local, per-developer Claude Code permission grants (not shared, not shipped)
 .claude/settings.local.json
 
+# Per-item git worktrees (created when worktrees are opted in — never committed)
+.claude/worktrees/
+
 # Example / reference content only — prior-art artifacts studied during design, not part of the plugin
 files/

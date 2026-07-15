@@ -1,0 +1,7 @@
+{
+  "worktreeRoot": ".claude/worktrees",
+  "copyFiles": [
+    ".claude/aind.env",
+    ".claude/settings.local.json"
+  ]
+}

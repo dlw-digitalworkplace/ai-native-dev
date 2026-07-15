@@ -31,7 +31,11 @@ Work item: **$1**
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" cleanup
    ```
    Run this **after** the tag write (above) — branch hygiene last, so a cleanup hiccup never
-   affects the committed status.
+   affects the committed status. **In worktree mode** this step also retires the plan worktree and
+   fast-forwards the main checkout to include the merged plan — so **run `/aind:approve-plan` from a
+   session in the main checkout, not from inside the plan worktree** (a session cannot remove its own
+   working directory). If it warns that the worktree couldn't be removed, run
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout.
 
 This completes the plan phase; the build phase (out of scope for this iteration) begins from
 `Ready for implementation`.

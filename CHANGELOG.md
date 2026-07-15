@@ -9,6 +9,35 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.14.0] — 2026-07-15
+
+### Added
+- **Parallel work via opt-in git worktrees** (D37). One clone can now drive multiple stories at
+  once — implement one while planning the next — each phase running in its **own git worktree** so
+  the branches never collide in a single working tree.
+  - **Opt-in by the presence of `.claude/aind-worktree.config.json`** (`worktreeRoot`, default
+    `.claude/worktrees`; a `copyFiles` list of the gitignored files **or folders** a fresh worktree
+    lacks — `aind.env`, `settings.local.json`, `.env`, `.vscode/`, … — seeded into each new tree).
+    With the file absent, everything is a **strict single-tree no-op** (regression bar).
+  - **New portable script `scripts/aind-worktree.sh`** (`enabled` / `root` / `path` / `ensure` /
+    `ensure-plan` / `list` / `remove` / `prune`) — AIND-owned git plumbing, no dependence on any
+    host's native worktree feature. `/aind:plan` → `<id>-plan`, `/aind:implement` → `<id>-impl`;
+    `/aind:approve-plan` and `/aind:complete` retire the worktree. The PR scripts gain a one-line
+    subprocess-`cd` into the worktree and are otherwise unchanged.
+  - **Drive-from-main session model:** each session's cwd stays on the main checkout and *drives* a
+    worktree by path (a process can't remove its own cwd worktree). Parallelism comes from opening
+    more than one main-checkout terminal, each driving one story. `/aind:implement` pins the worktree
+    as the coder's project root, with a main-tree-clean guard so a wrong-tree edit fails loud.
+  - **Intake and dreaming stay single-tree by design** — intake creates no PR; dreaming is an
+    occasional cross-story flow whose lesson emission uses no checkout (only its synthesis PR touches
+    the tree).
+  - Two Windows fixes (same family as the existing gotchas): Windows `jq` emits CRLF — strip `\r`
+    off every parsed value; `git worktree list` prints native `C:/` paths — normalise the root via
+    `cygpath -m` for the prefix filter.
+  - `/aind:onboard` and `/aind:kickstart` copy the sample config and document the opt-in; new
+    `project-template/aind-worktree.config.sample.json`; `aind-preflight.sh` gains a worktree check
+    (jq required, worktree root gitignored).
+
 ## [0.13.0] — 2026-07-13
 
 ### Added

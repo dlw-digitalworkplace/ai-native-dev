@@ -40,8 +40,30 @@ project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a proj
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-13)
+## Current status (2026-07-15)
 
+- **Parallel work via AIND-owned git worktrees (D37, 2026-07-15, built on `feat/worktree-parallelism`,
+  offline-validated; live-validation pending).** Opt-in by the presence of
+  `.claude/aind-worktree.config.json` (`worktreeRoot` default `.claude/worktrees`; a `copyFiles` list
+  of gitignored files — `aind.env`, `settings.local.json`, project `.env` — copied into each fresh
+  worktree). Every PR-creating path runs in its own **per-phase** worktree keyed `<id>-<phase>`
+  (`/aind:plan`→`<id>-plan`, `/aind:implement`→`<id>-impl`); `/aind:approve-plan` and `/aind:complete`
+  retire them. **`/aind:dream` is intentionally single-tree** (occasional cross-story flow, not
+  per-story parallel work; its lesson emission uses no checkout, only its synthesis PR touches the
+  tree — run it standalone from a clean main checkout). **Session model = drive-from-main:** the session cwd stays on the main checkout and
+  *drives* a worktree by path (a process can't remove its own cwd worktree — Windows-hard); parallelism
+  = multiple main-checkout terminals, each driving one story. New portable script `aind-worktree.sh`
+  (`enabled`/`root`/`path`/`ensure`/`ensure-plan`/`list`/`remove`/`prune`); the PR scripts gain a
+  one-line subprocess-`cd` into the worktree (session cwd untouched) and teardown folds into the
+  existing `cleanup` paths. **Strict single-tree no-op when the config file is absent** (regression
+  bar). **Two Windows gotchas handled** (same family as the existing ones): jq emits **CRLF** → strip
+  `\r` off every parsed value; `git worktree list` prints **native `C:/`** paths vs our MSYS `/tmp` →
+  normalise the root via `cygpath -m` for the prefix filter. Coder grounding (pin `$WT` as project
+  root, cd-per-shell, worktree-rooted file ops, main-tree-clean guard) is the load-bearing mitigation
+  of drive-from-main. `node_modules`/large-dir sharing is deferred to the project (pnpm). Offline
+  smoke test green (18/18: opt-in toggle, create+copyFiles, reuse, list, main-untouched,
+  self-removal guard, no-force teardown, prune). **Requirements/design record in
+  `files/implementation-plan-worktrees.md`.** Distinct axis from D22 (agent host) and D36 (code host).
 - **Pluggable code host — GitHub OR Azure DevOps Repos (D36, 2026-07-13, live-validated).** Code,
   PRs, and PR comments can live on either host, selected per-project by `AIND_CODE_HOST=github|ado`
   (+ `AIND_ADO_REPO`). Script-only change: a **forge adapter** (`scripts/aind-forge.sh`) dispatches

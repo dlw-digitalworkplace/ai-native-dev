@@ -50,16 +50,26 @@ case "$MODE" in
   start)
     aind_require_env AIND_INTEGRATION_BRANCH
     code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
-    # Don't clobber a dirty working tree: branching off integration with uncommitted tracked
-    # changes would drag them onto the new branch. Refuse and let the developer decide — never
-    # stash automatically. (Untracked files are fine; they're carried along harmlessly.)
-    if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-      aind_die "working tree has uncommitted changes — commit or stash them before starting (this command won't stash for you)"
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      # Worktree mode: build in a dedicated worktree for this item's implement phase. Its path is
+      # printed as `aind: worktree <path>` — that directory is the coder's project root; implement
+      # + commit THERE (the session's own cwd stays on the main checkout).
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" ensure "$ID" impl "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH")" \
+        || aind_die "could not prepare the implement worktree for $ID"
+      echo "aind: worktree $WT"
+      echo "aind: on branch $BRANCH in the worktree above — implement + commit there, then run 'open'"
+    else
+      # Don't clobber a dirty working tree: branching off integration with uncommitted tracked
+      # changes would drag them onto the new branch. Refuse and let the developer decide — never
+      # stash automatically. (Untracked files are fine; they're carried along harmlessly.)
+      if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+        aind_die "working tree has uncommitted changes — commit or stash them before starting (this command won't stash for you)"
+      fi
+      git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
+      git checkout -B "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
+        || git checkout -B "$BRANCH" "$AIND_INTEGRATION_BRANCH"
+      echo "aind: on branch $BRANCH (off $AIND_INTEGRATION_BRANCH) — implement, commit, then run 'open'"
     fi
-    git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
-    git checkout -B "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
-      || git checkout -B "$BRANCH" "$AIND_INTEGRATION_BRANCH"
-    echo "aind: on branch $BRANCH (off $AIND_INTEGRATION_BRANCH) — implement, commit, then run 'open'"
     ;;
 
   open)
@@ -68,6 +78,14 @@ case "$MODE" in
     [[ -n "$TITLE" ]] || TITLE="Implementation for work item ${ID}"
 
     code_pr_exists && aind_die "a code PR already exists for $BRANCH — to change it, re-run /aind:implement (it enters revise mode) instead of opening a new PR"
+
+    # Worktree mode: push + open from the implement worktree (where the coder committed). Reuse the
+    # one `start` created; the cd is in this subprocess only.
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" path "$ID" impl)"
+      [[ -f "$WT/.git" ]] || aind_die "implement worktree $WT missing — run 'aind-open-code-pr.sh start' first"
+      cd "$WT"
+    fi
 
     # There must be implementation to review.
     git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
@@ -78,7 +96,7 @@ case "$MODE" in
     git push -u origin "$BRANCH" --quiet
 
     # Resolve the (now merged) plan PR URL so the code PR's AIND-LINKS can point back to the spec.
-    PLAN_BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
+    PLAN_BRANCH="$(aind_plan_branch "$ID")"
     PLAN_PR_ROW="$(forge_pr_list all "$PLAN_BRANCH")"; PLAN_PR_ROW="${PLAN_PR_ROW%%$'\n'*}"
     PLAN_PR_URL="$(printf '%s' "$PLAN_PR_ROW" | cut -f3)"
 

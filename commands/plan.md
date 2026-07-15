@@ -22,6 +22,21 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
 
 ---
 
+> **Worktrees (parallel work).** If this project opts into worktrees (a
+> `.claude/aind-worktree.config.json` exists — check with
+> `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled`), the plan phase runs in its own
+> git worktree so other items can proceed in parallel. **Your session stays in the main checkout;**
+> you author *into* the worktree by absolute path. Create/resolve it up front and use its path
+> wherever this command says `plans/$1/plan.md`:
+> ```bash
+> WT="$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" ensure-plan "$1")"   # create mode
+> # revise mode: `begin` (B1) checks the worktree out and prints its path instead
+> ```
+> Then author to **`$WT/plans/$1/plan.md`**. The PR/thread scripts operate in that worktree
+> automatically, and thread `file:line` anchors stay the repo-relative `plans/$1/plan.md`. If
+> worktrees are **not** enabled, ignore this box and use `plans/$1/plan.md` in the main checkout as
+> before.
+
 ## A. Create mode (first run)
 
 1. **Precondition + transition.** Load the story and confirm it carries
@@ -170,7 +185,8 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    This puts the current plan at `plans/$1/plan.md` in your working tree and prints every PR
    comment and review thread — each tagged `[OPEN]`/`[RESOLVED]` with its `thread=<id>` and
    `file:line`. If it refuses because the working tree is dirty, relay that — the user must
-   commit/stash first.
+   commit/stash first. **In worktree mode** it prints the worktree path (`… current plan at
+   <worktree>/plans/$1/plan.md`) — edit the plan *there*, not in the main checkout.
 
 2. **Revise the plan.** Read the current `plans/$1/plan.md` together with the feedback, then edit
    the plan to address **every `[OPEN]` item** — reviewer comments and unanswered assumptions

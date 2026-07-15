@@ -105,8 +105,12 @@ and note it.
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
    cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample" .claude/aind.env.sample
+   cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind-worktree.config.sample.json" .claude/aind-worktree.config.sample.json
    ```
    Remind the human to create `.claude/aind.env` from the sample and **gitignore it** (it holds the PAT).
+   **Worktrees (optional):** to work multiple stories in parallel later, copy
+   `aind-worktree.config.sample.json` → `.claude/aind-worktree.config.json` (presence opts in) and add
+   `.claude/worktrees/` to `.gitignore`; leaving it out keeps single-tree behaviour.
 
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist (many items will be `[FAIL]`/`[MANUAL]` on a new

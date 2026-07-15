@@ -78,6 +78,12 @@ aind_org() { echo "${AIND_ADO_ORG%/}"; }
 # the code-host adapter, which sources this file. Scripts that touch PRs source aind-forge.sh
 # instead of this file directly.
 
+# The plan branch for a work item. The prefix is a project concern (override with
+# AIND_PLAN_BRANCH_PREFIX, default aind/plan/); the framework still reaches the branch through the
+# PR, never by reconstructing this name to find an artifact — this is only used where the branch is
+# being created/checked out by its own phase.
+aind_plan_branch() { echo "${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${1}"; }
+
 # --- Lessons stream (dreaming phase) ------------------------------------------------------------
 # Lessons-learned records live on a dedicated, long-lived branch that never merges into the
 # integration branch — a pure append-only exhaust store the dreamer later synthesises. The name is

@@ -80,19 +80,28 @@ case "$PHASE" in
 
   begin)
     PR="${3:-}"
-    if ! git diff --quiet || ! git diff --cached --quiet; then
-      aind_die "working tree has uncommitted changes — commit or stash before revising the code PR"
-    fi
     rc=0; resolve_open "$PR" || rc=$?
     case "$rc" in
       1) aind_die "no open code PR for work item $ID — nothing to revise (build one with /aind:implement first)" ;;
       2) aind_die "more than one OPEN code PR matches AB#$ID — pass the PR number: aind-revise-code-pr.sh begin $ID <pr>" ;;
     esac
+    # With worktrees enabled, revise in the item's implement worktree (reuse the one the build run
+    # made; create it on the PR head if this is a fresh session). The cd is in this subprocess only.
+    WT_NOTE=""
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" ensure "$ID" impl "$R_HEAD" "origin/$R_HEAD")" \
+        || aind_die "could not prepare the implement worktree for $ID"
+      cd "$WT"
+      WT_NOTE=" — worktree $WT (treat it as your project root)"
+    fi
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+      aind_die "working tree has uncommitted changes — commit or stash before revising the code PR"
+    fi
     git fetch origin "$R_HEAD" --quiet
     git checkout -B "$R_HEAD" "origin/$R_HEAD" >/dev/null 2>&1 \
       || aind_die "could not check out code branch $R_HEAD (PR #$R_NUM)"
 
-    echo "aind: on code branch $R_HEAD (PR #$R_NUM) — apply ONLY the human-directed changes, reply on each acted thread, then run: push"
+    echo "aind: on code branch $R_HEAD (PR #$R_NUM)${WT_NOTE} — apply ONLY the human-directed changes, reply on each acted thread, then run: push"
     echo
     echo "===== STEERING — the human's instructions on the PR (comments + threads). Act only on these. ====="
     bash "$SCRIPT_DIR/aind-review-pr.sh" digest "$R_NUM"
@@ -101,6 +110,11 @@ case "$PHASE" in
 
   push)
     SUMMARY="${3:-}"
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" path "$ID" impl)"
+      [[ -f "$WT/.git" ]] || aind_die "implement worktree $WT missing — run 'begin' first"
+      cd "$WT"
+    fi
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
     [[ -n "$branch" && "$branch" != "HEAD" ]] || aind_die "not on a branch — run 'begin' first to check out the code PR branch"
     git push origin "$branch" --quiet

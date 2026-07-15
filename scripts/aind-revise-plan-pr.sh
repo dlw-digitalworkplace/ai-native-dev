@@ -36,7 +36,7 @@ PHASE="${2:-}"
 aind_require_cmd git
 forge_require
 
-BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
+BRANCH="$(aind_plan_branch "$ID")"
 
 # Print the number of the open plan PR for this work item (empty if none).
 pr_number() {
@@ -56,6 +56,16 @@ case "$PHASE" in
   begin)
     n="$(pr_number)"
     [[ -n "$n" ]] || aind_die "no open plan PR for work item $ID — open one with aind-open-plan-pr.sh first"
+    # With worktrees enabled, revise the plan in its dedicated worktree (reuse the one the create run
+    # made; create it on the PR branch if this is a fresh session). The cd is in this subprocess, so
+    # the session's cwd is untouched.
+    PLAN_LOC="plans/${ID}/plan.md"
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" ensure "$ID" plan "$BRANCH" "origin/$BRANCH")" \
+        || aind_die "could not prepare the plan worktree for $ID"
+      cd "$WT"
+      PLAN_LOC="$WT/plans/${ID}/plan.md"
+    fi
     if ! git diff --quiet || ! git diff --cached --quiet; then
       aind_die "working tree has uncommitted changes — commit or stash before revising the plan"
     fi
@@ -63,7 +73,7 @@ case "$PHASE" in
     git checkout -B "$BRANCH" "origin/$BRANCH" >/dev/null 2>&1 \
       || aind_die "could not check out plan branch $BRANCH"
 
-    echo "aind: on plan branch $BRANCH (PR #$n) — current plan at plans/${ID}/plan.md"
+    echo "aind: on plan branch $BRANCH (PR #$n) — current plan at $PLAN_LOC"
     echo
     echo "===== REVIEW FEEDBACK — address each [OPEN] item in the plan, reply on its thread (clarify or 'addressed'), then run: push ====="
     echo "--- PR comments ---"
@@ -77,6 +87,11 @@ case "$PHASE" in
 
   push)
     SUMMARY="${3:-}"
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" path "$ID" plan)"
+      [[ -f "$WT/.git" ]] || aind_die "plan worktree $WT missing — run /aind:plan (revise 'begin') first"
+      cd "$WT"
+    fi
     git add "plans/${ID}/"
     if git diff --cached --quiet; then
       aind_die "no changes to plans/${ID}/ — edit the plan before pushing a revision"
@@ -118,12 +133,33 @@ case "$PHASE" in
     else
       echo "aind: remote branch $BRANCH already gone or not deletable — skipped"
     fi
-    current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-    if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-      if [[ "$current" == "$BRANCH" ]]; then
-        echo "aind: local branch $BRANCH is checked out — switch away, then 'git branch -D $BRANCH' to remove it"
-      else
+
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      # Worktree mode: the plan branch lives in the plan worktree, not the main checkout. Remove the
+      # worktree first (frees the branch), then delete the local branch, then fast-forward the main
+      # checkout's integration branch so this session ends on main with the latest code.
+      bash "$SCRIPT_DIR/aind-worktree.sh" remove "$ID" plan || \
+        echo "aind: [WARN] could not remove the plan worktree — run 'aind-worktree.sh prune' from the main checkout" >&2
+      if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
         git branch -D "$BRANCH" >/dev/null 2>&1 && echo "aind: deleted local branch $BRANCH" || true
+      fi
+      if [[ -n "${AIND_INTEGRATION_BRANCH:-}" ]]; then
+        git fetch origin "$AIND_INTEGRATION_BRANCH" --prune --quiet 2>/dev/null || true
+        cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+        if [[ "$cur" == "$AIND_INTEGRATION_BRANCH" ]] && git diff --quiet && git diff --cached --quiet; then
+          git merge --ff-only "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
+            && echo "aind: fast-forwarded $AIND_INTEGRATION_BRANCH to include the merged plan" \
+            || echo "aind: [WARN] could not fast-forward $AIND_INTEGRATION_BRANCH — pull manually" >&2
+        fi
+      fi
+    else
+      current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+      if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+        if [[ "$current" == "$BRANCH" ]]; then
+          echo "aind: local branch $BRANCH is checked out — switch away, then 'git branch -D $BRANCH' to remove it"
+        else
+          git branch -D "$BRANCH" >/dev/null 2>&1 && echo "aind: deleted local branch $BRANCH" || true
+        fi
       fi
     fi
     ;;
