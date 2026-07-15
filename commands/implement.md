@@ -16,6 +16,24 @@ tiebreak is needed:** you do not merge (that is `/aind:complete`).
 
 Work item: **$1**
 
+> **Worktrees (parallel work).** If this project opts into worktrees (a
+> `.claude/aind-worktree.config.json` exists — check with
+> `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled`), the implement phase runs in its
+> own git worktree so other items proceed in parallel. **Your session's cwd stays on the main
+> checkout** — you do NOT `cd` the session into the worktree. Instead, the build commands print the
+> worktree path (`aind: worktree <path>` from `start`; a `worktree <path>` note from `begin`), and
+> **that directory is your project root for this story**:
+> - Run **every** shell command with `cd "<worktree>"` first (build, test, lint, git, all of it).
+> - Read/Edit/Write/Grep/Glob using **`<worktree>`-rooted absolute paths** — never bare relative
+>   paths (those would hit the main checkout, the wrong tree).
+> - When you spawn the reviewer, pass it the worktree path too, so it reviews the right tree.
+>
+> **Guard:** the main checkout must stay clean. If at any point `git -C "<main-repo>" status
+> --porcelain` shows changes you didn't intend there, you edited the wrong tree — stop and move the
+> work into the worktree. (Commits/pushes go through the worktree, so a stray main-tree edit would be
+> silently *missing* from the PR — catch it early.) If worktrees are **not** enabled, ignore this box
+> and work in the main checkout as before.
+
 ## 0. Pick the mode
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-code-pr.sh" "$1" status
@@ -65,6 +83,8 @@ Pick a branch name from the convention **`<type>/$1-<short-name>`** — `<type>`
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-code-pr.sh" start "$1" "<branch>"
 ```
+In worktree mode this prints `aind: worktree <path>` — **capture that path; it is your project root
+for everything below** (see the Worktrees box: `cd` there in every shell, use its absolute paths).
 
 ### A4. Implement the task breakdown
 Work the plan's tasks **in order** (dependencies first). For each task:
@@ -134,7 +154,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-code-pr.sh" "$1" begin
 This puts the PR's current code in your working tree and prints the **steering digest** — top-level
 PR comments and every review thread, each tagged `[OPEN]`/`[RESOLVED]` with its `thread=<id>` and
 `file:line`. If it refuses because the working tree is dirty, relay that — the user must commit/stash
-first.
+first. **In worktree mode** it works in the item's implement worktree and prints its path (`… —
+worktree <path>`) — treat that as your project root (see the Worktrees box).
 
 ### B2. Apply ONLY the human-directed changes
 Read the digest (and any instruction the user gave at the CLI), then make **exactly** the changes the
@@ -194,8 +215,9 @@ reasoning; it gets just the work-item id and the PR number and resolves everythi
 Run **up to 3 reviewer passes**. For each pass:
 
 1. **Spawn the cold reviewer** as a subagent (the `aind-reviewer` agent) via the Task tool, with a
-   prompt that passes **only**: `work-item id: $1` and `PR number: <n>`. Nothing about how you built
-   the code. **Spawn it as a blocking, foreground Task and wait for its returned verdict inline — do
+   prompt that passes **only**: `work-item id: $1` and `PR number: <n>` (and, in worktree mode, the
+   `worktree path` so any full-file reads reflect the branch under review — it still reviews the diff,
+   not your reasoning). Nothing about how you built the code. **Spawn it as a blocking, foreground Task and wait for its returned verdict inline — do
    not run it in the background and do not schedule wakeups to poll it;** a review pass is a normal
    synchronous call whose result you act on. It reviews the diff against the merged plan **and** the
    full project rule/skill set, posts resolvable threads for each blocking finding + a summary

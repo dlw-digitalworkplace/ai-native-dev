@@ -95,9 +95,13 @@ a command you actually found in the repo — don't emit a `deploy` skill just be
 ```bash
 cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
 cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample" .claude/aind.env.sample
+cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind-worktree.config.sample.json" .claude/aind-worktree.config.sample.json
 ```
 (Use the `<name>.aind-draft` fallback if a target already exists.) Remind the human to create
-`.claude/aind.env` from the sample and **gitignore it** (it holds the PAT).
+`.claude/aind.env` from the sample and **gitignore it** (it holds the PAT). **Worktrees (optional):**
+if the team wants to work multiple stories in parallel from one clone, tell them to copy
+`aind-worktree.config.sample.json` → `.claude/aind-worktree.config.json` (its presence opts in) and
+add `.claude/worktrees/` to `.gitignore`. Leaving the file out keeps single-tree behaviour.
 
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist:

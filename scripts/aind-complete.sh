@@ -98,23 +98,36 @@ case "$MODE" in
     # Prune the now-stale remote-tracking ref so origin/$head doesn't dangle.
     git fetch origin --prune --quiet 2>/dev/null || true
 
-    # Local: the dev's copy of the code branch usually lingers from the implement run.
-    if git show-ref --verify --quiet "refs/heads/$head"; then
-      current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-      if [[ "$current" == "$head" ]]; then
-        if git diff --quiet && git diff --cached --quiet; then
-          git checkout "$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
-            || git checkout -B "$AIND_INTEGRATION_BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
-            || aind_die "could not switch to $AIND_INTEGRATION_BRANCH — switch away, then 'git branch -D $head' manually"
-          git branch -D "$head" >/dev/null 2>&1 && echo "aind: switched to $AIND_INTEGRATION_BRANCH and deleted local branch $head"
-        else
-          echo "aind: local branch $head is checked out with uncommitted changes — commit/stash, switch away, then 'git branch -D $head' manually"
-        fi
-      else
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      # Worktree mode: the code branch lives in the item's implement worktree, not the main checkout
+      # (which never left the integration branch). Remove the worktree first — that frees the branch
+      # — then delete the local branch. The fast-forward below brings the main checkout current.
+      bash "$SCRIPT_DIR/aind-worktree.sh" remove "$ID" impl \
+        || echo "aind: [WARN] could not remove the implement worktree — run 'aind-worktree.sh prune' from the main checkout" >&2
+      if git show-ref --verify --quiet "refs/heads/$head"; then
         git branch -D "$head" >/dev/null 2>&1 && echo "aind: deleted local branch $head" || true
+      else
+        echo "aind: no local branch $head — nothing to clean up locally"
       fi
     else
-      echo "aind: no local branch $head — nothing to clean up locally"
+      # Local: the dev's copy of the code branch usually lingers from the implement run.
+      if git show-ref --verify --quiet "refs/heads/$head"; then
+        current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+        if [[ "$current" == "$head" ]]; then
+          if git diff --quiet && git diff --cached --quiet; then
+            git checkout "$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
+              || git checkout -B "$AIND_INTEGRATION_BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
+              || aind_die "could not switch to $AIND_INTEGRATION_BRANCH — switch away, then 'git branch -D $head' manually"
+            git branch -D "$head" >/dev/null 2>&1 && echo "aind: switched to $AIND_INTEGRATION_BRANCH and deleted local branch $head"
+          else
+            echo "aind: local branch $head is checked out with uncommitted changes — commit/stash, switch away, then 'git branch -D $head' manually"
+          fi
+        else
+          git branch -D "$head" >/dev/null 2>&1 && echo "aind: deleted local branch $head" || true
+        fi
+      else
+        echo "aind: no local branch $head — nothing to clean up locally"
+      fi
     fi
 
     # Leave the developer on an up-to-date integration branch: if we're now on it (we switched here

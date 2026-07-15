@@ -84,6 +84,31 @@ for v in "${_cfg[@]}"; do
 done
 
 echo
+echo "Worktrees (parallel work — optional):"
+_wtcfg=""
+_d="$PWD"
+while :; do
+  if [[ -f "$_d/.claude/aind-worktree.config.json" ]]; then _wtcfg="$_d/.claude/aind-worktree.config.json"; break; fi
+  [[ "$_d" == "/" || -z "$_d" ]] && break
+  _d="$(dirname "$_d")"
+done
+if [[ -n "$_wtcfg" ]]; then
+  ok "worktrees enabled ($_wtcfg)"
+  if ! have jq; then bad "jq is REQUIRED to parse aind-worktree.config.json when worktrees are enabled"; fi
+  if have jq; then
+    _root="$(jq -r '.worktreeRoot // ".claude/worktrees"' "$_wtcfg" 2>/dev/null | tr -d '\r')"
+    [[ -n "$_root" ]] || _root=".claude/worktrees"
+    if git check-ignore -q "$_root/_probe" 2>/dev/null; then
+      ok "worktreeRoot '$_root' is gitignored"
+    else
+      warning "worktreeRoot '$_root' is not gitignored — add it (e.g. '$_root/') to .gitignore so nested worktrees don't clutter 'git status'"
+    fi
+  fi
+else
+  manual "worktrees not enabled (no .claude/aind-worktree.config.json) — single-tree mode; that's fine"
+fi
+
+echo
 echo "Connectivity (best-effort):"
 if [[ "$HOST" == "github" ]] && have gh && [[ -n "${AIND_GH_REPO:-}" ]]; then
   if gh repo view "$AIND_GH_REPO" >/dev/null 2>&1; then ok "GitHub repo reachable: $AIND_GH_REPO"; else bad "cannot access GitHub repo $AIND_GH_REPO with the current gh account"; fi

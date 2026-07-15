@@ -56,6 +56,11 @@ Work item: **$1**
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-complete.sh" cleanup "$1" <pr-number>
    ```
+   **In worktree mode** this step also retires the item's implement worktree before deleting the
+   branch — so **run `/aind:complete` from a session in the main checkout, not from inside the
+   worktree** (a session cannot remove its own working directory). If it warns that the worktree
+   couldn't be removed, run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the
+   main checkout.
 
 ## Report
 Tell the user the story is **Implementation complete**, with the merged PR URL and merge commit, and

@@ -32,6 +32,29 @@ e.g. `source .claude/aind.env` (copy `aind.env.sample`, keep the PAT out of git)
   resolve via the PR and the `AIND-LINKS` block. The work-item ID is the join value.
 - **Don't author stories.** Intake suggests fixes; the human owns the story text.
 
+## Parallel work with worktrees (optional)
+
+To work several stories at once from one clone (e.g. implement one while planning the next), opt into
+git worktrees: copy `aind-worktree.config.sample.json` to `.claude/aind-worktree.config.json`. Its
+presence turns the feature on; deleting it turns everything back to single-tree behaviour.
+
+```json
+{ "worktreeRoot": ".claude/worktrees",
+  "copyFiles": [".claude/aind.env", ".claude/settings.local.json"] }
+```
+
+- `worktreeRoot` — where per-phase worktrees are created (default `.claude/worktrees`, repo-relative).
+  **Add it to `.gitignore`** (e.g. `.claude/worktrees/`).
+- `copyFiles` — gitignored files a fresh worktree would lack, copied in at creation: your `aind.env`
+  (config), `settings.local.json` (permission allowlist), and any project runtime file like `.env`.
+
+Run it: launch each session in the **main checkout** (it stays on the integration branch).
+`/aind:plan` and `/aind:implement` create and drive a worktree per story; `/aind:approve-plan` and
+`/aind:complete` retire it — **run those close-out commands from the main checkout**, not from inside
+a worktree (a session can't remove its own working directory). Parallelism comes from opening more
+than one terminal in the main checkout, each driving a different story. `node_modules` and other
+large dirs are the project's concern (e.g. use pnpm); AIND does not share them.
+
 ## Project rules
 
 <!-- One @import per rule file in .claude/rules/. There is NO fixed list of domains —

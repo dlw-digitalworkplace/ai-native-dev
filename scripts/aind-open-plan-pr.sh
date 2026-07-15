@@ -25,10 +25,7 @@ aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH
 aind_require_cmd git
 forge_require
 
-PLAN_PATH="plans/${ID}/plan.md"
-[[ -f "$PLAN_PATH" ]] || aind_die "plan not found at $PLAN_PATH — write the plan before opening the PR"
-
-BRANCH="${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${ID}"
+BRANCH="$(aind_plan_branch "$ID")"
 [[ -n "$TITLE" ]] || TITLE="Plan for work item ${ID}"
 
 # Refuse to clobber an existing plan PR — revisions iterate the same PR via
@@ -38,10 +35,21 @@ if [[ -n "$(forge_pr_list open "$BRANCH")" ]]; then
   aind_die "a plan PR already exists for $BRANCH — iterate it with aind-revise-plan-pr.sh (revise mode), don't re-open"
 fi
 
-# Branch off the latest integration branch.
-git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
-git checkout -B "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
-  || git checkout -B "$BRANCH" "$AIND_INTEGRATION_BRANCH"
+# Branch off the latest integration branch. With worktrees enabled, this work happens in the item's
+# plan worktree (created earlier by /aind:plan via `ensure-plan`, so plans/<id>/plan.md was authored
+# there); reuse it — the cd is in this subprocess only, so the session's cwd is untouched. Without
+# worktrees, branch in place exactly as before.
+if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+  cd "$(bash "$SCRIPT_DIR/aind-worktree.sh" ensure "$ID" plan "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH")" \
+    || aind_die "could not prepare the plan worktree for $ID"
+else
+  git fetch origin "$AIND_INTEGRATION_BRANCH" --quiet
+  git checkout -B "$BRANCH" "origin/$AIND_INTEGRATION_BRANCH" >/dev/null 2>&1 \
+    || git checkout -B "$BRANCH" "$AIND_INTEGRATION_BRANCH"
+fi
+
+PLAN_PATH="plans/${ID}/plan.md"
+[[ -f "$PLAN_PATH" ]] || aind_die "plan not found at $PLAN_PATH — write the plan before opening the PR"
 
 git add "plans/${ID}/"
 git commit -m "Add implementation plan for AB#${ID}
