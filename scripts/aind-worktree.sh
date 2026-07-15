@@ -24,8 +24,9 @@
 # Config file (.claude/aind-worktree.config.json):
 #   { "worktreeRoot": ".claude/worktrees",
 #     "copyFiles": [".claude/aind.env", ".claude/settings.local.json", ".env"] }
-# copyFiles are gitignored files a fresh worktree would lack (config, secrets, project runtime env);
-# they are copied in at creation and removed before teardown.
+# copyFiles are gitignored files OR folders a fresh worktree would lack (config, secrets, project
+# runtime env, editor settings like .vscode/); each is copied in at creation (a directory
+# recursively) and removed again before teardown.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=aind-common.sh
@@ -79,7 +80,13 @@ aind_wt_copy_files() {
   while IFS= read -r f; do
     [[ -n "$f" ]] || continue
     src="$main/$f"; dst="$wt/$f"
-    if [[ -e "$src" ]]; then
+    if [[ -d "$src" ]]; then
+      # Folder entry: replace any existing copy (avoids cp's copy-into-existing-dir nesting) and
+      # recurse. Self-heals on a reuse/refresh.
+      mkdir -p "$(dirname "$dst")"; rm -rf "$dst"
+      cp -rf "$src" "$dst" && echo "aind: copied $f/ (folder) into the worktree" >&2 \
+        || echo "aind: [WARN] could not copy folder $f into the worktree — skipped" >&2
+    elif [[ -e "$src" ]]; then
       mkdir -p "$(dirname "$dst")"
       cp -f "$src" "$dst" && echo "aind: copied $f into the worktree" >&2 \
         || echo "aind: [WARN] could not copy $f into the worktree — skipped" >&2
@@ -180,7 +187,7 @@ case "${1:-}" in
     if [[ -f "$cfg" ]]; then
       while IFS= read -r f; do
         [[ -n "$f" ]] || continue
-        rm -f "$WT/$f" 2>/dev/null || true
+        rm -rf "$WT/$f" 2>/dev/null || true    # -rf so copied folders are removed too
       done < <(jq -r '.copyFiles[]?' "$cfg" 2>/dev/null | tr -d '\r')
     fi
 

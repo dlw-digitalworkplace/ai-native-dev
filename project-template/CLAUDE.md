@@ -45,8 +45,10 @@ presence turns the feature on; deleting it turns everything back to single-tree 
 
 - `worktreeRoot` — where per-phase worktrees are created (default `.claude/worktrees`, repo-relative).
   **Add it to `.gitignore`** (e.g. `.claude/worktrees/`).
-- `copyFiles` — gitignored files a fresh worktree would lack, copied in at creation: your `aind.env`
-  (config), `settings.local.json` (permission allowlist), and any project runtime file like `.env`.
+- `copyFiles` — gitignored files **or folders** a fresh worktree would lack, copied in at creation:
+  e.g. `aind.env` (config), `settings.local.json` (permission allowlist), a runtime file like `.env`,
+  or a whole folder like `.vscode/` or `certs/`. Each entry is a repo-relative path (a file is copied,
+  a directory is copied recursively) and is removed again before the worktree is torn down.
 
 Run it: launch each session in the **main checkout** (it stays on the integration branch).
 `/aind:plan` and `/aind:implement` create and drive a worktree per story; `/aind:approve-plan` and
