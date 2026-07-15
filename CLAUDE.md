@@ -48,7 +48,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   of gitignored files — `aind.env`, `settings.local.json`, project `.env` — copied into each fresh
   worktree). Every PR-creating path runs in its own **per-phase** worktree keyed `<id>-<phase>`
   (`/aind:plan`→`<id>-plan`, `/aind:implement`→`<id>-impl`); `/aind:approve-plan` and `/aind:complete`
-  retire them. **Session model = drive-from-main:** the session cwd stays on the main checkout and
+  retire them. **`/aind:dream` is intentionally single-tree** (occasional cross-story flow, not
+  per-story parallel work; its lesson emission uses no checkout, only its synthesis PR touches the
+  tree — run it standalone from a clean main checkout). **Session model = drive-from-main:** the session cwd stays on the main checkout and
   *drives* a worktree by path (a process can't remove its own cwd worktree — Windows-hard); parallelism
   = multiple main-checkout terminals, each driving one story. New portable script `aind-worktree.sh`
   (`enabled`/`root`/`path`/`ensure`/`ensure-plan`/`list`/`remove`/`prune`); the PR scripts gain a
