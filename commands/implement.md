@@ -243,11 +243,37 @@ Run **up to 3 reviewer passes**. For each pass:
      EOF
      ```
      (Thread ids come from `aind-review-pr.sh digest "<n>"`.) You need not act on SUGGESTIONs — they
-     never block. When you have addressed every blocking finding, **push**:
+     never block. When you have addressed every ordinary (code) blocking finding, **push** (no rebase,
+     so a plain push fast-forwards):
      ```bash
      git push
      ```
-     Then start the next pass (a fresh reviewer re-reads the updated diff and your rebuttals).
+
+     **Merge-conflict finding (`merge:integration`) — handle it LAST, after the push above.** If the
+     reviewer's `BLOCKING` list contains a `merge:integration` finding, the PR no longer merges cleanly
+     into the integration branch — another PR merged under yours (common in parallel work). Resolve it
+     by **rebasing onto integration**, not by editing a file. **Push your code fixes first** (the step
+     above): the rebase re-syncs the branch from the remote, so any unpushed local commits would be
+     lost. Then rebase:
+     ```bash
+     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-code-pr.sh" "$1" rebase
+     ```
+     On a **clean** rebase you are done — go straight to the force-with-lease push below. On a
+     **conflict** it lists the conflicted files and leaves the tree mid-rebase; resolve each conflict
+     in-context (preserve both the integration change and your change), then finish the rebase:
+     ```bash
+     git add <resolved files>
+     git rebase --continue
+     ```
+     A rebase rewrites history, so its push must be a **force-with-lease** (a plain `git push` would be
+     rejected as non-fast-forward):
+     ```bash
+     git push --force-with-lease
+     ```
+     (In worktree mode, run every command here in the item's implement worktree, like all the others.)
+
+     Once every blocking finding is addressed and pushed, start the next pass (a fresh reviewer
+     re-reads the updated diff, re-checks mergeability, and reads your rebuttals).
    - If a `PLAN-OR-STORY-CONCERN` is raised, do **not** silently re-plan — carry it into the tiebreak
      or Report for a human to decide.
 
@@ -328,8 +354,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" coder <<'EOF'
 <what you implemented so far, what is blocking, and exactly what you tried>
 EOF
 ```
-For a **merge conflict**, attempt **one** rebase onto the integration branch first; only escalate
-to `Needs attention` if that single attempt fails.
+For a **merge conflict** (a reviewer `merge:integration` finding, or one you hit directly), attempt
+**one** rebase onto the integration branch first — `aind-revise-code-pr.sh "$1" rebase`, resolve,
+`git rebase --continue`, then `git push --force-with-lease` — and re-review. Only escalate to
+`Needs attention` if that single attempt genuinely can't be resolved.
 
 ## Notes
 - The merged plan is the spec — implement to it, not around it. If you believe the plan itself is

@@ -39,7 +39,16 @@ build/lint/test/run commands (see Constraints §7).
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" fetch <pr-number>
    ```
-   This prints the PR title, body, the parsed `AIND-LINKS` block, and the full diff.
+   This prints the PR title, body, the parsed `AIND-LINKS` block, a **`MERGEABILITY`** line, and the
+   full diff. **`MERGEABILITY`** tells you whether the PR still merges cleanly into the integration
+   branch (another PR may have merged under this one — common in parallel work). If `fetch` shows
+   `MERGEABILITY: UNKNOWN`, the host is still recomputing it — settle it with one polling read before
+   you decide:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" mergeability <pr-number>
+   ```
+   This is a **read** of a PR property — you never run `git merge`/`git rebase` (see Constraints §7);
+   resolving a conflict is the coder's job, your job is to flag it.
 2. From `AIND-LINKS`, read the **merged plan** at `plans/<work-item-id>/plan.md` — its **Definition
    of done**, **Task breakdown**, any **Data contracts**, its **Testing recommendations** (the test
    strategy: whether tests were called for, at what altitude, and the must-cover list with each
@@ -79,6 +88,10 @@ guess and do not review a phantom. Return `VERDICT: CANNOT-REVIEW` with a `REASO
 Assume nothing is correct until the diff proves it. Walk **every** dimension so coverage never
 silently shrinks:
 
+- **Mergeability** — the PR merges cleanly into the integration branch. A `MERGEABILITY: CONFLICTING`
+  status is a **blocking** finding: the branch has drifted from integration and must be rebased and
+  its conflicts resolved before it can merge. `UNKNOWN` (after your polling read) is **not** blocking —
+  note it as advisory; `MERGEABLE` needs no mention.
 - **Spec alignment** — every acceptance criterion and every **Definition-of-done** item is actually
   met by the diff; every task in the breakdown is implemented.
 - **No scope creep** — code beyond what the plan called for (speculative abstraction, configuration,
@@ -123,7 +136,8 @@ silently shrinks:
   data-contract mismatch on the wire; a security breach (secrets in source, missing auth, a raw
   exception leaking at a boundary); a correctness bug; **a test that asserts behavior the spec
   contradicts (a green test masking a defect)**; an architecture violation (logic in the wrong
-  layer, broken dependency direction). *"Must fix or the story isn't done / is unsafe."*
+  layer, broken dependency direction); **a PR that does not merge cleanly into the integration branch
+  (`MERGEABILITY: CONFLICTING`)**. *"Must fix or the story isn't done / is unsafe."*
 - **WARNING (blocks)** — an **objective** quality or convention violation with a concrete fix: a
   broken project rule or skill pattern, DRY or complexity over a rule's stated threshold, a file over
   a rule's size limit, missing mandated logging/telemetry, **a must-cover case from the plan's test
@@ -140,7 +154,9 @@ Rules for classifying:
 - **Anything subjective is a SUGGESTION**, never blocking. (This keeps the gate strict without
   trapping the coder on taste.)
 - **Every finding must cite `file:line` and the source it violates** (a rule/skill file, a plan
-  Definition-of-done item, or an acceptance criterion). If you cannot cite a source, drop it.
+  Definition-of-done item, or an acceptance criterion). If you cannot cite a source, drop it. **One
+  exception:** the mergeability finding has no line to anchor to — cite the synthetic locus
+  `merge:integration` and post it in the summary, not as an inline thread (see §4).
 - **One defect = one finding.** If a single underlying defect breaks several sources at once (e.g. a
   missing log line is both an unmet Definition-of-done item **and** a rule violation), report it
   **once at the highest applicable severity** and list the other sources in that finding — do not
@@ -153,6 +169,10 @@ Rules for classifying:
   ```bash
   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" thread <pr-number> <path> <line> reviewer "<CRITICAL|WARNING>: <defect> (source: <...>) — <fix>"
   ```
+- **A `CONFLICTING` mergeability finding** has no line to anchor a thread to → state it in the
+  **summary** instead (e.g. "CRITICAL — this PR does not merge cleanly into the integration branch;
+  rebase onto integration and resolve the conflicts"), and list it in the returned `BLOCKING:` block
+  with the locus `merge:integration`. Do not try to open an inline thread for it.
 - **On a re-pass:** for each prior `[OPEN]` thread the coder has genuinely addressed, resolve it;
   keep the rest open (optionally reply a note on why it still stands):
   ```bash
@@ -180,6 +200,7 @@ Your final message **is the data the orchestrator reads** — it is not a human-
 VERDICT: CLEAN | CHANGES_REQUESTED
 BLOCKING:
   - [CRITICAL] path:line — <defect> (source: <rule/skill file | plan DoD item | acceptance criterion>)
+  - [CRITICAL] merge:integration — PR does not merge cleanly into the integration branch; rebase + resolve
   - [WARNING]  path:line — <defect> (source: <...>)
   (leave empty if there are none)
 SUGGESTIONS:
@@ -213,3 +234,6 @@ PLAN-OR-STORY-CONCERN: <none | what about the plan/story itself is wrong>
    evidence; you judge the tests by reading their assertions against the spec). Your job is the
    independent read of the diff. If you believe the code cannot build or a test cannot pass, that is
    a **finding to report** (cite `file:line`) — not something you verify by executing.
+   **Checking `MERGEABILITY` is not an exception to this** — it is a **read** of a PR property via
+   `aind-review-pr.sh` (the host already computed it), not you running `git merge`/`git rebase`.
+   Flag a `CONFLICTING` PR; the coder is the one who rebases and resolves.

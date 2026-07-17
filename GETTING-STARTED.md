@@ -202,6 +202,10 @@ Large dirs like `node_modules` are the project's concern (e.g. pnpm); AIND doesn
 Intake and `/aind:dream` stay single-tree by design. Leave the config file out and everything
 behaves exactly as before.
 
+Because parallel PRs can collide, the review loop **handles merge conflicts automatically**: when a
+PR stops merging cleanly into the integration branch (another story merged under it), the reviewer
+flags it and the coder rebases + resolves and hands back for a fresh review — no manual step from you.
+
 ## 4. Run the flow
 
 Tag an ADO user story `AIND status - Ready for intake`, then drive it through the plan phase and
