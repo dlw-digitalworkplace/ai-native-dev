@@ -9,6 +9,28 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.15.0] — 2026-07-16
+
+### Added
+- **Merge-conflict detection in the build/review loop** (D38). With parallel worktrees (D37), a code
+  PR can go conflicting the moment another PR merges under it; the review loop now detects and clears
+  that.
+  - The **cold reviewer** checks, every pass, whether the PR still merges cleanly into the integration
+    branch and flags a conflict as a **CRITICAL** blocking finding (documented in its summary under the
+    synthetic locus `merge:integration`). Detection is a **PR read** — a new forge verb
+    `forge_pr_mergeable` normalises GitHub `mergeable` / Azure DevOps `mergeStatus` to
+    `MERGEABLE | CONFLICTING | UNKNOWN`, surfaced through `aind-review-pr.sh` in `fetch` and a new
+    polling `mergeability` phase — so the reviewer stays cold and read-only (it never runs
+    `git merge`/`git rebase`).
+  - Because both hosts compute mergeability asynchronously, `UNKNOWN` is **polled briefly, then treated
+    as advisory** (non-blocking); only a confirmed `CONFLICTING` blocks, so a transient recompute never
+    deadlocks the loop.
+  - The **coder** resolves a conflict via a new `aind-revise-code-pr.sh <id> rebase` phase (rebase the
+    PR head onto integration; conflicts are left in-tree to resolve in-context), then pushes. Its
+    `push` (and the review loop's post-rebase push) is now **force-with-lease-aware** — it detects the
+    rebase-diverged remote and force-with-leases only then, fixing the non-fast-forward push failure
+    recorded as a lesson during parallel work.
+
 ## [0.14.0] — 2026-07-15
 
 ### Added

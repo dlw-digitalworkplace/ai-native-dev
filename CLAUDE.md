@@ -40,8 +40,25 @@ project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a proj
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-15)
+## Current status (2026-07-16)
 
+- **Merge-conflict detection + rebase resolution in the review loop (D38, 2026-07-16, offline-validated;
+  live-validation pending).** Parallel worktrees (D37) let a code PR go **conflicting** the moment
+  another PR merges under it; the loop now sees and clears that. **Detection is a PR read, not a run**
+  (keeps the reviewer cold/read-only per D35): new forge verb `forge_pr_mergeable` normalises
+  `gh mergeable` / ADO `mergeStatus` to `MERGEABLE|CONFLICTING|UNKNOWN`; surfaced through
+  `aind-review-pr.sh` in `fetch` and a new polling `mergeability` phase (both hosts compute it
+  **asynchronously**, so `UNKNOWN` is polled briefly then treated as **advisory, non-blocking** — only
+  a confirmed `CONFLICTING` blocks). The reviewer flags a `CONFLICTING` PR as a **CRITICAL** finding
+  in its **summary** (no `file:line`, so not an inline thread) under the synthetic locus
+  `merge:integration`. **Resolution** (fixes recorded lesson 57-coder): `aind-revise-code-pr.sh` gains
+  a `rebase` phase (fetch integration, rebase the PR head, leave conflicts in-tree for the coder) and
+  its `push` is now **force-with-lease-aware** (detects a rebase-diverged remote via
+  `git merge-base --is-ancestor` and force-with-leases only then; plain fast-forward otherwise).
+  `/aind:implement` wires this into the `CHANGES_REQUESTED` branch of the review loop and the
+  Stuck-state note. **Kept reactive, not proactive** (no pre-emptive rebase before every push).
+  Offline-validated (script `bash -n`; mergeStatus mapping + force-push guard exercised in a throwaway
+  repo). Distinct axis from D22 (agent host) and D36 (code host).
 - **Parallel work via AIND-owned git worktrees (D37, 2026-07-15, built on `feat/worktree-parallelism`,
   offline-validated; live-validation pending).** Opt-in by the presence of
   `.claude/aind-worktree.config.json` (`worktreeRoot` default `.claude/worktrees`; a `copyFiles` list
@@ -292,6 +309,19 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 - **PR state is normalised** to `OPEN`/`MERGED`/`CLOSED` and thread state to `[OPEN]`/`[RESOLVED]` by
   the adapter (GitHub already uses these; ADO `active/completed/abandoned` and `active/fixed/closed`
   are mapped). Callers compare against the normalised values.
+- **Mergeability is a normalised forge verb, and `UNKNOWN` is asynchronous, not a verdict.**
+  `forge_pr_mergeable` maps `gh` `mergeable` (already `MERGEABLE|CONFLICTING|UNKNOWN`) and ADO
+  `mergeStatus` (`succeeded→MERGEABLE`, `conflicts|failure→CONFLICTING`, `queued|notSet→UNKNOWN`) to
+  one vocabulary. **Both hosts compute it lazily** — right after a push it's `UNKNOWN` until the host
+  recomputes — so `aind-review-pr.sh mergeability` **polls** while `UNKNOWN` and the loop treats a
+  lingering `UNKNOWN` as advisory (only a confirmed `CONFLICTING` blocks). Don't gate on `UNKNOWN`.
+- **A rebase's push must be `--force-with-lease`, and only when history actually diverged.** Resolving
+  a merge conflict rebases the PR head onto moved integration (rewrites history), so a plain
+  `git push` is rejected non-fast-forward (the recorded 57-coder lesson). `aind-revise-code-pr.sh
+  push` now fetches `origin/<branch>` and uses `--force-with-lease` **only** when
+  `git merge-base --is-ancestor origin/<branch> HEAD` is false (diverged); otherwise a plain
+  fast-forward push. Scoped to the coder-owned branch + the lease guard = safe. The `/aind:implement`
+  review loop's own post-rebase push likewise uses `git push --force-with-lease`.
 - **Windows/MSYS leading-slash argv rewrite (bit us once).** Never pass a native `.exe` (jq, curl,
   az) an argument that *starts with* `/` on Git-Bash: MSYS rewrites it to a Windows path
   (`/plans/x` → `C:/Program Files/Git/plans/x`). The ADO inline-thread `filePath` requires a leading

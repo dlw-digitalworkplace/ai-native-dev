@@ -7,8 +7,16 @@
 #
 # Phases:
 #   fetch  <pr>                     Re-ground in ONE call: print the PR title, body, the parsed
-#                                   AIND-LINKS block (work-item URL, plan path, plan-PR URL), and the
-#                                   full diff. Keeps the reviewer off raw `gh pr view/diff`.
+#                                   AIND-LINKS block (work-item URL, plan path, plan-PR URL), the PR's
+#                                   MERGEABILITY against the integration branch, and the full diff.
+#                                   Keeps the reviewer off raw `gh pr view/diff`.
+#   mergeability <pr>               Print MERGEABILITY: MERGEABLE|CONFLICTING|UNKNOWN — whether the PR
+#                                   head merges cleanly into the integration branch. Both hosts compute
+#                                   this asynchronously, so this polls briefly while UNKNOWN before
+#                                   giving up (a transient UNKNOWN is not a conflict). When CONFLICTING
+#                                   it also prints INTEGRATION-BRANCH: <name> so the coder knows what to
+#                                   rebase onto. A pure read — no checkout, so the cold reviewer stays
+#                                   read-only (resolving the conflict is the coder's job).
 #   digest <pr>                     Print every review thread (each tagged [OPEN]/[RESOLVED] with its
 #                                   file:line and thread=<node-id>) plus top-level PR comments — what
 #                                   a re-pass reviewer and the coder read to see prior findings and
@@ -43,8 +51,24 @@ source "$SCRIPT_DIR/aind-forge.sh"
 PHASE="${1:-}"
 PR="${2:-}"
 [[ -n "$PHASE" && -n "$PR" ]] \
-  || aind_die "usage: aind-review-pr.sh <fetch|digest|summary|thread|resolve|reply> <pr-number> [args]"
+  || aind_die "usage: aind-review-pr.sh <fetch|mergeability|digest|summary|thread|resolve|reply> <pr-number> [args]"
 forge_require
+
+# Read the PR's mergeability against the integration branch as one canonical token. With "poll",
+# retry while UNKNOWN (both hosts compute it asynchronously — e.g. right after a push — so a single
+# UNKNOWN is "not ready yet", not a verdict). Echoes MERGEABLE | CONFLICTING | UNKNOWN.
+read_mergeability() {
+  local poll="${1:-}" v i
+  v="$(forge_pr_mergeable "$PR")"
+  if [[ "$poll" == "poll" ]]; then
+    for i in 1 2 3 4; do
+      [[ "$v" != "UNKNOWN" ]] && break
+      sleep 2
+      v="$(forge_pr_mergeable "$PR")"
+    done
+  fi
+  echo "$v"
+}
 
 # Print all review threads (state, opaque id, file:line, comments) then top-level PR comments.
 print_digest() {
@@ -66,9 +90,22 @@ case "$PHASE" in
     echo "--- AIND-LINKS ---"
     printf '%s\n' "$body" | bash "$SCRIPT_DIR/aind-links.sh" parse
     echo
+    echo "--- MERGEABILITY ---"
+    merge="$(read_mergeability)"   # quick read; the `mergeability` phase polls if you need it settled
+    echo "MERGEABILITY: $merge"
+    [[ "$merge" == "CONFLICTING" && -n "${AIND_INTEGRATION_BRANCH:-}" ]] \
+      && echo "INTEGRATION-BRANCH: $AIND_INTEGRATION_BRANCH"
+    echo
     echo "--- DIFF ---"
     forge_pr_diff "$PR"
     echo "====================================================================================="
+    ;;
+
+  mergeability)
+    merge="$(read_mergeability poll)"
+    echo "MERGEABILITY: $merge"
+    [[ "$merge" == "CONFLICTING" && -n "${AIND_INTEGRATION_BRANCH:-}" ]] \
+      && echo "INTEGRATION-BRANCH: $AIND_INTEGRATION_BRANCH"
     ;;
 
   digest)
@@ -122,6 +159,6 @@ case "$PHASE" in
     ;;
 
   *)
-    aind_die "unknown phase '$PHASE' (use: fetch | digest | summary | thread | resolve | reply)"
+    aind_die "unknown phase '$PHASE' (use: fetch | mergeability | digest | summary | thread | resolve | reply)"
     ;;
 esac

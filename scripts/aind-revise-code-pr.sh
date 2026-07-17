@@ -17,8 +17,19 @@
 #                           print the STEERING DIGEST — delegates to `aind-review-pr.sh digest`
 #                           (review threads tagged [OPEN]/[RESOLVED] with thread=<id> + file:line, and
 #                           top-level PR comments) for the coder to act on.
+#   <id> rebase [pr]        Rebase the PR head branch onto the integration branch — the way to clear a
+#                           merge conflict the reviewer flagged (another PR moved integration under
+#                           this one). Checks out the PR head fresh from origin, fetches integration,
+#                           and rebases. A CLEAN rebase leaves the branch ready to `push`; a CONFLICT
+#                           leaves the working tree in the rebase state and lists the conflicted files
+#                           (the coder resolves them in-context, `git add`, `git rebase --continue`,
+#                           then `push`) and exits 3. Never aborts the rebase for you. Needs
+#                           AIND_INTEGRATION_BRANCH.
 #   <id> push [summary]     Push the current (code) branch to the SAME PR — the coder makes its own
 #                           logical commits first. If [summary] is given, also post it as a PR comment.
+#                           Force-with-lease-aware: if a rebase rewrote history so the remote branch is
+#                           no longer an ancestor of HEAD, pushes with --force-with-lease (safe — it
+#                           refuses if origin moved unexpectedly); otherwise a plain fast-forward push.
 #                           Does NOT create a PR and NEVER resolves threads (resolution is the human's
 #                           merge gate). Thread replies reuse `aind-review-pr.sh reply`.
 #   <id> deviation <pr> <human-cite> <text>
@@ -37,7 +48,7 @@ source "$SCRIPT_DIR/aind-forge.sh"
 
 ID="${1:-}"
 PHASE="${2:-}"
-[[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-code-pr.sh <work-item-id> <status|begin|push|deviation> [args]"
+[[ -n "$ID" && -n "$PHASE" ]] || aind_die "usage: aind-revise-code-pr.sh <work-item-id> <status|begin|rebase|push|deviation> [args]"
 [[ "$ID" =~ ^[0-9]+$ ]] || aind_die "work-item id must be numeric, got '$ID'"
 aind_require_cmd git
 forge_require
@@ -108,6 +119,40 @@ case "$PHASE" in
     echo "================================================================================="
     ;;
 
+  rebase)
+    PR="${3:-}"
+    aind_require_env AIND_INTEGRATION_BRANCH
+    rc=0; resolve_open "$PR" || rc=$?
+    case "$rc" in
+      1) aind_die "no open code PR for work item $ID — nothing to rebase (build one with /aind:implement first)" ;;
+      2) aind_die "more than one OPEN code PR matches AB#$ID — pass the PR number: aind-revise-code-pr.sh rebase $ID <pr>" ;;
+    esac
+    # With worktrees enabled, rebase in the item's implement worktree (same subprocess-only cd as
+    # begin/push). Create it on the PR head if this is a fresh session.
+    WT_NOTE=""
+    if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
+      WT="$(bash "$SCRIPT_DIR/aind-worktree.sh" ensure "$ID" impl "$R_HEAD" "origin/$R_HEAD")" \
+        || aind_die "could not prepare the implement worktree for $ID"
+      cd "$WT"
+      WT_NOTE=" — worktree $WT (treat it as your project root)"
+    fi
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+      aind_die "working tree has uncommitted changes — commit or stash before rebasing the code PR"
+    fi
+    git fetch origin "$R_HEAD" "$AIND_INTEGRATION_BRANCH" --quiet
+    git checkout -B "$R_HEAD" "origin/$R_HEAD" >/dev/null 2>&1 \
+      || aind_die "could not check out code branch $R_HEAD (PR #$R_NUM)"
+    echo "aind: rebasing $R_HEAD onto origin/$AIND_INTEGRATION_BRANCH (PR #$R_NUM)${WT_NOTE}"
+    if git rebase "origin/$AIND_INTEGRATION_BRANCH"; then
+      echo "aind: clean rebase — no conflicts. Now run: push  (it force-with-leases the rewritten history)"
+    else
+      echo "aind: REBASE CONFLICT on PR #$R_NUM — resolve these files, then 'git add' them and 'git rebase --continue':" >&2
+      git diff --name-only --diff-filter=U | sed 's/^/  - /' >&2
+      echo "aind: when 'git rebase --continue' reports the rebase complete, run: push  (do NOT 'git rebase --abort' unless you are giving up on the resolution)" >&2
+      exit 3
+    fi
+    ;;
+
   push)
     SUMMARY="${3:-}"
     if bash "$SCRIPT_DIR/aind-worktree.sh" enabled >/dev/null 2>&1; then
@@ -117,7 +162,17 @@ case "$PHASE" in
     fi
     branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
     [[ -n "$branch" && "$branch" != "HEAD" ]] || aind_die "not on a branch — run 'begin' first to check out the code PR branch"
-    git push origin "$branch" --quiet
+    # Refresh the remote-tracking ref, then choose the push mode. If the remote branch is no longer an
+    # ancestor of HEAD, a rebase (to resolve a conflict) rewrote history and a plain push would be
+    # rejected non-fast-forward — force safely with --force-with-lease (refuses if origin moved since
+    # this fetch). Otherwise a normal fast-forward push.
+    git fetch origin "$branch" --quiet 2>/dev/null || true
+    if git rev-parse --verify -q "origin/$branch" >/dev/null 2>&1 \
+       && ! git merge-base --is-ancestor "origin/$branch" HEAD 2>/dev/null; then
+      git push origin "$branch" --force-with-lease --quiet
+    else
+      git push origin "$branch" --quiet
+    fi
     if [[ -n "$SUMMARY" ]]; then
       rc=0; resolve_open "" || rc=$?
       if [[ "$rc" -eq 0 ]]; then
@@ -157,6 +212,6 @@ case "$PHASE" in
     ;;
 
   *)
-    aind_die "unknown phase '$PHASE' (use: status | begin | push | deviation)"
+    aind_die "unknown phase '$PHASE' (use: status | begin | rebase | push | deviation)"
     ;;
 esac

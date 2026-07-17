@@ -18,6 +18,11 @@
 # CANONICAL VOCABULARY (both hosts normalise to this, so callers are host-blind):
 #   PR state     : OPEN | MERGED | CLOSED       (GitHub already uses these; ADO maps
 #                                                active->OPEN, completed->MERGED, abandoned->CLOSED)
+#   mergeability : MERGEABLE | CONFLICTING | UNKNOWN
+#                                                (GitHub mergeable already uses these; ADO maps
+#                                                 succeeded->MERGEABLE, conflicts/failure->CONFLICTING,
+#                                                 queued/notSet->UNKNOWN. Both hosts compute it
+#                                                 asynchronously, so UNKNOWN is often just "not ready yet".)
 #   thread state : [OPEN] | [RESOLVED]          (GitHub isResolved; ADO active/pending->OPEN, else RESOLVED)
 #   thread token : an OPAQUE string `thread=<id>` — a GitHub GraphQL node id OR an ADO threadId.
 #                  Callers pass it back verbatim to forge_resolve/forge_reply; they never parse it.
@@ -189,6 +194,31 @@ _ado_pr_field() {
   esac
 }
 forge_pr_field() { case "$(aind_code_host)" in ado) _ado_pr_field "$@";; *) _gh_pr_field "$@";; esac; }
+
+# ------------------------------------------------------------------------------------------------
+# forge_pr_mergeable <pr>  -> one canonical token: MERGEABLE | CONFLICTING | UNKNOWN
+# Whether the PR head merges cleanly into its target (integration) branch. Both hosts compute this
+# asynchronously and report UNKNOWN while a recompute is in flight (e.g. just after a push), so a
+# single UNKNOWN is not a verdict — callers poll (see aind-review-pr.sh mergeability).
+# ------------------------------------------------------------------------------------------------
+_gh_pr_mergeable() {
+  # GitHub's `mergeable` is already MERGEABLE|CONFLICTING|UNKNOWN.
+  local v; v="$(gh pr view "$1" --repo "$AIND_GH_REPO" --json mergeable -q '.mergeable' 2>/dev/null)"
+  case "$v" in
+    MERGEABLE|CONFLICTING|UNKNOWN) echo "$v" ;;
+    *) echo "UNKNOWN" ;;
+  esac
+}
+_ado_pr_mergeable() {
+  # ADO's mergeStatus: succeeded | conflicts | queued | notSet | failure | rejectedByPolicy.
+  local s; s="$(_ado_api GET "$(_ado_base)/pullrequests/$1?api-version=7.1" | jq -r '.mergeStatus // "notSet"' | tr -d '\r')"
+  case "$s" in
+    succeeded)          echo "MERGEABLE" ;;
+    conflicts|failure)  echo "CONFLICTING" ;;
+    *)                  echo "UNKNOWN" ;;   # queued | notSet | rejectedByPolicy (not a content conflict)
+  esac
+}
+forge_pr_mergeable() { case "$(aind_code_host)" in ado) _ado_pr_mergeable "$@";; *) _gh_pr_mergeable "$@";; esac; }
 
 # ------------------------------------------------------------------------------------------------
 # forge_pr_diff <pr>  -> unified diff on stdout
