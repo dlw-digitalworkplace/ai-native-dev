@@ -9,7 +9,7 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
-## [0.15.0] — 2026-07-16
+## [0.15.0] — 2026-07-17
 
 ### Added
 - **Merge-conflict detection in the build/review loop** (D38). With parallel worktrees (D37), a code

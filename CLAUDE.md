@@ -42,8 +42,8 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 
 ## Current status (2026-07-16)
 
-- **Merge-conflict detection + rebase resolution in the review loop (D38, 2026-07-16, offline-validated;
-  live-validation pending).** Parallel worktrees (D37) let a code PR go **conflicting** the moment
+- **Merge-conflict detection + rebase resolution in the review loop (D38, 2026-07-16, live-validated
+  2026-07-17).** Parallel worktrees (D37) let a code PR go **conflicting** the moment
   another PR merges under it; the loop now sees and clears that. **Detection is a PR read, not a run**
   (keeps the reviewer cold/read-only per D35): new forge verb `forge_pr_mergeable` normalises
   `gh mergeable` / ADO `mergeStatus` to `MERGEABLE|CONFLICTING|UNKNOWN`; surfaced through
@@ -58,7 +58,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   `/aind:implement` wires this into the `CHANGES_REQUESTED` branch of the review loop and the
   Stuck-state note. **Kept reactive, not proactive** (no pre-emptive rebase before every push).
   Offline-validated (script `bash -n`; mergeStatus mapping + force-push guard exercised in a throwaway
-  repo). Distinct axis from D22 (agent host) and D36 (code host).
+  repo) then **live-validated end-to-end** on a real conflicting PR (reviewer flagged `CONFLICTING`,
+  coder rebased + force-with-lease-pushed, re-review returned `CLEAN`). Distinct axis from D22 (agent
+  host) and D36 (code host).
 - **Parallel work via AIND-owned git worktrees (D37, 2026-07-15, built on `feat/worktree-parallelism`,
   offline-validated; live-validation pending).** Opt-in by the presence of
   `.claude/aind-worktree.config.json` (`worktreeRoot` default `.claude/worktrees`; a `copyFiles` list
