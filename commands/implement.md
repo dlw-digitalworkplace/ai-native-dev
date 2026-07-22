@@ -19,11 +19,13 @@ Work item: **$1**
 > **Worktrees (parallel work).** If this project opts into worktrees (a
 > `.claude/aind-worktree.config.json` exists — check with
 > `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled`), the implement phase runs in its
-> own git worktree so other items proceed in parallel. **Your session's cwd stays on the main
-> checkout** — you do NOT `cd` the session into the worktree. Instead, the build commands print the
-> worktree path (`aind: worktree <path>` from `start`; a `worktree <path>` note from `begin`), and
-> **that directory is your project root for this story**:
-> - Run **every** shell command with `cd "<worktree>"` first (build, test, lint, git, all of it).
+> own git worktree so other items proceed in parallel. The build commands print the worktree path
+> (`aind: worktree <path>` from `start`; a `worktree <path>` note from `begin`), and **that directory
+> is your project root for this story**:
+> - Run **every** shell command with `cd "<worktree>"` first (build, test, lint, git, all of it). It
+>   is fine for this shell to remain inside the worktree for the rest of the phase — the close-out
+>   commands (`/aind:approve-plan`, `/aind:complete`) return the session to the main checkout on their
+>   own before they tear a worktree down.
 > - Read/Edit/Write/Grep/Glob using **`<worktree>`-rooted absolute paths** — never bare relative
 >   paths (those would hit the main checkout, the wrong tree).
 > - When you spawn the reviewer, pass it the worktree path too, so it reviews the right tree.

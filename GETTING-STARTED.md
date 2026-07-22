@@ -190,17 +190,29 @@ echo ".claude/worktrees/" >> .gitignore          # the worktrees themselves are 
     ".claude/aind.env",                           //   config (incl. the PAT)
     ".claude/settings.local.json",                //   your permission allowlist
     ".env", ".vscode"                             //   any project runtime file/folder (optional)
-  ]
-}
+  ],
+  "symlinkDirs": ["node_modules"]                 // heavyweight dirs SHARED with the main checkout
+}                                                 //   (junction on Windows / symlink on Unix); omit to share nothing
 ```
 
 With the feature on, `/aind:plan` and `/aind:implement` each run in their own worktree
 (`<id>-plan`, `<id>-impl`), and `/aind:approve-plan` / `/aind:complete` retire it. **Run every
 command from a terminal in the main checkout** — it stays on the integration branch and *drives* the
 worktree by path; parallelism is just opening a second main-checkout terminal for another story.
-Large dirs like `node_modules` are the project's concern (e.g. pnpm); AIND doesn't share them.
 Intake and `/aind:dream` stay single-tree by design. Leave the config file out and everything
 behaves exactly as before.
+
+**Sharing `node_modules` (front-end).** Without help, every worktree needs its own `node_modules`,
+which is slow to install and heavy on disk. `symlinkDirs` fixes that: each listed directory is
+*linked* into the worktree — a directory **junction** on Windows (no admin / Developer Mode needed)
+or a symlink on macOS/Linux — so one install in the main checkout serves every worktree, and teardown
+removes only the link (never the shared directory). It's genuinely *shared* state, so mind the
+trade-off: a branch that changes dependencies must run an install (updating the one shared store),
+and a `npm install` in one worktree can disturb a build running in another. **If you need true
+per-branch isolation, use [pnpm](https://pnpm.io) instead** — its global content-addressable store
+makes a per-worktree `pnpm install` near-instant and hardlinked with no shared-state hazard, and needs
+nothing in this config. Reach for `symlinkDirs` when pnpm isn't an option and the shared trade-off is
+fine.
 
 Because parallel PRs can collide, the review loop **handles merge conflicts automatically**: when a
 PR stops merging cleanly into the integration branch (another story merged under it), the reviewer

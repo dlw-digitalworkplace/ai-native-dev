@@ -25,9 +25,11 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
 > **Worktrees (parallel work).** If this project opts into worktrees (a
 > `.claude/aind-worktree.config.json` exists — check with
 > `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled`), the plan phase runs in its own
-> git worktree so other items can proceed in parallel. **Your session stays in the main checkout;**
-> you author *into* the worktree by absolute path. Create/resolve it up front and use its path
-> wherever this command says `plans/$1/plan.md`:
+> git worktree so other items can proceed in parallel. You author *into* the worktree by absolute
+> path (no need to `cd` the session for authoring); if you do run shell commands in the worktree,
+> that's fine — `/aind:approve-plan` returns the session to the main checkout on its own before it
+> tears the worktree down. Create/resolve the worktree up front and use its path wherever this
+> command says `plans/$1/plan.md`:
 > ```bash
 > WT="$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" ensure-plan "$1")"   # create mode
 > # revise mode: `begin` (B1) checks the worktree out and prints its path instead
