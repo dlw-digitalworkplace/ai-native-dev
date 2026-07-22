@@ -12,6 +12,8 @@
 # Verbs (stdout = the requested value only; all diagnostics go to stderr):
 #   enabled                              exit 0 if worktrees are configured, 1 otherwise (no jq).
 #   root                                 print the absolute worktree root.
+#   main-root                            print the main checkout's absolute path (works from inside a
+#                                        linked worktree too); used by close-out to return to main.
 #   path   <id> <phase>                  print the absolute worktree path for <id>-<phase>.
 #   ensure <id> <phase> <branch> <ref>   create-or-reuse the worktree checked out on <branch>
 #                                        (new branch off <ref> when creating), copy the configured
@@ -23,10 +25,16 @@
 #
 # Config file (.claude/aind-worktree.config.json):
 #   { "worktreeRoot": ".claude/worktrees",
-#     "copyFiles": [".claude/aind.env", ".claude/settings.local.json", ".env"] }
+#     "copyFiles": [".claude/aind.env", ".claude/settings.local.json", ".env"],
+#     "symlinkDirs": ["node_modules"] }
 # copyFiles are gitignored files OR folders a fresh worktree would lack (config, secrets, project
 # runtime env, editor settings like .vscode/); each is copied in at creation (a directory
 # recursively) and removed again before teardown.
+# symlinkDirs are heavyweight gitignored directories (chiefly node_modules) SHARED with the main
+# checkout instead of copied — linked in at creation (junction on Windows / symlink on Unix) and the
+# link (only the link) removed before teardown. Optional; absent or empty = no-op. Shared state:
+# see the "Shared directories" section below and the parallel-work docs for the trade-off (pnpm is
+# the isolation-preserving alternative).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=aind-common.sh
@@ -104,6 +112,95 @@ aind_wt_pwd_inside() {
   case "$p/" in "$d/"*) return 0 ;; *) return 1 ;; esac
 }
 
+# --- Shared directories (symlinkDirs) -------------------------------------------------------------
+# Heavyweight, gitignored dirs (chiefly node_modules) that a worktree SHARES with the main checkout
+# instead of getting its own copy. On Windows we use a directory JUNCTION (mklink /J) — it needs no
+# admin and no Developer Mode (unlike a mklink /D symlink) and is same-volume only, which holds
+# because worktrees live under the repo. On Unix/CI a plain symlink. This is genuinely shared state:
+# a branch that changes deps must re-install (mutating the shared store), and a concurrent install in
+# one worktree can disturb a build in another — documented; pnpm is the isolation-preserving
+# alternative. Absent/empty symlinkDirs = strict no-op.
+
+aind_wt_is_windows() {
+  case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac
+}
+
+# Create a link at <dst> pointing at <src>. Junction on Windows, symlink elsewhere.
+# MSYS_NO_PATHCONV=1 stops Git-Bash rewriting the `/c`, `/J` switches into Windows paths; the args
+# MUST be passed separately (a single quoted "mklink /J ..." string is mis-parsed by cmd).
+aind_wt_make_link() {
+  local src="$1" dst="$2"
+  if aind_wt_is_windows; then
+    local win_src win_dst
+    win_src="$(cygpath -w "$src")"
+    win_dst="$(cygpath -w "$dst")"
+    MSYS_NO_PATHCONV=1 cmd /c mklink /J "$win_dst" "$win_src" >/dev/null 2>&1
+  else
+    ln -s "$src" "$dst"
+  fi
+}
+
+# Remove ONLY the link at <dst>, never its target. On Windows `rmdir` (no /S) deletes a junction
+# without following it; a real non-empty dir would make rmdir fail — the safety we want. On Unix
+# `rm` on a symlink removes the link, not the target. NEVER rm -rf here.
+aind_wt_remove_link() {
+  local dst="$1"
+  if aind_wt_is_windows; then
+    local win_dst; win_dst="$(cygpath -w "$dst")"
+    MSYS_NO_PATHCONV=1 cmd /c rmdir "$win_dst" >/dev/null 2>&1
+  else
+    rm -f "$dst"
+  fi
+}
+
+# Link every configured symlinkDirs entry into the worktree (shared with the main checkout). A
+# missing target is created empty in the main checkout (+ warned) so the junction is valid and a
+# later install-from-worktree populates the one shared store. An entry already present is left alone.
+aind_wt_link_dirs() {
+  local wt="$1" main cfg d src dst
+  main="$(aind_wt_main_root)"
+  cfg="$main/.claude/aind-worktree.config.json"
+  [[ -f "$cfg" ]] || return 0
+  while IFS= read -r d; do
+    [[ -n "$d" ]] || continue
+    src="$main/$d"; dst="$wt/$d"
+    if [[ -e "$dst" || -L "$dst" ]]; then
+      echo "aind: shared dir '$d' already present in the worktree — leaving it" >&2
+      continue
+    fi
+    if [[ ! -d "$src" ]]; then
+      mkdir -p "$src" \
+        && echo "aind: [WARN] symlinkDirs target '$d' was absent in the main checkout — created it empty; install/populate it (e.g. npm install) so worktrees can share it" >&2
+    fi
+    mkdir -p "$(dirname "$dst")"
+    if aind_wt_make_link "$src" "$dst"; then
+      echo "aind: linked '$d' -> main checkout (shared)" >&2
+    else
+      echo "aind: [WARN] could not link shared dir '$d' — the worktree will fall back to its own copy" >&2
+    fi
+  done < <(jq -r '.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
+}
+
+# Remove the symlinkDirs LINKS from a worktree before any rm -rf / git worktree remove touches it —
+# so a shared target (the real node_modules in the main checkout) is never followed and deleted.
+# Iterates the config list (not filesystem probing: junctions are unreliable to detect on MSYS).
+aind_wt_unlink_dirs() {
+  local wt="$1" main cfg d dst
+  main="$(aind_wt_main_root)"
+  cfg="$main/.claude/aind-worktree.config.json"
+  [[ -f "$cfg" ]] || return 0
+  while IFS= read -r d; do
+    [[ -n "$d" ]] || continue
+    dst="$wt/$d"
+    [[ -e "$dst" || -L "$dst" ]] || continue
+    if aind_wt_remove_link "$dst"; then
+      echo "aind: unlinked shared dir '$d' (target left untouched)" >&2
+    else
+      echo "aind: [WARN] could not unlink shared dir '$d' at $dst — remove the LINK by hand (never 'rm -rf' through it: that would delete the shared target)" >&2
+    fi
+  done < <(jq -r '.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
+}
+
 case "${1:-}" in
   enabled)
     aind_wt_enabled
@@ -111,6 +208,14 @@ case "${1:-}" in
 
   root)
     aind_wt_root
+    ;;
+
+  main-root)
+    # The main checkout's absolute path, resolved even from inside a linked worktree. Close-out
+    # commands cd the session here before teardown (a session cannot remove its own cwd worktree,
+    # and cleanup git ops must target the main tree, not the worktree's branch).
+    aind_require_cmd git
+    aind_wt_main_root
     ;;
 
   path)
@@ -128,6 +233,7 @@ case "${1:-}" in
       # Already a registered worktree — reuse it (refresh the copied config, leave the branch alone).
       echo "aind: reusing worktree $WT" >&2
       aind_wt_copy_files "$WT"
+      aind_wt_link_dirs "$WT"
       echo "$WT"
       exit 0
     fi
@@ -142,6 +248,7 @@ case "${1:-}" in
       || aind_die "git worktree add failed for $WT on $BRANCH (off $REF)"
     echo "aind: created worktree $WT on branch $BRANCH (off $REF)" >&2
     aind_wt_copy_files "$WT"
+    aind_wt_link_dirs "$WT"
     echo "$WT"
     ;;
 
@@ -182,6 +289,10 @@ case "${1:-}" in
       aind_die "refusing to remove $WT: this session is inside it (a process cannot delete its own working directory). Run close-out from the main checkout, or 'aind-worktree.sh prune' later."
     fi
 
+    # FIRST unlink any shared dirs (symlinkDirs) — before any rm -rf / git worktree remove — so a
+    # shared target (the real node_modules in the main checkout) is never followed and deleted.
+    aind_wt_unlink_dirs "$WT"
+
     # Delete the files we copied in (they are untracked and would block a clean removal).
     main="$(aind_wt_main_root)"; cfg="$main/.claude/aind-worktree.config.json"
     if [[ -f "$cfg" ]]; then
@@ -215,6 +326,7 @@ case "${1:-}" in
     ' | while IFS=$'\t' read -r wt br; do
       short="${br#refs/heads/}"
       if [[ -z "$(git ls-remote --heads origin "$short" 2>/dev/null)" ]]; then
+        aind_wt_unlink_dirs "$wt"   # drop shared-dir links first (never follow a junction into main)
         if git worktree remove "$wt" 2>/dev/null; then
           echo "aind: pruned worktree $wt (branch $short gone from origin)" >&2
           git branch -D "$short" >/dev/null 2>&1 || true
@@ -227,6 +339,6 @@ case "${1:-}" in
     ;;
 
   *)
-    aind_die "usage: aind-worktree.sh enabled|root|path|ensure|list|remove|prune [args]"
+    aind_die "usage: aind-worktree.sh enabled|root|main-root|path|ensure|ensure-plan|list|remove|prune [args]"
     ;;
 esac

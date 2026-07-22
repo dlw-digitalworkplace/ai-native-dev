@@ -103,6 +103,22 @@ if [[ -n "$_wtcfg" ]]; then
     else
       warning "worktreeRoot '$_root' is not gitignored — add it (e.g. '$_root/') to .gitignore so nested worktrees don't clutter 'git status'"
     fi
+    # symlinkDirs: heavyweight dirs (e.g. node_modules) shared across worktrees (junction on
+    # Windows / symlink on Unix). Report them and warn if a target is not yet present in the main
+    # checkout (so nothing populates the shared store until an install runs there / in a worktree).
+    _wtmain="$(dirname "$(dirname "$_wtcfg")")"
+    _syms="$(jq -r '.symlinkDirs[]?' "$_wtcfg" 2>/dev/null | tr -d '\r')"
+    if [[ -n "$_syms" ]]; then
+      ok "symlinkDirs (shared across worktrees): $(echo "$_syms" | tr '\n' ' ')"
+      while IFS= read -r _sd; do
+        [[ -n "$_sd" ]] || continue
+        if [[ -d "$_wtmain/$_sd" ]]; then
+          ok "shared dir '$_sd' present in the main checkout"
+        else
+          warning "shared dir '$_sd' not present in the main checkout yet — create/install it there (e.g. run 'npm install') so worktrees have something to share; it's a genuinely shared store (a branch changing deps re-installs into it; concurrent installs across worktrees can collide — pnpm avoids both)"
+        fi
+      done <<< "$_syms"
+    fi
   fi
 else
   manual "worktrees not enabled (no .claude/aind-worktree.config.json) — single-tree mode; that's fine"

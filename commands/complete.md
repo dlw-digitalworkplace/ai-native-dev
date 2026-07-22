@@ -14,6 +14,17 @@ Work item: **$1**
 
 ## Procedure
 
+**First — in worktree mode, return this session to the main checkout.** The implement run for this
+story may have left this shell's working directory inside the item's worktree. Close-out must run
+from the main checkout: a session cannot remove its own worktree, and the branch cleanup +
+integration fast-forward must act on the main tree, not the worktree's branch. If worktrees are
+enabled, `cd` there before anything else (a no-op when they're off):
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled >/dev/null 2>&1 \
+  && cd "$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" main-root)"
+```
+All the steps below then run from the main checkout.
+
 1. **Verify the code PR is merged.** Resolve the story's code PR and confirm it is `MERGED`:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-complete.sh" verify "$1" $2
@@ -57,10 +68,10 @@ Work item: **$1**
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-complete.sh" cleanup "$1" <pr-number>
    ```
    **In worktree mode** this step also retires the item's implement worktree before deleting the
-   branch — so **run `/aind:complete` from a session in the main checkout, not from inside the
-   worktree** (a session cannot remove its own working directory). If it warns that the worktree
-   couldn't be removed, run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the
-   main checkout.
+   branch and fast-forwarding the main checkout. Because the first step above returned this session
+   to the main checkout, the worktree removes cleanly. If it *still* warns that the worktree couldn't
+   be removed (e.g. another shell is sitting inside it), run
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout as a fallback.
 
 ## Report
 Tell the user the story is **Implementation complete**, with the merged PR URL and merge commit, and

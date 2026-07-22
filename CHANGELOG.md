@@ -9,6 +9,46 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.16.0] — 2026-07-22
+
+### Added
+- **Share `node_modules` (and other heavyweight dirs) across worktrees** (D39). Builds the extension
+  the worktree feature (D37) had named but not built, aimed at front-end work where re-installing
+  dependencies per worktree is slow and disk-heavy.
+  - New optional **`symlinkDirs`** list in `.claude/aind-worktree.config.json`: each repo-relative
+    directory is **linked** from a worktree to the same directory in the main checkout on
+    `aind-worktree.sh ensure` — a directory **junction** on Windows (`mklink /J`; no admin / no
+    Developer Mode, unlike a symlink) and a plain `ln -s` on macOS/Linux. One install serves every
+    worktree. A missing target is created empty (+ warned) so a later install-from-worktree populates
+    the shared store.
+  - **Teardown removes only the link, never the target.** A separate unlink step runs *before* the
+    `copyFiles` delete and before `git worktree remove` (in both `remove` and `prune`), using
+    `rmdir` (Windows) / `rm` (Unix) on the link — so a `rm -rf` can never follow a junction and delete
+    the real shared `node_modules`.
+  - **Trade-off is documented, not hidden:** a shared `node_modules` is genuinely shared state (a
+    branch that changes deps re-installs into the one store; a concurrent install in one worktree can
+    disturb another's build). The docs recommend **pnpm** where per-branch isolation matters and offer
+    `symlinkDirs` as the portable mechanic for npm/yarn projects.
+  - Generic (a list, like `copyFiles`) — also covers `.next/cache`, a Python `.venv`, build caches.
+    **Strict no-op when `symlinkDirs` is absent or empty** (same regression bar as the whole worktree
+    feature). `aind-preflight.sh` reports the configured shared dirs and warns when a target isn't yet
+    present in the main checkout.
+  - Script + docs only: `aind-worktree.sh`, `aind-preflight.sh`, the sample config, and the
+    README / GETTING-STARTED / project-template parallel-work sections. Offline-validated;
+    live-validation pending.
+
+### Fixed
+- **Worktree close-out now returns the session to the main checkout first** (D40). During
+  `/aind:implement` the coder's build/test commands leave the shell's (persistent) working directory
+  *inside* the worktree; `/aind:complete` / `/aind:approve-plan` then ran from there, so
+  `git worktree remove` refused (a process can't delete its own cwd) **and** the integration
+  fast-forward was silently skipped (the cleanup script saw the worktree's branch as current, not the
+  integration branch) — leaving the local main checkout behind origin. Both close-out commands now
+  `cd` to the main checkout as their first step, via a new `aind-worktree.sh main-root` verb (resolves
+  the main checkout even from inside a linked worktree). `prune` remains the fallback for a genuinely
+  stranded worktree. The `/aind:plan` and `/aind:implement` worktree grounding notes were corrected to
+  match (working inside the worktree is fine; close-out handles the return).
+
 ## [0.15.0] — 2026-07-17
 
 ### Added

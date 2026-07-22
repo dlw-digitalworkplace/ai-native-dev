@@ -40,7 +40,8 @@ presence turns the feature on; deleting it turns everything back to single-tree 
 
 ```json
 { "worktreeRoot": ".claude/worktrees",
-  "copyFiles": [".claude/aind.env", ".claude/settings.local.json"] }
+  "copyFiles": [".claude/aind.env", ".claude/settings.local.json"],
+  "symlinkDirs": ["node_modules"] }
 ```
 
 - `worktreeRoot` — where per-phase worktrees are created (default `.claude/worktrees`, repo-relative).
@@ -49,13 +50,25 @@ presence turns the feature on; deleting it turns everything back to single-tree 
   e.g. `aind.env` (config), `settings.local.json` (permission allowlist), a runtime file like `.env`,
   or a whole folder like `.vscode/` or `certs/`. Each entry is a repo-relative path (a file is copied,
   a directory is copied recursively) and is removed again before the worktree is torn down.
+- `symlinkDirs` (optional) — heavyweight gitignored **directories** a worktree should **share** with
+  the main checkout rather than re-populate (chiefly `node_modules`; also `.next/cache`, a Python
+  `.venv`, build caches). Each is *linked* into the worktree at creation — a directory **junction** on
+  Windows (no admin needed) or a symlink on macOS/Linux — so one install serves every worktree. Omit
+  it or leave it `[]` to share nothing.
+
+**Front-end note (`node_modules`).** Sharing is a real convenience but it's genuinely *shared* state:
+a branch that adds/changes a dependency must run an install (which updates the one shared store), and
+a `npm install` running in one worktree can disturb a build in another. If you need true per-branch
+dependency isolation, prefer **pnpm** — its global content-addressable store makes each worktree's
+own `pnpm install` near-instant and hardlinked, with no shared-state hazard and nothing to configure
+here. Use `symlinkDirs` when pnpm isn't an option (npm/yarn projects) and the shared trade-off is
+acceptable.
 
 Run it: launch each session in the **main checkout** (it stays on the integration branch).
 `/aind:plan` and `/aind:implement` create and drive a worktree per story; `/aind:approve-plan` and
 `/aind:complete` retire it — **run those close-out commands from the main checkout**, not from inside
 a worktree (a session can't remove its own working directory). Parallelism comes from opening more
-than one terminal in the main checkout, each driving a different story. `node_modules` and other
-large dirs are the project's concern (e.g. use pnpm); AIND does not share them.
+than one terminal in the main checkout, each driving a different story.
 
 ## Project rules
 

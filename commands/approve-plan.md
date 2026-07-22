@@ -13,6 +13,16 @@ Work item: **$1**
 
 ## Procedure
 
+**First — in worktree mode, return this session to the main checkout.** A prior `/aind:plan` run may
+have left this shell's working directory inside the item's plan worktree. Close-out must run from the
+main checkout: a session cannot remove its own worktree, and the branch cleanup + integration
+fast-forward must act on the main tree. If worktrees are enabled, `cd` there before anything else (a
+no-op when they're off):
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled >/dev/null 2>&1 \
+  && cd "$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" main-root)"
+```
+
 1. **Confirm the plan PR is merged.** The plan PR's branch protection requires every
    assumption/open-question thread to be resolved before merge, so a merged PR
    structurally guarantees each assumption was addressed. If it is not yet merged, stop —
@@ -32,10 +42,10 @@ Work item: **$1**
    ```
    Run this **after** the tag write (above) — branch hygiene last, so a cleanup hiccup never
    affects the committed status. **In worktree mode** this step also retires the plan worktree and
-   fast-forwards the main checkout to include the merged plan — so **run `/aind:approve-plan` from a
-   session in the main checkout, not from inside the plan worktree** (a session cannot remove its own
-   working directory). If it warns that the worktree couldn't be removed, run
-   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout.
+   fast-forwards the main checkout to include the merged plan. Because the first step above returned
+   this session to the main checkout, the worktree removes cleanly. If it *still* warns that the
+   worktree couldn't be removed (e.g. another shell is sitting inside it), run
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout as a fallback.
 
 This completes the plan phase; the build phase (out of scope for this iteration) begins from
 `Ready for implementation`.

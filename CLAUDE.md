@@ -40,8 +40,44 @@ project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a proj
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-16)
+## Current status (2026-07-22)
 
+- **Share `node_modules` across worktrees — `symlinkDirs` (D39, 2026-07-22, offline-validated;
+  live-validation pending).** Builds the large-dir-sharing extension D37 named-not-built, for
+  front-end work where re-installing per worktree is slow/heavy. New optional **`symlinkDirs`** list
+  in `.claude/aind-worktree.config.json`: on `aind-worktree.sh ensure`, each repo-relative dir is
+  **linked** from the worktree to the same dir in the main checkout — a **directory junction** on
+  Windows (`MSYS_NO_PATHCONV=1 cmd /c mklink /J`; no admin / no Developer Mode, unlike a `mklink /D`
+  symlink; same-volume only, which holds inside the repo) and `ln -s` on Unix. A missing target is
+  `mkdir`'d empty (+ warned) so install-from-worktree writes *through* the junction into the one
+  shared store. **The load-bearing correctness point is teardown:** the `copyFiles` teardown uses
+  `rm -rf`, which *through a junction would delete the real `node_modules` in the main checkout* — so
+  `symlinkDirs` has its **own** unlink step (`aind_wt_unlink_dirs`) that runs **before** the copyFiles
+  delete and before `git worktree remove`, in **both `remove` and `prune`**, removing only the **link**
+  (`cmd /c rmdir` on Windows removes a junction without following it; `rm` the symlink on Unix) —
+  **never `rm -rf`**. Iterated from the config list, not `test -L` probing (junctions are unreliable
+  to detect on MSYS). **Shared state is a documented trade-off** (a branch changing deps re-installs
+  into the shared store; a concurrent install in one worktree can disturb another's build) — docs
+  **recommend pnpm** where per-branch isolation matters and offer `symlinkDirs` as the portable
+  mechanic for npm/yarn. Generic list (also `.next/cache`, `.venv`, …). **Strict no-op when
+  `symlinkDirs` is absent/empty** (regression bar). Script + docs only: `aind-worktree.sh`,
+  `aind-preflight.sh` (reports shared dirs, warns on a not-yet-present target), the sample config,
+  README/GETTING-STARTED/project-template. Windows `cmd` calls guarded with `MSYS_NO_PATHCONV=1`
+  (leading-slash argv family). Requirements/design record folded into Appendix A of
+  `files/implementation-plan-worktrees.md`. Distinct axis from D22 (agent host) and D36 (code host);
+  same working-tree-layout axis as D37.
+- **Worktree close-out returns the session to the main checkout first (D40, 2026-07-22,
+  offline-validated).** Refines D37's drive-from-main teardown. The coder grounding runs build/test
+  with `cd "<worktree>"` and the host shell's cwd **persists**, so `/aind:implement` ends parked
+  *inside* the worktree; running `/aind:complete` / `/aind:approve-plan` from there made
+  `git worktree remove` refuse (own-cwd lock — visible) **and** silently skipped the integration
+  fast-forward (the cleanup script saw the worktree's code branch as `HEAD`, not integration → local
+  main left behind origin while the terminal tag still succeeded). Both close-out commands now `cd` to
+  the main checkout as their first step via a new **`aind-worktree.sh main-root`** verb (resolves main
+  from inside a linked worktree). Fix is **agent-executed** by necessity: only moving the parent
+  session shell frees the OS lock and re-points the cleanup's git ops at main — a subprocess `cd`
+  can't. `/aind:plan` + `/aind:implement` grounding notes corrected (the old "cwd stays on main" claim
+  was false in a persistent shell). `prune` stays the fallback for a genuinely stranded worktree.
 - **Merge-conflict detection + rebase resolution in the review loop (D38, 2026-07-16, live-validated
   2026-07-17).** Parallel worktrees (D37) let a code PR go **conflicting** the moment
   another PR merges under it; the loop now sees and clears that. **Detection is a PR read, not a run**
