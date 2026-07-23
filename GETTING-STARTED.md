@@ -153,17 +153,19 @@ commands it finds, and a copy of the intake rubric. It finishes with a **preflig
 
 ## 3. Fill in config
 
-```bash
-cp .claude/aind.env.sample .claude/aind.env     # onboard placed the sample
-# edit .claude/aind.env: set AIND_ADO_ORG, AIND_ADO_PROJECT, AIND_CODE_HOST (github|ado),
-#   AIND_GH_REPO (github host) or AIND_ADO_REPO (ado host), AIND_INTEGRATION_BRANCH,
-#   and AZURE_DEVOPS_EXT_PAT
-echo ".claude/aind.env" >> .gitignore           # holds the secret PAT — never commit it
-```
+`/aind:onboard` (or `/aind:kickstart`) **creates** your config from a few guided questions and adds
+the `.gitignore` line — so there's just one manual step left: **paste your ADO PAT**. Config lives in
+two files under `.claude/`:
 
-The scripts **auto-load `.claude/aind.env`** (walk-up from the working directory), so you don't
-need to `source` it by hand — just run the commands from inside the project. (An already-set
-environment wins, so CI or a parent shell can override it.)
+- **`.claude/aind.settings.json`** — shared project config (ADO org/project, code host, repo,
+  integration branch, and the worktree settings). **Checked in** so the whole team gets it — review
+  the values onboard filled in.
+- **`.claude/aind.env`** — secrets + per-user overrides. **Gitignored.** Open it and replace the
+  `AZURE_DEVOPS_EXT_PAT="<pat>"` placeholder with a real PAT (Work Items r/w + Code r/w).
+
+The scripts **auto-load both files** (walk-up from the working directory), so you don't need to
+`source` anything — just run the commands from inside the project. (An already-set environment wins,
+so CI or a parent shell can override it.)
 
 Re-check everything is green by re-running preflight (ask Claude to "run the AIND preflight
 check", or run it directly):
@@ -175,20 +177,22 @@ bash <plugin-dir>/scripts/aind-preflight.sh
 ## 3b. (Optional) Enable parallel work with git worktrees
 
 To drive **multiple stories at once from one clone** — e.g. implement one while planning the next —
-opt into git worktrees. Onboard/kickstart drop a sample; turn it on by copying it into place:
+turn on worktrees in the **`worktree`** block of `.claude/aind.settings.json` by setting
+`"enabled": true` (onboard/kickstart ask about this, so it may already be on). Make sure the worktree
+dir is gitignored:
 
 ```bash
-cp .claude/aind-worktree.config.sample.json .claude/aind-worktree.config.json
 echo ".claude/worktrees/" >> .gitignore          # the worktrees themselves are never committed
 ```
 
 ```jsonc
-// .claude/aind-worktree.config.json — its PRESENCE is the opt-in; delete it to go back to single-tree
-{
+// the "worktree" block of .claude/aind.settings.json
+"worktree": {
+  "enabled": true,                                // the on/off switch (false / absent = single-tree)
   "worktreeRoot": ".claude/worktrees",            // where per-phase worktrees are created
   "copyFiles": [                                  // gitignored files/folders a fresh worktree lacks
-    ".claude/aind.env",                           //   config (incl. the PAT)
-    ".claude/settings.local.json",                //   your permission allowlist
+    ".claude/aind.env",                           //   secrets (aind.settings.json is checked in, so
+    ".claude/settings.local.json",                //   it's already in the worktree via git — not here)
     ".env", ".vscode"                             //   any project runtime file/folder (optional)
   ],
   "symlinkDirs": ["node_modules"]                 // heavyweight dirs SHARED with the main checkout
@@ -199,8 +203,8 @@ With the feature on, `/aind:plan` and `/aind:implement` each run in their own wo
 (`<id>-plan`, `<id>-impl`), and `/aind:approve-plan` / `/aind:complete` retire it. **Run every
 command from a terminal in the main checkout** — it stays on the integration branch and *drives* the
 worktree by path; parallelism is just opening a second main-checkout terminal for another story.
-Intake and `/aind:dream` stay single-tree by design. Leave the config file out and everything
-behaves exactly as before.
+Intake and `/aind:dream` stay single-tree by design. Set `worktree.enabled` back to `false` and
+everything behaves exactly as before.
 
 **Sharing `node_modules` (front-end).** Without help, every worktree needs its own `node_modules`,
 which is slow to install and heavy on disk. `symlinkDirs` fixes that: each listed directory is
@@ -217,6 +221,41 @@ fine.
 Because parallel PRs can collide, the review loop **handles merge conflicts automatically**: when a
 PR stops merging cleanly into the integration branch (another story merged under it), the reviewer
 flags it and the coder rebases + resolves and hands back for a fresh review — no manual step from you.
+
+## 3c. Migrating an existing project to the two-file config
+
+Older projects kept **all** config in a single gitignored `.claude/aind.env` (shared settings *and*
+the PAT, as `export` lines) plus a separate `.claude/aind-worktree.config.json`. The layout is now
+split: shared settings live in a **checked-in** `.claude/aind.settings.json`, and `aind.env` keeps
+only secrets. The scripts no longer read the old worktree file. Two ways to migrate:
+
+**Easiest — re-run onboarding.** From the project root, run `/aind:onboard` (or `/aind:kickstart`).
+It writes the new `.claude/aind.settings.json`, slims `.claude/aind.env` to a PAT placeholder, and
+updates `.gitignore`. Paste your PAT back in, then delete the leftover `.claude/aind-worktree.config.json`.
+
+**By hand.** Create `.claude/aind.settings.json` (copy `project-template/aind.settings.sample.json`)
+and move each value out of your old `aind.env`:
+
+| Old `aind.env` export | New `aind.settings.json` key |
+|---|---|
+| `AIND_ADO_ORG` | `ado.org` |
+| `AIND_ADO_PROJECT` | `ado.project` |
+| `AIND_ADO_REPO` | `ado.repo` |
+| `AIND_CODE_HOST` | `codeHost` |
+| `AIND_GH_REPO` | `github.repo` |
+| `AIND_INTEGRATION_BRANCH` | `integrationBranch` |
+| `AIND_PLAN_BRANCH_PREFIX` | `planBranchPrefix` (optional) |
+| `AIND_LESSONS_BRANCH` | `lessonsBranch` (optional) |
+
+Then:
+1. **Trim `aind.env`** down to just `AZURE_DEVOPS_EXT_PAT` (and optional `AIND_ACTOR`); keep it gitignored.
+2. **Fold in worktrees** (if you used them): copy `worktreeRoot` / `copyFiles` / `symlinkDirs` from the
+   old `aind-worktree.config.json` into the `worktree` block, set `"enabled": true`, and **delete the
+   old file** (it's no longer read). No old file? Leave `worktree.enabled` at `false`.
+3. **Commit `aind.settings.json`** (it's shared) and run preflight to confirm everything resolves.
+
+> An already-set environment still wins, so any `AIND_*` you export in CI or a parent shell continues
+> to override both files.
 
 ## 4. Run the flow
 

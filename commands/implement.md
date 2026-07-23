@@ -16,9 +16,9 @@ tiebreak is needed:** you do not merge (that is `/aind:complete`).
 
 Work item: **$1**
 
-> **Worktrees (parallel work).** If this project opts into worktrees (a
-> `.claude/aind-worktree.config.json` exists — check with
-> `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled`), the implement phase runs in its
+> **Worktrees (parallel work).** If this project opts into worktrees (check with
+> `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled` — on when
+> `.claude/aind.settings.json` sets `worktree.enabled: true`), the implement phase runs in its
 > own git worktree so other items proceed in parallel. The build commands print the worktree path
 > (`aind: worktree <path>` from `start`; a `worktree <path>` note from `begin`), and **that directory
 > is your project root for this story**:

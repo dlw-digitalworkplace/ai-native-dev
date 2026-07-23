@@ -6,27 +6,45 @@
 # are reported as [MANUAL].
 #
 # Reads the same env vars as the other scripts; missing ones are reported, not fatal.
-# Config in .claude/aind.env is auto-loaded (walk-up from $PWD, like aind-common.sh), so you
-# do not need to `source` it first. An already-set environment wins (CI / parent shell).
+# Project config is auto-loaded (walk-up from $PWD, like aind-common.sh): shared settings from
+# .claude/aind.settings.json and secrets from .claude/aind.env, so you do not need to `source`
+# anything first. An already-set environment wins (CI / parent shell).
 
 # NOTE: deliberately no `set -e` — we want every check to run and report. (This is also why
 # we autosource inline rather than sourcing aind-common.sh, which sets -euo pipefail.)
 
-# Auto-source the project's .claude/aind.env (first one found walking up from $PWD).
+# Auto-load the project's config (first .claude/ found walking up from $PWD): source aind.env
+# (secrets), then map aind.settings.json (shared) -> AIND_* vars. Mirrors aind-common.sh.
 if [[ -z "${AIND_ADO_ORG:-}" ]]; then
   _dir="$PWD"
   while :; do
-    if [[ -f "$_dir/.claude/aind.env" ]]; then
-      set -a
-      # shellcheck disable=SC1090,SC1091
-      source "$_dir/.claude/aind.env"
-      set +a
+    _cdir="$_dir/.claude"
+    if [[ -f "$_cdir/aind.env" || -f "$_cdir/aind.settings.json" ]]; then
+      if [[ -f "$_cdir/aind.env" ]]; then
+        set -a
+        # shellcheck disable=SC1090,SC1091
+        source "$_cdir/aind.env"
+        set +a
+      fi
+      _sf="$_cdir/aind.settings.json"
+      if [[ -f "$_sf" ]] && command -v jq >/dev/null 2>&1; then
+        _pf_set() { local v="$1" f="$2" val; [[ -n "${!v:-}" ]] && return 0; val="$(jq -r "$f // empty" "$_sf" 2>/dev/null | tr -d '\r')"; [[ -n "$val" ]] && export "$v=$val"; return 0; }
+        _pf_set AIND_ADO_ORG            '.ado.org'
+        _pf_set AIND_ADO_PROJECT        '.ado.project'
+        _pf_set AIND_ADO_REPO           '.ado.repo'
+        _pf_set AIND_CODE_HOST          '.codeHost'
+        _pf_set AIND_GH_REPO            '.github.repo'
+        _pf_set AIND_INTEGRATION_BRANCH '.integrationBranch'
+        _pf_set AIND_PLAN_BRANCH_PREFIX '.planBranchPrefix'
+        _pf_set AIND_LESSONS_BRANCH     '.lessonsBranch'
+        unset -f _pf_set
+      fi
       break
     fi
     [[ "$_dir" == "/" || -z "$_dir" ]] && break
     _dir="$(dirname "$_dir")"
   done
-  unset _dir
+  unset _dir _cdir _sf
 fi
 
 HOST="${AIND_CODE_HOST:-github}"
@@ -76,52 +94,55 @@ else
 fi
 
 echo
-echo "AIND configuration (env vars):"
+echo "AIND configuration (shared — .claude/aind.settings.json):"
 _cfg=(AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH)
 if [[ "$HOST" == "ado" ]]; then _cfg+=(AIND_ADO_REPO); else _cfg+=(AIND_GH_REPO); fi
 for v in "${_cfg[@]}"; do
-  if [[ -n "${!v:-}" ]]; then ok "$v=${!v}"; else warning "$v not set (see .claude/aind.env)"; fi
+  if [[ -n "${!v:-}" ]]; then ok "$v=${!v}"; else warning "$v not set (see .claude/aind.settings.json)"; fi
 done
 
 echo
 echo "Worktrees (parallel work — optional):"
-_wtcfg=""
+_settings=""
 _d="$PWD"
 while :; do
-  if [[ -f "$_d/.claude/aind-worktree.config.json" ]]; then _wtcfg="$_d/.claude/aind-worktree.config.json"; break; fi
+  if [[ -f "$_d/.claude/aind.settings.json" ]]; then _settings="$_d/.claude/aind.settings.json"; break; fi
   [[ "$_d" == "/" || -z "$_d" ]] && break
   _d="$(dirname "$_d")"
 done
-if [[ -n "$_wtcfg" ]]; then
-  ok "worktrees enabled ($_wtcfg)"
-  if ! have jq; then bad "jq is REQUIRED to parse aind-worktree.config.json when worktrees are enabled"; fi
-  if have jq; then
-    _root="$(jq -r '.worktreeRoot // ".claude/worktrees"' "$_wtcfg" 2>/dev/null | tr -d '\r')"
-    [[ -n "$_root" ]] || _root=".claude/worktrees"
-    if git check-ignore -q "$_root/_probe" 2>/dev/null; then
-      ok "worktreeRoot '$_root' is gitignored"
-    else
-      warning "worktreeRoot '$_root' is not gitignored — add it (e.g. '$_root/') to .gitignore so nested worktrees don't clutter 'git status'"
-    fi
-    # symlinkDirs: heavyweight dirs (e.g. node_modules) shared across worktrees (junction on
-    # Windows / symlink on Unix). Report them and warn if a target is not yet present in the main
-    # checkout (so nothing populates the shared store until an install runs there / in a worktree).
-    _wtmain="$(dirname "$(dirname "$_wtcfg")")"
-    _syms="$(jq -r '.symlinkDirs[]?' "$_wtcfg" 2>/dev/null | tr -d '\r')"
-    if [[ -n "$_syms" ]]; then
-      ok "symlinkDirs (shared across worktrees): $(echo "$_syms" | tr '\n' ' ')"
-      while IFS= read -r _sd; do
-        [[ -n "$_sd" ]] || continue
-        if [[ -d "$_wtmain/$_sd" ]]; then
-          ok "shared dir '$_sd' present in the main checkout"
-        else
-          warning "shared dir '$_sd' not present in the main checkout yet — create/install it there (e.g. run 'npm install') so worktrees have something to share; it's a genuinely shared store (a branch changing deps re-installs into it; concurrent installs across worktrees can collide — pnpm avoids both)"
-        fi
-      done <<< "$_syms"
-    fi
+_wt_enabled="false"
+if [[ -n "$_settings" ]] && have jq; then
+  _wt_enabled="$(jq -r '.worktree.enabled // false' "$_settings" 2>/dev/null | tr -d '\r')"
+fi
+if [[ "$_wt_enabled" == "true" ]]; then
+  ok "worktrees enabled (worktree.enabled=true in $_settings)"
+  _root="$(jq -r '.worktree.worktreeRoot // ".claude/worktrees"' "$_settings" 2>/dev/null | tr -d '\r')"
+  [[ -n "$_root" ]] || _root=".claude/worktrees"
+  if git check-ignore -q "$_root/_probe" 2>/dev/null; then
+    ok "worktreeRoot '$_root' is gitignored"
+  else
+    warning "worktreeRoot '$_root' is not gitignored — add it (e.g. '$_root/') to .gitignore so nested worktrees don't clutter 'git status'"
   fi
+  # symlinkDirs: heavyweight dirs (e.g. node_modules) shared across worktrees (junction on
+  # Windows / symlink on Unix). Report them and warn if a target is not yet present in the main
+  # checkout (so nothing populates the shared store until an install runs there / in a worktree).
+  _wtmain="$(dirname "$(dirname "$_settings")")"
+  _syms="$(jq -r '.worktree.symlinkDirs[]?' "$_settings" 2>/dev/null | tr -d '\r')"
+  if [[ -n "$_syms" ]]; then
+    ok "symlinkDirs (shared across worktrees): $(echo "$_syms" | tr '\n' ' ')"
+    while IFS= read -r _sd; do
+      [[ -n "$_sd" ]] || continue
+      if [[ -d "$_wtmain/$_sd" ]]; then
+        ok "shared dir '$_sd' present in the main checkout"
+      else
+        warning "shared dir '$_sd' not present in the main checkout yet — create/install it there (e.g. run 'npm install') so worktrees have something to share; it's a genuinely shared store (a branch changing deps re-installs into it; concurrent installs across worktrees can collide — pnpm avoids both)"
+      fi
+    done <<< "$_syms"
+  fi
+elif [[ -n "$_settings" ]] && ! have jq; then
+  warning "jq is REQUIRED to read the worktree config from aind.settings.json — cannot determine worktree status"
 else
-  manual "worktrees not enabled (no .claude/aind-worktree.config.json) — single-tree mode; that's fine"
+  manual "worktrees not enabled (worktree.enabled not true in .claude/aind.settings.json) — single-tree mode; that's fine"
 fi
 
 echo

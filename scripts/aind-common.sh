@@ -2,20 +2,28 @@
 # aind-common.sh — shared config resolution + helpers for AIND scripts.
 # Sourced by the other aind-*.sh scripts; not run directly.
 #
-# Configuration comes from environment variables (set per-project, e.g. exported from the
-# project's .claude/aind.env or recorded in its .claude/CLAUDE.md). Nothing is hard-coded.
+# Configuration is read from environment variables (nothing is hard-coded). Those variables are
+# populated per-project from TWO files under the project's .claude/, both auto-loaded by walking up
+# from $PWD (see aind_autosource_env below):
 #
-#   AIND_ADO_ORG            ADO org URL, e.g. https://dev.azure.com/<your-org>
-#   AIND_ADO_PROJECT        ADO project name, e.g. <your-project>
-#   AIND_CODE_HOST          Where the code + PRs live: github (default) | ado. Selects the forge
-#                           adapter (aind-forge.sh); the flow is otherwise identical on both hosts.
-#   AIND_GH_REPO            GitHub repo, e.g. <owner>/<repo>   (used when AIND_CODE_HOST=github)
-#   AIND_ADO_REPO           ADO repo name                       (used when AIND_CODE_HOST=ado)
-#   AIND_INTEGRATION_BRANCH Integration/trunk branch the plan PR targets, e.g. main
-#   AZURE_DEVOPS_EXT_PAT    ADO PAT (Work Items r/w, Code r/w). Read automatically by `az`,
-#                           and reused here for direct REST (comments) via curl.
-#   AIND_ACTOR              (optional) human-readable actor for the signature line;
-#                           falls back to `git config user.email`, then $USER.
+#   .claude/aind.settings.json  SHARED, checked-in project config (JSON). Mapped to AIND_* vars:
+#                                 .ado.org            -> AIND_ADO_ORG            (ADO org URL)
+#                                 .ado.project        -> AIND_ADO_PROJECT        (ADO project name)
+#                                 .ado.repo           -> AIND_ADO_REPO           (ADO repo; ado host)
+#                                 .codeHost           -> AIND_CODE_HOST          (github | ado)
+#                                 .github.repo        -> AIND_GH_REPO            (owner/repo; gh host)
+#                                 .integrationBranch  -> AIND_INTEGRATION_BRANCH (trunk the PR targets)
+#                                 .planBranchPrefix   -> AIND_PLAN_BRANCH_PREFIX (optional)
+#                                 .lessonsBranch      -> AIND_LESSONS_BRANCH     (optional)
+#                               (the .worktree block is read by aind-worktree.sh, not exported here.)
+#   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
+#                                 AZURE_DEVOPS_EXT_PAT   ADO PAT (Work Items r/w, Code r/w). Read
+#                                                        automatically by `az`, reused for REST via curl.
+#                                 AIND_ACTOR             (optional) actor for the signature line;
+#                                                        falls back to `git config user.email`, then $USER.
+#
+# AIND_CODE_HOST selects the forge adapter (aind-forge.sh); the flow is otherwise identical on both
+# hosts. An already-set environment wins over both files (CI / parent shell override).
 
 set -euo pipefail
 
@@ -126,19 +134,58 @@ aind_lessons_push() {
   echo "$commit"
 }
 
-# Auto-source the project's .claude/aind.env so callers don't have to `source` it first.
-# Walk up from $PWD; the first .claude/aind.env found wins. An already-set environment takes
-# precedence: if AIND_ADO_ORG is already exported, we leave everything as-is (lets CI or a
-# parent shell override the file). The file's own `export`s populate the environment.
+# --- Project config resolution ------------------------------------------------------------------
+
+# Read a scalar from a JSON settings file. Echoes empty on any miss (absent file/key/null value).
+# Strips CRLF because Windows jq emits \r, which would otherwise ride along on every value.
+aind_json_get() {
+  local file="$1" filter="$2"
+  [[ -f "$file" ]] || return 0
+  jq -r "$filter // empty" "$file" 2>/dev/null | tr -d '\r'
+}
+
+# export VAR from a settings filter, but only when VAR is still unset — so aind.env and an
+# already-set environment (CI / parent shell) win over the shared settings file.
+aind_export_from_settings() {
+  local var="$1" file="$2" filter="$3" val
+  [[ -n "${!var:-}" ]] && return 0
+  val="$(aind_json_get "$file" "$filter")" || true
+  [[ -n "$val" ]] && export "$var=$val"
+  return 0
+}
+
+# Auto-load the project's config so callers don't have to `source` anything first. Walk up from
+# $PWD; the first .claude/ holding either config file wins. An already-set environment takes
+# precedence: if AIND_ADO_ORG is already exported we leave everything as-is (CI / parent-shell
+# override). Within a project, .claude/aind.env is sourced FIRST (secrets + per-user overrides win),
+# then .claude/aind.settings.json fills any AIND_* var still unset.
 aind_autosource_env() {
   [[ -n "${AIND_ADO_ORG:-}" ]] && return 0   # already configured — don't override
-  local dir="$PWD"
+  local dir="$PWD" cdir sf
   while :; do
-    if [[ -f "$dir/.claude/aind.env" ]]; then
-      set -a
-      # shellcheck disable=SC1090,SC1091
-      source "$dir/.claude/aind.env"
-      set +a
+    cdir="$dir/.claude"
+    if [[ -f "$cdir/aind.env" || -f "$cdir/aind.settings.json" ]]; then
+      if [[ -f "$cdir/aind.env" ]]; then
+        set -a
+        # shellcheck disable=SC1090,SC1091
+        source "$cdir/aind.env"
+        set +a
+      fi
+      sf="$cdir/aind.settings.json"
+      if [[ -f "$sf" ]]; then
+        if ! command -v jq >/dev/null 2>&1; then
+          echo "aind: [WARN] found $sf but jq is not installed — shared config not loaded (install jq)" >&2
+        else
+          aind_export_from_settings AIND_ADO_ORG            "$sf" '.ado.org'
+          aind_export_from_settings AIND_ADO_PROJECT        "$sf" '.ado.project'
+          aind_export_from_settings AIND_ADO_REPO           "$sf" '.ado.repo'
+          aind_export_from_settings AIND_CODE_HOST          "$sf" '.codeHost'
+          aind_export_from_settings AIND_GH_REPO            "$sf" '.github.repo'
+          aind_export_from_settings AIND_INTEGRATION_BRANCH "$sf" '.integrationBranch'
+          aind_export_from_settings AIND_PLAN_BRANCH_PREFIX "$sf" '.planBranchPrefix'
+          aind_export_from_settings AIND_LESSONS_BRANCH     "$sf" '.lessonsBranch'
+        fi
+      fi
       return 0
     fi
     [[ "$dir" == "/" || -z "$dir" ]] && break

@@ -89,10 +89,9 @@ and note it.
    note rather than inventing a convention. Create a file only for an area with real content or real
    open questions — no empty stubs for common categories.
 2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`. Keep the
-   **AIND operational rules** block verbatim. Fill the config table with what's decided
-   (`AIND_INTEGRATION_BRANCH`; `AIND_CODE_HOST` from the code-host choice, and the matching repo var —
-   `AIND_GH_REPO` for GitHub or `AIND_ADO_REPO` for ADO — if that repo target is known; set only the
-   one that matches the chosen host) and leave the rest as placeholders. Replace the `@rules/*`
+   **AIND operational rules** block verbatim, and keep the **AIND configuration** section as-is (it
+   documents the two-file model — shared `aind.settings.json` + gitignored `aind.env`). The decided
+   values go into `aind.settings.json` in step 6.4; don't duplicate them here. Replace the `@rules/*`
    placeholders with one `@rules/<area>.md` line for **exactly** the files you created — no more, no fewer.
 3. **`.claude/skills/<name>/SKILL.md`** — **placeholder stubs** for the intended dev workflows.
    Build / test / run-app / lint are the common core, but don't stop there — stub any scriptable,
@@ -101,16 +100,27 @@ and note it.
    write the *intended* command and mark it clearly, e.g. `TODO: verify once the toolchain exists`. Do
    not write a confident command you haven't been told is real, and stub **only** the workflows the
    user actually intends — don't emit a `deploy` skill just because deploy is common.
-4. **Copy the seed rubric and env sample** (use the `<name>.aind-draft` fallback if a target exists):
+4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
+   gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
+   branch); also ask whether to **enable worktrees** (default: no). Then **write** the files:
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
-   cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample" .claude/aind.env.sample
-   cp "${CLAUDE_PLUGIN_ROOT}/project-template/aind-worktree.config.sample.json" .claude/aind-worktree.config.sample.json
    ```
-   Remind the human to create `.claude/aind.env` from the sample and **gitignore it** (it holds the PAT).
-   **Worktrees (optional):** to work multiple stories in parallel later, copy
-   `aind-worktree.config.sample.json` → `.claude/aind-worktree.config.json` (presence opts in) and add
-   `.claude/worktrees/` to `.gitignore`; leaving it out keeps single-tree behaviour.
+   - `.claude/aind.settings.json` — base it on
+     `${CLAUDE_PLUGIN_ROOT}/project-template/aind.settings.sample.json`, filled with the decided
+     values. Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`); leave
+     the other at its placeholder, and leave any not-yet-decided value at its placeholder. Set
+     `worktree.enabled` per the answer; leave the rest of the `worktree` block at its sample defaults.
+     **This file is checked in** (shared config).
+   - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`, leaving
+     `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret). **Gitignored.**
+
+   Then update `.gitignore` idempotently (append only if the line is absent):
+   ```bash
+   grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >> .gitignore
+   # only if worktrees were enabled:
+   grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
+   ```
 
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist (many items will be `[FAIL]`/`[MANUAL]` on a new
@@ -127,9 +137,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
   the ADO project and the code-host repo, ADO PAT, code-host access — `gh` for GitHub or `az repos`
   for ADO — jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub
   integration and the branch policy requiring comment resolution before merge).
-- A clear next-steps note: **these are intended-design drafts — review and edit, then commit**; fill
-  `.claude/aind.env`; create the first stories and run `/aind:intake <id>`; and **once real code
-  exists, run `/aind:onboard` to reconcile these drafts against the actual codebase.**
+- **The config you created:** `.claude/aind.settings.json` (shared, checked in) and `.claude/aind.env`
+  (gitignored) — the one manual step left is **pasting the ADO PAT** into `.claude/aind.env` (written
+  as a `<pat>` placeholder); note the gitignore line(s) you added.
+- A clear next-steps note: **these are intended-design drafts — review and edit, then commit**; paste
+  the PAT; create the first stories and run `/aind:intake <id>`; and **once real code exists, run
+  `/aind:onboard` to reconcile these drafts against the actual codebase.**
 
 ## GREENFIELD DRAFT banner
 Prefix every generated markdown file with:

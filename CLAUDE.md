@@ -36,12 +36,27 @@ scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); ain
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
-project-template/  CLAUDE.md, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
+project-template/  CLAUDE.md, aind.settings.sample.json, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-22)
+## Current status (2026-07-23)
 
+- **Config streamlined into two files, created by onboarding (D41, 2026-07-23, live-validated
+  end-to-end).** Per-project config split: **`.claude/aind.settings.json`** (shared,
+  checked in — ADO org/project, code host, repo, integration branch, branch prefixes, and the
+  `worktree` block) + **`.claude/aind.env`** (gitignored — PAT + optional `AIND_ACTOR` only). The
+  `AIND_*` env vars stay the interface; only the loaders changed (`aind-common.sh` +
+  `aind-preflight.sh` source `aind.env` then jq-map the settings JSON into any unset `AIND_*` var,
+  CRLF-stripped, already-set-`AIND_ADO_ORG` still short-circuits). **Worktree opt-in is now
+  `worktree.enabled: true`** in the settings file (was file-presence); `aind-worktree.sh` reads the
+  nested `.worktree.*` keys; **clean break** — the old `aind-worktree.config.json` is no longer read.
+  `/aind:onboard` (gained `AskUserQuestion`) and `/aind:kickstart` now **create and fill** both files
+  (PAT as a `<pat>` placeholder — never a real secret) and append the gitignore lines idempotently,
+  instead of dropping `.sample` copies. New `project-template/aind.settings.sample.json`; `aind.env.sample`
+  shrunk to secrets; `aind-worktree.config.sample.json` deleted; `project-template/CLAUDE.md`, README,
+  GETTING-STARTED updated. Script + docs + templates only; the flow, status model, gates, and PR
+  contract are untouched. Distinct config/packaging-side change; same spirit as D36/D37.
 - **Share `node_modules` across worktrees — `symlinkDirs` (D39, 2026-07-22, offline-validated;
   live-validation pending).** Builds the large-dir-sharing extension D37 named-not-built, for
   front-end work where re-installing per worktree is slow/heavy. New optional **`symlinkDirs`** list
@@ -328,11 +343,22 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   and `az.cmd` CRLF can't leave a stale tag. The script **verifies** post-write and auto-corrects +
   warns if ≠1 AIND tag.
 
-**Config / env.**
-- `aind-common.sh` **auto-sources** the project's `.claude/aind.env` (walk-up from `$PWD`);
-  an already-set `AIND_ADO_ORG` wins (CI/parent override). `aind-preflight.sh` self-sources the
-  same way inline (it deliberately does *not* source `aind-common.sh`, to avoid `set -e`).
-  **No manual `source` needed** anywhere — don't reintroduce that instruction into docs.
+**Config / env (two-file model, D41).**
+- Per-project config is **two files** under `.claude/`, both auto-loaded (walk-up from `$PWD`):
+  **`aind.settings.json`** (shared, checked in — ADO org/project, code host, repo, branches, branch
+  prefixes, and the `worktree` block) and **`aind.env`** (gitignored — the PAT + optional
+  `AIND_ACTOR`). The `AIND_*` env vars are still the interface every script reads; the JSON is just
+  storage mapped in by the loader.
+- `aind-common.sh` **sources `aind.env` first** (secrets / per-user overrides win) then **jq-maps
+  `aind.settings.json`** into any still-unset `AIND_*` var (`.ado.org`→`AIND_ADO_ORG`, etc.); values
+  are CRLF-stripped. An already-set `AIND_ADO_ORG` short-circuits the whole load (CI/parent override).
+  `aind-preflight.sh` mirrors this inline (it deliberately does *not* source `aind-common.sh`, to
+  avoid `set -e`). **No manual `source` needed** anywhere — don't reintroduce that into docs.
+- **Worktree opt-in = `worktree.enabled: true` in `aind.settings.json`** (not a separate file's
+  presence anymore). `aind-worktree.sh` reads the nested `.worktree.*` keys. Clean break (v0): the
+  old `aind-worktree.config.json` is no longer read.
+- **Onboard/kickstart create+fill both files** (PAT as a `<pat>` placeholder — never write a real
+  secret) and append the gitignore lines idempotently; they no longer just drop `.sample` copies.
 
 **Code host / forge (D36).**
 - **All PR/comment/thread mechanics go through `aind-forge.sh`** — never call `gh` or `az repos`
