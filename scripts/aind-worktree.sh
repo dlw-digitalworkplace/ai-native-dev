@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # aind-worktree.sh — per-work-item git worktrees, so multiple items can be worked in parallel from
-# one local clone. Opt-in: the feature is ON when a project ships `.claude/aind-worktree.config.json`
-# and OFF (every command behaves exactly as before) when that file is absent.
+# one local clone. Opt-in: the feature is ON when the project's `.claude/aind.settings.json` sets
+# "worktree": { "enabled": true }, and OFF (every command behaves exactly as before) otherwise.
 #
 # Model: every AIND session runs in the MAIN checkout (cwd = repo root, on the integration branch)
 # and *drives* a worktree by path. A phase that creates a PR (plan, implement) gets its own worktree
@@ -23,10 +23,13 @@
 #                                        inside it). The caller deletes the branch afterwards.
 #   prune                                sweep managed worktrees whose branch is gone from origin.
 #
-# Config file (.claude/aind-worktree.config.json):
-#   { "worktreeRoot": ".claude/worktrees",
-#     "copyFiles": [".claude/aind.env", ".claude/settings.local.json", ".env"],
-#     "symlinkDirs": ["node_modules"] }
+# Config (the "worktree" block of .claude/aind.settings.json):
+#   { "worktree": {
+#       "enabled": true,
+#       "worktreeRoot": ".claude/worktrees",
+#       "copyFiles": [".claude/aind.env", ".claude/settings.local.json", ".env"],
+#       "symlinkDirs": ["node_modules"] } }
+# enabled turns the feature on (false / absent block = single-tree, every command as before).
 # copyFiles are gitignored files OR folders a fresh worktree would lack (config, secrets, project
 # runtime env, editor settings like .vscode/); each is copied in at creation (a directory
 # recursively) and removed again before teardown.
@@ -49,22 +52,28 @@ aind_wt_main_root() {
   dirname "$common"
 }
 
-aind_wt_config_file() { echo "$(aind_wt_main_root)/.claude/aind-worktree.config.json"; }
+aind_wt_config_file() { echo "$(aind_wt_main_root)/.claude/aind.settings.json"; }
 
-# Cheap predicate — no jq. Worktrees are enabled iff the config file exists.
-aind_wt_enabled() { [[ -f "$(aind_wt_config_file)" ]]; }
+# Worktrees are enabled iff aind.settings.json sets "worktree": { "enabled": true }. Needs jq to
+# parse; a missing jq (or file, or flag) reports disabled → safe single-tree fallback.
+aind_wt_enabled() {
+  local cfg; cfg="$(aind_wt_config_file)"
+  [[ -f "$cfg" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  [[ "$(jq -r '.worktree.enabled // false' "$cfg" 2>/dev/null | tr -d '\r')" == "true" ]]
+}
 
-# Absolute worktree root from the config's worktreeRoot (default .claude/worktrees), repo-relative
-# paths resolved against the main checkout.
+# Absolute worktree root from the config's worktree.worktreeRoot (default .claude/worktrees),
+# repo-relative paths resolved against the main checkout.
 aind_wt_root() {
   aind_require_cmd jq
   local main cfg root
   main="$(aind_wt_main_root)"
-  cfg="$main/.claude/aind-worktree.config.json"
-  [[ -f "$cfg" ]] || aind_die "worktrees not configured (no .claude/aind-worktree.config.json)"
+  cfg="$main/.claude/aind.settings.json"
+  [[ -f "$cfg" ]] || aind_die "worktrees not configured (no .claude/aind.settings.json)"
   # Windows jq emits CRLF line endings — strip the trailing \r or every path we build gains a
   # phantom carriage return that fails filesystem tests. (Same CRLF family as the other AIND scripts.)
-  root="$(jq -r '.worktreeRoot // ".claude/worktrees"' "$cfg" | tr -d '\r')"
+  root="$(jq -r '.worktree.worktreeRoot // ".claude/worktrees"' "$cfg" | tr -d '\r')"
   [[ -n "$root" && "$root" != "null" ]] || root=".claude/worktrees"
   case "$root" in
     /*|?:/*|?:\\*) echo "$root" ;;          # already absolute (unix or Windows drive)
@@ -83,7 +92,7 @@ aind_wt_path() {
 aind_wt_copy_files() {
   local wt="$1" main cfg f src dst
   main="$(aind_wt_main_root)"
-  cfg="$main/.claude/aind-worktree.config.json"
+  cfg="$main/.claude/aind.settings.json"
   [[ -f "$cfg" ]] || return 0
   while IFS= read -r f; do
     [[ -n "$f" ]] || continue
@@ -101,7 +110,7 @@ aind_wt_copy_files() {
     else
       echo "aind: [WARN] copyFiles entry not found, skipped: $f" >&2
     fi
-  done < <(jq -r '.copyFiles[]?' "$cfg" 2>/dev/null | tr -d '\r')
+  done < <(jq -r '.worktree.copyFiles[]?' "$cfg" 2>/dev/null | tr -d '\r')
 }
 
 # Is $PWD inside <dir>? (normalised, so /c/… vs C:/… does not fool it.)
@@ -159,7 +168,7 @@ aind_wt_remove_link() {
 aind_wt_link_dirs() {
   local wt="$1" main cfg d src dst
   main="$(aind_wt_main_root)"
-  cfg="$main/.claude/aind-worktree.config.json"
+  cfg="$main/.claude/aind.settings.json"
   [[ -f "$cfg" ]] || return 0
   while IFS= read -r d; do
     [[ -n "$d" ]] || continue
@@ -178,7 +187,7 @@ aind_wt_link_dirs() {
     else
       echo "aind: [WARN] could not link shared dir '$d' — the worktree will fall back to its own copy" >&2
     fi
-  done < <(jq -r '.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
+  done < <(jq -r '.worktree.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
 }
 
 # Remove the symlinkDirs LINKS from a worktree before any rm -rf / git worktree remove touches it —
@@ -187,7 +196,7 @@ aind_wt_link_dirs() {
 aind_wt_unlink_dirs() {
   local wt="$1" main cfg d dst
   main="$(aind_wt_main_root)"
-  cfg="$main/.claude/aind-worktree.config.json"
+  cfg="$main/.claude/aind.settings.json"
   [[ -f "$cfg" ]] || return 0
   while IFS= read -r d; do
     [[ -n "$d" ]] || continue
@@ -198,7 +207,7 @@ aind_wt_unlink_dirs() {
     else
       echo "aind: [WARN] could not unlink shared dir '$d' at $dst — remove the LINK by hand (never 'rm -rf' through it: that would delete the shared target)" >&2
     fi
-  done < <(jq -r '.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
+  done < <(jq -r '.worktree.symlinkDirs[]?' "$cfg" 2>/dev/null | tr -d '\r')
 }
 
 case "${1:-}" in
@@ -294,12 +303,12 @@ case "${1:-}" in
     aind_wt_unlink_dirs "$WT"
 
     # Delete the files we copied in (they are untracked and would block a clean removal).
-    main="$(aind_wt_main_root)"; cfg="$main/.claude/aind-worktree.config.json"
+    main="$(aind_wt_main_root)"; cfg="$main/.claude/aind.settings.json"
     if [[ -f "$cfg" ]]; then
       while IFS= read -r f; do
         [[ -n "$f" ]] || continue
         rm -rf "$WT/$f" 2>/dev/null || true    # -rf so copied folders are removed too
-      done < <(jq -r '.copyFiles[]?' "$cfg" 2>/dev/null | tr -d '\r')
+      done < <(jq -r '.worktree.copyFiles[]?' "$cfg" 2>/dev/null | tr -d '\r')
     fi
 
     if git worktree remove "$WT" 2>/tmp/aind-wt-remove.$$; then

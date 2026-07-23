@@ -1,0 +1,23 @@
+{
+  "ado": {
+    "org": "https://dev.azure.com/<your-ado-org>",
+    "project": "<your-ado-project>",
+    "repo": "<your-ado-repo>"
+  },
+  "codeHost": "github",
+  "github": {
+    "repo": "<owner>/<repo>"
+  },
+  "integrationBranch": "main",
+  "planBranchPrefix": "aind/plan/",
+  "lessonsBranch": "aind/lessons",
+  "worktree": {
+    "enabled": false,
+    "worktreeRoot": ".claude/worktrees",
+    "copyFiles": [
+      ".claude/aind.env",
+      ".claude/settings.local.json"
+    ],
+    "symlinkDirs": []
+  }
+}

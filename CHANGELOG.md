@@ -9,6 +9,31 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.17.0] — 2026-07-23
+
+### Changed
+- **Streamlined per-project config into two files, created by onboarding** (D41).
+  - **`.claude/aind.settings.json`** — shared project config (ADO org/project, code host, repo,
+    integration branch, branch prefixes, **and the worktree settings**), **checked in** so the whole
+    team shares it. **`.claude/aind.env`** now holds **secrets + per-user overrides only** (the ADO
+    PAT, optional `AIND_ACTOR`) and stays gitignored.
+  - `/aind:onboard` and `/aind:kickstart` now **create and fill** both files from guided questions and
+    append the `.gitignore` line(s), instead of copying `.sample` files. Onboard gained
+    `AskUserQuestion` (it detects the code host + integration branch, and asks for the ADO org/project
+    and whether to enable worktrees). The ADO PAT is written as a `<pat>` **placeholder** — the only
+    manual step left is pasting the real token.
+  - The `AIND_*` environment variables are unchanged as the interface every script reads; only the
+    loaders changed. `aind-common.sh` (and `aind-preflight.sh`) source `aind.env` first, then map
+    `aind.settings.json` (via `jq`) into any still-unset `AIND_*` var. An already-set environment
+    still wins (CI / parent shell).
+  - **Worktree opt-in is now `worktree.enabled: true`** inside `aind.settings.json` (was: the mere
+    presence of `aind-worktree.config.json`). **Clean break** — the old worktree config file is no
+    longer read; existing projects re-run onboard or migrate by hand.
+  - New template `project-template/aind.settings.sample.json`; `aind.env.sample` shrinks to
+    secrets-only; `aind-worktree.config.sample.json` removed. `project-template/CLAUDE.md`, the
+    README, and GETTING-STARTED updated (incl. a migration guide). Live-validated end-to-end on a
+    test project (onboard wrote both files + the gitignore line, preflight green, flow ran through).
+
 ## [0.16.0] — 2026-07-22
 
 ### Added
