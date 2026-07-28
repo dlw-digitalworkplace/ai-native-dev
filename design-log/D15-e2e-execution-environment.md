@@ -1,0 +1,11 @@
+# D15 — E2E execution environment
+
+- **Area:** E2E execution environment (build phase)
+- **Date:** 2026-06-24
+- **Status:** Superseded by D33
+
+## Decision
+**(SUPERSEDED by D33, 2026-07-09 — the E2E agent/gate is removed; "how to run the app" is a per-project skill and live verification is an optional Definition-of-done line. Retained for history.)** **In current scope, the live/E2E gate (D9) is satisfied by the manual developer-run path only; the automated E2E path is deferred.** When a story's plan calls for a live test (D9), the gate is cleared by a **developer running the app locally and testing manually, signalling the pass in the PR** — exactly the manual escape hatch D9 already defines. The **automated path** (a cold E2E agent stands up the running app in CI and drives user-visible scenarios) is **not buildable in current scope** and is deferred: it depends on the unattended automation layer (descoped under the D6 amendment) *and* on a way to stand up a running application in a PR/CI context — ephemeral CI service, preview/dev deploy, or containerised run — which overlaps the **deployment phase that is in the parking lot and out of scope for the initial design**. **D9's two-path design stays intact as the target:** when both the automation layer and a deployment/preview story exist, the automated path becomes real and projects choose per-repo as D9 specifies. This decision only names what is actually available today (manual) versus deferred (automated) — it does not narrow D9.
+
+## Rationale
+Q10 is entirely about the *automated* path; the manual path needs none of this infrastructure and is already fully specified in D9, so it is the natural — and currently the only available — answer. Stating "manual now, automated deferred" (rather than leaving it nominally "per-project") is the truthful framing: a project *cannot* take the automated path right now because both prerequisites are deferred, so "your choice" would be a false choice in current scope. The blocking dependency that actually adds information is the deployment/preview story (parking lot); the automation dependency is already established by the D6 amendment. Naming the deployment overlap explicitly prevents a premature attempt to spec automated E2E before there is any way to run the app in CI.

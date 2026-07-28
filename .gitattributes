@@ -11,7 +11,7 @@
 /CLAUDE.md          export-ignore
 /GETTING-STARTED.md export-ignore
 /design-doc.md      export-ignore
-/design-log.md      export-ignore
+/design-log/      export-ignore
 /deploy.sh          export-ignore
 /plans/             export-ignore
 /docs/              export-ignore
