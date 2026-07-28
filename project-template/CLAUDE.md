@@ -27,6 +27,7 @@ manual step is pasting your PAT into `.claude/aind.env`.
 | `planBranchPrefix` | `aind/plan/` (optional override) |
 | `lessonsBranch` | `aind/lessons` (optional override; dreaming-phase exhaust branch) |
 | `worktree` | parallel-work settings — see the section below |
+| `telemetry` | optional per-phase token/time tracking to ADO — see the section below (off by default) |
 
 **`.claude/aind.env`** (gitignored — secrets + per-user only):
 
@@ -89,6 +90,31 @@ Run it: launch each session in the **main checkout** (it stays on the integratio
 `/aind:complete` retire it — **run those close-out commands from the main checkout**, not from inside
 a worktree (a session can't remove its own working directory). Parallelism comes from opening more
 than one terminal in the main checkout, each driving a different story.
+
+## Usage telemetry (optional)
+
+Each AIND phase can record **raw usage** onto the story's ADO work item — a per-model, per-token-type
+breakdown, plus wall-clock time. It stores raw numbers only: **no cost, no rate card** — pricing is
+done entirely offline (a separate concern), so history can be re-priced anytime. Opt in via the
+**`telemetry`** block of `.claude/aind.settings.json`:
+
+```json
+"telemetry": {
+  "enabled": true,
+  "durationField": "Custom.AindDurationSec"
+}
+```
+
+- **Token detail is stored as a JSON attachment** on the work item — one small append-only
+  `aind-telemetry-<id>-<phase>-…json` per phase-run (models × input/output/cache-write/cache-read).
+  No custom field is needed for tokens; you read/aggregate the attachments in your own tooling.
+- **Time** accumulates into **one** numeric field. Add an integer field to your ADO process and put its
+  *reference name* in `durationField`; each phase adds its seconds to the running story total. Omit
+  `durationField` to record only the token attachments. Leave `enabled: false` (or omit the block) to
+  keep telemetry off — the phases run exactly as before.
+- Works on both hosts (Claude Code and GitHub Copilot CLI). Claude records the full per-model
+  breakdown; **Copilot records output tokens only** (its logs expose no per-message model or
+  input/cache). Time is exact on both.
 
 ## Project rules
 
