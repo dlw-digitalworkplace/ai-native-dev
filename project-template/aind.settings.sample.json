@@ -11,6 +11,10 @@
   "integrationBranch": "main",
   "planBranchPrefix": "aind/plan/",
   "lessonsBranch": "aind/lessons",
+  "telemetry": {
+    "enabled": false,
+    "durationField": "Custom.AindDurationSec"
+  },
   "worktree": {
     "enabled": false,
     "worktreeRoot": ".claude/worktrees",

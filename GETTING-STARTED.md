@@ -222,6 +222,45 @@ Because parallel PRs can collide, the review loop **handles merge conflicts auto
 PR stops merging cleanly into the integration branch (another story merged under it), the reviewer
 flags it and the coder rebases + resolves and hands back for a fresh review — no manual step from you.
 
+## 3d. (Optional) Track usage — token & time telemetry
+
+Every AIND phase can record **raw usage** onto the story's ADO work item: a per-model, per-token-type
+breakdown plus wall-clock time. AIND stores **raw numbers only — no cost, no rate card**. Pricing is
+done offline against the stored data (a separate concern), so you can re-price history anytime and no
+formula is baked into the flow.
+
+1. **(Optional) Add one numeric (integer) field to your ADO process** for time — e.g.
+   `Custom.AindDurationSec`. This is an ADO admin step; the plugin can't create fields. Token detail
+   needs **no** field — it's stored as an attachment (below).
+2. **Turn it on** in the `telemetry` block of `.claude/aind.settings.json` (onboard/kickstart ask about
+   this, so it may already be set):
+
+   ```jsonc
+   "telemetry": {
+     "enabled": true,
+     "durationField": "Custom.AindDurationSec"   // omit to record only the token attachments
+   }
+   ```
+
+   Onboard/kickstart also add `.aind/usage/` to `.gitignore` (transient per-phase markers); add it by
+   hand if you configured telemetry manually.
+
+Now `/aind:intake`, `/aind:plan`, `/aind:implement`, and `/aind:complete` each, at their end:
+- **attach a JSON record** to the work item — `aind-telemetry-<id>-<phase>-…json`, one append-only file
+  per phase-run, holding the per-model token breakdown (input / output / cache-write / cache-read).
+  This is the durable trace; there's deliberately no rendered table on the item (it would only add
+  noise), and your own tooling reads/aggregates the attachments.
+- **add its seconds** to the numeric duration field (if configured).
+
+Measurement reads the agent host's on-disk session log, so it works on **both** Claude Code and GitHub
+Copilot CLI — Claude records the full per-model breakdown; **Copilot records output tokens only** (its
+logs expose no per-message model or input/cache). Time is exact on both. It's best-effort: if the
+project hasn't opted in, or a host exposes nothing, the phase runs exactly as before.
+
+**Costing / rollup is offline and out of scope here:** download each story's `aind-telemetry-*.json`
+attachments, join the token counts against your own rate card in a spreadsheet/CSV, and aggregate as
+you like. Set `enabled` back to `false` (or remove the block) to turn telemetry off.
+
 ## 3c. Migrating an existing project to the two-file config
 
 Older projects kept **all** config in a single gitignored `.claude/aind.env` (shared settings *and*

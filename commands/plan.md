@@ -20,6 +20,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
 - Prints a PR number + URL → an open plan PR already exists → **Revise mode (section B)**.
 - Says "no open plan PR" (exits 9) → **Create mode (section A)**.
 
+**Stamp the phase start (telemetry)** now, before either mode — best-effort usage telemetry that
+records nothing unless the project opted in, and never blocks planning:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
+```
+
 ---
 
 > **Worktrees (parallel work).** If this project opts into worktrees (check with
@@ -172,6 +178,14 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
 
 8. **Report** the PR URL and the number of open assumption threads to the user.
 
+9. **Record consumption (telemetry).** Best-effort — records this phase's token breakdown (a per-model
+   JSON attachment on the work item) and its wall-clock time (to the configured duration field); a
+   silent no-op when the project hasn't opted in.
+   Never fails planning:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" planner
+   ```
+
 ---
 
 ## B. Revise mode (re-run — fold PR feedback into the same PR)
@@ -239,6 +253,14 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
 7. **Report** the PR URL, which feedback items you addressed, which you asked follow-ups on, and
    any new assumption threads you opened. Remind the user the tag stays `Plan ready for review`,
    and that resolving threads (the merge gate) is theirs to do.
+
+8. **Record consumption (telemetry).** Best-effort — records this phase's token breakdown (a per-model
+   JSON attachment on the work item) and its wall-clock time (to the configured duration field); a
+   silent no-op when the project hasn't opted in.
+   Never fails planning:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" planner
+   ```
 
 ---
 

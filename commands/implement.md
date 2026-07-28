@@ -46,6 +46,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-code-pr.sh" "$1" status
 - Any other error (e.g. more than one open PR matches) → relay it and stop; never open a second PR for
   the same story.
 
+**Stamp the phase start (telemetry)** now, before either mode — best-effort usage telemetry that
+records nothing unless the project opted in, and never blocks the build:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" coder
+```
+
 ---
 
 ## A. Build mode (first run)
@@ -329,6 +335,16 @@ the Observation on stdin: state **what happened and why** (the cause), never a p
   ```
 
 ## Report
+**First, record consumption (telemetry).** Best-effort — records this phase's token breakdown as a
+per-model JSON attachment on the work item (the reviewer passes folded in, since they ran before this
+point) and its wall-clock time to the configured duration field; a silent no-op when the project
+hasn't opted in, and it never fails the phase. In
+worktree mode run it like the other commands — it resolves the telemetry store from the main checkout,
+so it works from either tree:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" coder
+```
+
 Give the user the PR URL, a short summary of what you did, which **Definition-of-done** items are
 satisfied (and any not yet), any **deviations from the plan** (and why), and any assumptions you made.
 In **revise mode**, instead summarize which steering items you applied and which you asked follow-ups

@@ -15,6 +15,9 @@
 #                                 .integrationBranch  -> AIND_INTEGRATION_BRANCH (trunk the PR targets)
 #                                 .planBranchPrefix   -> AIND_PLAN_BRANCH_PREFIX (optional)
 #                                 .lessonsBranch      -> AIND_LESSONS_BRANCH     (optional)
+#                                 .telemetry.enabled       -> AIND_TELEMETRY_ENABLED        (optional)
+#                                 .telemetry.durationField -> AIND_TELEMETRY_DURATION_FIELD (optional)
+#                               (token detail is stored as a work-item attachment, not a field.)
 #                               (the .worktree block is read by aind-worktree.sh, not exported here.)
 #   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
 #                                 AZURE_DEVOPS_EXT_PAT   ADO PAT (Work Items r/w, Code r/w). Read
@@ -184,6 +187,8 @@ aind_autosource_env() {
           aind_export_from_settings AIND_INTEGRATION_BRANCH "$sf" '.integrationBranch'
           aind_export_from_settings AIND_PLAN_BRANCH_PREFIX "$sf" '.planBranchPrefix'
           aind_export_from_settings AIND_LESSONS_BRANCH     "$sf" '.lessonsBranch'
+          aind_export_from_settings AIND_TELEMETRY_ENABLED        "$sf" '.telemetry.enabled'
+          aind_export_from_settings AIND_TELEMETRY_DURATION_FIELD "$sf" '.telemetry.durationField'
         fi
       fi
       return 0

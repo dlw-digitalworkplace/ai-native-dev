@@ -102,7 +102,10 @@ and note it.
    user actually intends — don't emit a `deploy` skill just because deploy is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
    gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
-   branch); also ask whether to **enable worktrees** (default: no). Then **write** the files:
+   branch); also ask whether to **enable worktrees** (default: no) and whether to **track per-phase
+   token/time telemetry** onto the ADO work item (default: no — token detail is stored as a JSON
+   attachment on the work item, and time in **one** numeric field the project must define; ask for
+   that duration field's reference name if yes). Then **write** the files:
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
    ```
@@ -111,13 +114,16 @@ and note it.
      values. Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`); leave
      the other at its placeholder, and leave any not-yet-decided value at its placeholder. Set
      `worktree.enabled` per the answer; leave the rest of the `worktree` block at its sample defaults.
-     **This file is checked in** (shared config).
+     Set the `telemetry` block from the answer — `enabled: true` (and `durationField` if the user gave
+     one) when they opted in, else leave it `enabled: false` (inert). **This file is checked in**
+     (shared config).
    - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`, leaving
      `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret). **Gitignored.**
 
    Then update `.gitignore` idempotently (append only if the line is absent):
    ```bash
    grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >> .gitignore
+   grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
    # only if worktrees were enabled:
    grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
    ```

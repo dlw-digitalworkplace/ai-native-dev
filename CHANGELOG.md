@@ -9,6 +9,29 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.18.0] — 2026-07-28
+
+### Added
+- **Per-phase usage telemetry — raw tokens (work-item attachment) + time (numeric field), no cost**
+  (D42). Each ADO-touching phase (`/aind:intake`, `/aind:plan`, `/aind:implement`, `/aind:complete`)
+  can record raw usage onto the story's ADO work item: a **per-model, per-token-type** token
+  breakdown plus wall-clock time. It stores **raw numbers only — no cost, no rate card, no rendered
+  on-item view**; pricing is done entirely offline against the stored data, so history can be
+  re-priced anytime and no formula is baked into the flow.
+  - Opt in via a `telemetry` block in `.claude/aind.settings.json` (`enabled` + an optional numeric
+    `durationField`). New script `scripts/aind-usage.sh` brackets each phase with `begin`/`report`;
+    `/aind:onboard` and `/aind:kickstart` ask about it and write the config (+ the `.aind/usage/`
+    gitignore line).
+  - **Token detail is written as an append-only JSON attachment** per phase-run
+    (`aind-telemetry-<id>-<phase>-<agent>-<stamp>.json`) — the durable, machine-readable trace;
+    **time** accumulates into the one numeric duration field.
+  - A **host-aware collector** covers both agent hosts: Claude Code (full per-model breakdown from the
+    session transcript, deduped by message id, reviewer subagent transcripts folded in) and GitHub
+    Copilot CLI (output tokens only, single bucket). Measurement is a per-phase timestamp window,
+    head-anchored to the command invocation so the command-load turn is counted; transcript discovery
+    is worktree-safe (keyed to the main checkout). Best-effort throughout — fully inert until opted
+    in, and it never blocks a phase.
+
 ## [0.17.0] — 2026-07-23
 
 ### Changed

@@ -32,7 +32,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 .claude-plugin/plugin.json   manifest (name: aind)
 commands/   onboard, kickstart, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36)
+scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-usage.sh = per-phase usage telemetry (D42)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
@@ -40,8 +40,32 @@ project-template/  CLAUDE.md, aind.settings.sample.json, aind.env.sample, rules/
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 ```
 
-## Current status (2026-07-23)
+## Current status (2026-07-28)
 
+- **Per-phase usage telemetry — raw tokens (work-item attachment) + time (numeric field), no cost
+  (D42, 2026-07-28, live-validated — intake single-tree + implement in worktree mode).** Each ADO-touching phase
+  (`/aind:intake`, `/aind:plan`, `/aind:implement`, `/aind:complete`) records **raw usage only** onto
+  the work item — a **per-model, per-token-type** token breakdown + wall-clock time — with **no cost,
+  no rate card, no rendered on-item view** (pricing is done entirely offline against the stored data,
+  a separate story, so history can be re-priced anytime). Opt-in via a `telemetry` block in
+  `.claude/aind.settings.json` (`enabled` + optional numeric `durationField`). Each phase brackets its
+  work with `aind-usage.sh begin`/`report`; measurement is by **timestamp window** over the agent
+  host's on-disk per-session events, so attribution is per-phase even when phases share a session. A
+  **host-aware collector** (aind-forge-shaped, on the *agent*-host axis): Claude reads
+  `~/.claude/projects/<slug>/<session>.jsonl` → dedupes by `message.id`, folds in the
+  `<session>/subagents/*.jsonl` (so a build total includes the reviewer), reduces to a per-model map
+  from `message.model`+`message.usage`; Copilot reads `~/.copilot/session-state/<session>/events.jsonl`
+  → a single `copilot` bucket with **output tokens only** (its logs carry no per-message model or
+  input/cache). **Truth = the token breakdown as an append-only JSON attachment per phase-run**
+  (`aind-telemetry-<id>-<phase>-<agent>-<stamp>.json`, `wit/attachments` REST + an `AttachedFile`
+  relation); **time = the numeric `durationField`** (queryable). New script `aind-usage.sh`
+  (`_attach_upload`/`_attach_link` + the `_field_accumulate` from aind-status.sh's tag PATCH; `/fields/…`
+  and `/relations/-` built inside jq for the MSYS trap); `.aind/usage/` gitignored. Best-effort/never
+  blocks a phase; inert unless enabled — the tokens+time twin of the D30 lessons exhaust. Rejected an
+  earlier single-token-total field (opaque + a false cost proxy: cache-reads were ~97% of tokens but
+  ~61% of cost) and a rendered on-item table (token/UI clutter) in favour of raw-in-attachment +
+  offline pricing. Config/packaging side of the D1–D15 line; the flow, status model, gates, and PR
+  contract are untouched.
 - **Config streamlined into two files, created by onboarding (D41, 2026-07-23, live-validated
   end-to-end).** Per-project config split: **`.claude/aind.settings.json`** (shared,
   checked in — ADO org/project, code host, repo, integration branch, branch prefixes, and the
@@ -503,6 +527,54 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   gets mangled by Git-Bash on Windows when the ref has slashes before the `:` (`aind/lessons:…` →
   `aind\lessons;…`). The scripts avoid this by resolving to a **SHA first** and using `<sha>:<path>`
   — do the same in any ad-hoc check.
+
+**Usage-telemetry plumbing (D42, `aind-usage.sh`).**
+- **The only place token counts exist is the agent host's on-disk per-session events file** — the
+  bash scripts never see the model's tokens. Locations are undocumented internals, so `aind_collect_usage`
+  isolates all path derivation in two backends: Claude `~/.claude/projects/<slug>/<session>.jsonl`
+  (slug = the **main-checkout** path with `:` `\` `/` → `-`; falls back to matching each session's
+  recorded `.cwd` to the main checkout if the slug transform drifts) + its `<session>/subagents/*.jsonl`;
+  Copilot `~/.copilot/session-state/<session>/events.jsonl` (matched via `workspace.yaml`
+  `git_root`/`cwd`). Resolve `$HOME` from **`USERPROFILE`** (MSYS `$HOME` can be a mapped drive).
+- **Worktree gotcha (bit us on `/aind:plan`): key discovery off the MAIN checkout (`_main_root`),
+  never `$PWD`/`git --show-toplevel`.** Claude keys the transcript's project folder to the session's
+  *launch* cwd — always the main checkout under drive-from-main — but `/aind:plan` and `/aind:implement`
+  let the shell `cd` into a per-phase worktree, so at `report` time `$PWD` is the worktree. Slugging
+  `$PWD` (or matching against the worktree's `git --show-toplevel`) then looks under a
+  `…-worktrees-<id>-<phase>` slug that doesn't exist → "no session events file found" → no attachment
+  (the marker still resolves, because it was already main-rooted, so you get a *silent* miss: empty
+  `.aind/usage/` but nothing written). `_claude_file`/`_copilot_file` use `_main_root` (git-common-dir
+  → main) for both the slug and the `.cwd`/`git_root` match, so discovery works from inside a worktree.
+- **Two summation rules that are load-bearing:** Claude streaming writes **repeat a `message.id`**, so
+  aggregation **dedupes by `message.id`** (keying an id-less line by its uuid/timestamp so distinct
+  lines aren't collapsed); and **subagent transcripts are NOT rolled into the parent** usage, so they
+  are summed in separately (a build total therefore includes the reviewer passes). Claude carries
+  `message.model` per message → a per-model breakdown; Copilot events carry no per-message model or
+  input/cache → a single `copilot` bucket, **output tokens only**.
+- **Attribution is a timestamp window, and there are two of them.** `begin` stamps a marker at
+  `<main-checkout>/.aind/usage/<id>-<agent>.json` — rooted at the **main checkout** (via
+  `git --git-common-dir`) so `begin` (session on main) and `report` (session may have cd'd into a
+  worktree) agree; `report` consumes the marker on read (so a stale marker can't widen a later window).
+  **Duration** = `[begin, report]` (active work time). The Claude **token** window is **head-anchored**:
+  a slash command's first turn (reading the command + grounding context — a full cache-read) fires
+  *before* it can run the `begin` bash step, so the token window starts at the timestamp of the most
+  recent `<command-name>/aind:…` invocation in the transcript (`_claude_anchor_lo`), pulling that load
+  turn in. The trailing post-`report` narration turn is still unmeasured (report can't see its own
+  future) — marginal, and negligible on multi-turn phases. Copilot has no such tag, so it uses `begin`.
+- **ADO attachment = the token-breakdown truth; a numeric field = time.** `_attach_upload` POSTs to
+  `{org}/{project}/_apis/wit/attachments?fileName=…` then `_attach_link` adds an `AttachedFile`
+  relation via a work-item JSON-Patch. As with `aind-status.sh`/`aind-forge.sh`, the `/fields/…` and
+  **`/relations/-`** paths are built **inside jq**, never as a shell arg — a leading-slash argv is
+  rewritten to a Windows path by MSYS. One append-only attachment **per phase-run** (ADO attachments
+  are immutable blobs, so a "kept-current" file would force a fragile read-modify-write).
+- **Best-effort, never blocks a phase, inert unless `telemetry.enabled`** — same discipline as the
+  lessons emitter above; a missing marker / no session file / missing creds / ADO hiccup all WARN and
+  return 0.
+- **Windows MAX_PATH + jq (dev/test only):** `jq` is a native `.exe` bound by the ~260-char path
+  limit, while MSYS `ls`/`cat` are not. A Claude transcript path is `~/.claude/projects/<slug>/…` where
+  the slug is the *full cwd* dashed — fine for a normal checkout, but a deeply-nested **test** cwd can
+  push the transcript path past 260 chars and `jq` then reports "No such file or directory" on a file
+  that plainly exists. Run offline telemetry tests from a short path.
 
 ## Conventions for editing & testing
 

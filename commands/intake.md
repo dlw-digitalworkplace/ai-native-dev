@@ -14,6 +14,12 @@ Work item: **$1**
 
 ## Procedure
 
+**Stamp the phase start (telemetry)** before anything else — best-effort usage telemetry that records
+nothing unless the project opted in, and never blocks intake:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" intake
+```
+
 1. **Load the story.** Fetch it and read title, description, acceptance criteria, and tags:
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-workitem.sh" "$1"
@@ -146,6 +152,14 @@ Work item: **$1**
 
 8. **Report** a one-line summary to the user: the verdict, the readiness score, and (if
    declined) the failing objective criteria **and/or the unmet dependencies**.
+
+9. **Record consumption (telemetry).** Best-effort — records this phase's token breakdown (a per-model
+   JSON attachment on the work item) and its wall-clock time (to the configured duration field); a
+   silent no-op when the project hasn't opted in.
+   Never fails intake:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" intake
+   ```
 
 ## Notes
 - A declined story is edited by the human and resubmitted as `Ready for intake`, which

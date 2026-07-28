@@ -100,6 +100,11 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
 - The **ADO org URL** and **project** (work items always live in ADO), if not derivable.
 - Confirm the **code host** when the remote was ambiguous.
 - Whether to **enable worktrees** for parallel work (default: no).
+- Whether to **track per-phase token/time telemetry** onto the ADO work item (default: no). The token
+  breakdown is stored as a JSON **attachment** on the work item (no custom field needed); **time**
+  accumulates into **one** numeric field. If yes, ask for that duration field's reference name (e.g.
+  `Custom.AindDurationSec`) — the project's ADO process must define it as an integer field. Telemetry
+  still records the token attachment even when no duration field is configured.
 
 **Write** the files:
 ```bash
@@ -109,7 +114,10 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
   `${CLAUDE_PLUGIN_ROOT}/project-template/aind.settings.sample.json`, filled with the detected +
   answered values. Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`);
   leave the other at its placeholder. Set `worktree.enabled` per the answer; leave the rest of the
-  `worktree` block at its sample defaults. **This file is checked in** (shared config).
+  `worktree` block at its sample defaults. Set the `telemetry` block from the answer: if the user opted
+  in, set `enabled: true` (and `durationField` to their field's `refName` if they gave one); otherwise
+  leave it `enabled: false` (telemetry stays inert). **This file is checked in** (shared
+  config).
 - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`, leaving
   `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret). **This file is
   gitignored.**
@@ -117,9 +125,12 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
 **Update `.gitignore`** idempotently (append only if the line is absent):
 ```bash
 grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >> .gitignore
+grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
 # only if worktrees were enabled:
 grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
 ```
+(`.aind/usage/` holds transient per-phase telemetry markers — always gitignored, harmless when the
+feature is off.)
 
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist:
