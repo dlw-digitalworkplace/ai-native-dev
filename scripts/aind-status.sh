@@ -22,7 +22,8 @@ source "$SCRIPT_DIR/aind-common.sh"
 
 ID="${1:-}"
 NEW_STATE="${2:-}"
-[[ -n "$ID" && -n "$NEW_STATE" ]] || aind_die "usage: aind-status.sh <work-item-id> <new-state>"
+AGENT="${3:-}"   # optional: the calling phase's agent, used only to attribute a mirror-failure lesson
+[[ -n "$ID" && -n "$NEW_STATE" ]] || aind_die "usage: aind-status.sh <work-item-id> <new-state> [agent]"
 aind_require_env AIND_ADO_ORG AZURE_DEVOPS_EXT_PAT
 aind_require_cmd az curl jq
 aind_validate_state "$NEW_STATE"
@@ -133,3 +134,30 @@ if (( AIND_COUNT != 1 )) || (( AIND_HAS_TARGET != 1 )); then
 fi
 
 echo "aind: work item $ID -> $TARGET"
+
+# --- Mirror into the native ADO State (best-effort projection; the AIND tag stays authoritative) ---
+# When a stateMap is configured (AIND_STATE_MAP, produced by /aind:map-states), move the native State
+# to the mapped value so the board reflects the flow. This NEVER fails the calling command: an
+# unmapped status is skipped, and a failed write only warns (and, when the calling phase passed its
+# agent as the 3rd arg, emits an observation lesson so recurring mirror failures cluster in the next
+# dream cycle instead of rotting in a lost stderr line).
+mirror_native_state() {
+  [[ -n "${AIND_STATE_MAP:-}" ]] || return 0
+  local target
+  target="$(printf '%s' "$AIND_STATE_MAP" | jq -r --arg s "$NEW_STATE" '.[$s] // empty' 2>/dev/null | tr -d '\r' || true)"
+  [[ -n "$target" ]] || return 0   # this status isn't mapped — leave the native State alone
+  if az boards work-item update --id "$ID" --org "$ORG" --state "$target" >/dev/null 2>&1; then
+    echo "aind: mirrored native State -> $target"
+    return 0
+  fi
+  echo "aind: [WARN] could not mirror native State '$target' on work item $ID — board not moved (flow unaffected)" >&2
+  if [[ -n "$AGENT" ]]; then
+    bash "$SCRIPT_DIR/aind-emit-lesson.sh" "$ID" "$AGENT" observation self-report stateMap <<EOF 2>/dev/null || true
+Mirroring AIND status "$NEW_STATE" to native ADO State "$target" failed on work item $ID. The mapped
+state may not exist in this project's process template, or the transition to it is not allowed from
+the work item's current state. The AIND status tag was set correctly and remains authoritative; only
+the native-State projection did not move, so the board silently diverges from the flow here.
+EOF
+  fi
+}
+mirror_native_state

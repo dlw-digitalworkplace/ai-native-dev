@@ -17,6 +17,9 @@
 #                                 .lessonsBranch      -> AIND_LESSONS_BRANCH     (optional)
 #                                 .telemetry.enabled       -> AIND_TELEMETRY_ENABLED        (optional)
 #                                 .telemetry.durationField -> AIND_TELEMETRY_DURATION_FIELD (optional)
+#                                 .stateMap                -> AIND_STATE_MAP (optional, compact JSON;
+#                                                             native-State mirror, produced by
+#                                                             /aind:map-states, read by aind-status.sh)
 #                               (token detail is stored as a work-item attachment, not a field.)
 #                               (the .worktree block is read by aind-worktree.sh, not exported here.)
 #   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
@@ -189,6 +192,8 @@ aind_autosource_env() {
           aind_export_from_settings AIND_LESSONS_BRANCH     "$sf" '.lessonsBranch'
           aind_export_from_settings AIND_TELEMETRY_ENABLED        "$sf" '.telemetry.enabled'
           aind_export_from_settings AIND_TELEMETRY_DURATION_FIELD "$sf" '.telemetry.durationField'
+          # stateMap is an object, not a scalar — surface it as a compact JSON string.
+          aind_export_from_settings AIND_STATE_MAP                "$sf" '(.stateMap // empty) | tojson'
         fi
       fi
       return 0

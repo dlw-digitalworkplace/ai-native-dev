@@ -28,6 +28,7 @@ manual step is pasting your PAT into `.claude/aind.env`.
 | `lessonsBranch` | `aind/lessons` (optional override; dreaming-phase exhaust branch) |
 | `worktree` | parallel-work settings — see the section below |
 | `telemetry` | optional per-phase token/time tracking to ADO — see the section below (off by default) |
+| `stateMap` | optional AIND-status → native-State mirror; filled by `/aind:map-states` (off = `{}` or absent) |
 
 **`.claude/aind.env`** (gitignored — secrets + per-user only):
 
