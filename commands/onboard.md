@@ -132,6 +132,26 @@ grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees
 (`.aind/usage/` holds transient per-phase telemetry markers — always gitignored, harmless when the
 feature is off.)
 
+### 6.5 Offer the native-State mirror (optional)
+AIND tracks flow state in its own status **tag**; a team that reads the ADO **board** may also want
+the work item's built-in **State** field to follow along. Offer it — **`AskUserQuestion`**: "mirror
+AIND status onto the native State field?" (a good default for board-reading teams). If **yes**, run
+the same mapping `/aind:map-states` performs — **adopt the project's existing states, never force new
+ones.** Ask for (or reuse) the story **work-item type**, then:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" propose "<story work-item type>"
+```
+Each line is `status ⇥ category ⇥ resolved-state ⇥ count ⇥ candidates`. Auto-accept every row whose
+`count` is 1; for `count` 0 or >1, ask the human which state to use (or leave that status unmapped).
+Then write the resolved map:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" write <<'EOF'
+{ "<aind-status>": "<state>", "…": "…" }
+EOF
+```
+If **no** (or you skip it), leave `stateMap` as `{}` — no mirror, behaviour unchanged. Either way,
+`/aind:map-states` re-runs this anytime the project's states change.
+
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist:
 ```bash
@@ -150,6 +170,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 - **The config you created:** `.claude/aind.settings.json` (shared, checked in — review its values)
   and `.claude/aind.env` (gitignored). The one manual step left is **pasting the ADO PAT** into
   `.claude/aind.env` (it was written as a `<pat>` placeholder). Note you added the gitignore line(s).
+  If you set up the native-State mirror, note the `stateMap` written (and that `/aind:map-states`
+  re-runs it later).
 - A clear note: **the rules/skills are drafts — review and edit before committing**, then run
   `/aind:intake <id>` on a story to start the flow.
 
