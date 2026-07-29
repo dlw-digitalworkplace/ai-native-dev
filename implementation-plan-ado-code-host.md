@@ -5,7 +5,7 @@ as an alternative to GitHub, selected by `AIND_CODE_HOST`. This is a **script-on
 forge-adapter layer absorbs the divergence, and `commands/`, `skills/`, and `agents/` stay
 byte-for-byte unchanged.
 
-> Dev doc (not shipped). Cites decision IDs freely, like `design-log.md` / `design-doc.md`.
+> Dev doc (not shipped). Cites decision IDs freely, like `design-log/` / `design-doc.md`.
 > The shipped-artifact "no D-refs" guard does not apply here.
 
 ## Status (branch `feat/ado-code-host`)
