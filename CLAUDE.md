@@ -17,12 +17,20 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ## Design docs (read these first for the "why")
 
+- **`STATUS.md`** — **where things stand right now** (what's built/validated, what's next). This
+  file (`CLAUDE.md`) holds only **stable rules**; anything fluid lives in `STATUS.md`. **Rule:
+  for current status or next steps, read `STATUS.md` — do not add status prose here, and update
+  `STATUS.md` (not this file) as work lands.**
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — the decisions **D1–D18** with rationale. This is the source of truth for
-  *why* things are the way they are. Key ones to know: D4 (single `AIND status` tag invariant),
+- **`design-log/`** — the decisions **D1–D42**, **one file per decision** (`D<N>-<slug>.md`) with an
+  index at `design-log/README.md`. This is the source of truth for *why* things are the way they
+  are. Key ones to know: D4 (single `AIND status` tag invariant),
   D5 (plan PR + resolvable assumption threads), D6 (manual/local v0 scope; automation descoped),
   D10 (separate plan PR, `/plans/<id>/plan.md`), D11 (two-layer hybrid rubric), D13 (merge-then-tag),
-  D16 (dreaming phase), D17 (AIND-LINKS), D18 (onboarding agent).
+  D16 (dreaming phase), D17 (AIND-LINKS), D18 (onboarding agent). A new decision is a **new file**
+  (`D43-…`), never an edit to a shared log — so parallel feature PRs don't collide on it.
+- **`docs/plans/`** — the planned-feature backlog, one subfolder per feature, each a standalone PR
+  (`docs/plans/README.md` indexes them).
 - **`docs/index.html`** — visual diagram (published via GitHub Pages).
 - **`README.md`** / **`GETTING-STARTED.md`** — install + per-project setup walkthrough.
 
@@ -597,16 +605,25 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 - Keep the plugin **portable** — no project-specific values (org/repo/account) in code or docs;
   use `<placeholders>`. Config comes from env / `.claude/aind.env`.
 - **No design-log references in shipped artifacts.** The design log is **not** part of the plugin
-  — a consuming project loads the commands/skills/agents but never sees `design-log.md`. So
+  — a consuming project loads the commands/skills/agents but never sees `design-log/`. So
   everything that ships or is copied into a project — `commands/`, `skills/`, `agents/`,
   `scripts/`, `hooks/`, the rubric seed, and `project-template/` — must be **self-contained**:
   **never** cite a decision ID (`D4`, `D19`, …) or the literal `design-log` in them (prose,
   frontmatter `description`, code comments, or user-facing strings alike). Keep the decision's
   *substance* (e.g. "exactly one AIND status tag per item"), drop the citation. Decision
-  references live **only** in the repo's own dev docs: `design-log.md`, `design-doc.md`, and this
+  references live **only** in the repo's own dev docs: `design-log/`, `design-doc.md`, and this
   `CLAUDE.md`. Quick guard before publishing:
   `grep -rnE 'design-log|\bD[0-9]+\b' commands skills agents scripts hooks rubric project-template`
   should return nothing.
+- **Design log is one file per decision (`design-log/D<N>-<slug>.md`).** Adding a decision = adding a
+  **new file** and one row to `design-log/README.md`'s index — never editing a shared monolith, so
+  concurrent feature PRs don't conflict on it. New numbers (D43+) are assigned **in merge order**
+  (assign at merge time, not when the PR is opened, so two open PRs don't both claim D43). A
+  decision that supersedes/amends an earlier one adds a new file and marks the old file's **Status**
+  line (e.g. `Superseded by D44`) — the only edit to an existing decision file.
+- **Never bump the plugin `version` in a feature PR.** Version bumps live in a **separate release
+  commit on `main`** (both manifests kept in sync), so parallel feature PRs never collide on
+  `plugin.json` / `.github/plugin/plugin.json`. See the publishing note below.
 - **Script invocation:** commands/skills call scripts as `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"`
   (not direct exec) so the plugin runs even when a zip/clone drops the executable bit. Keep new
   calls in that form.
@@ -616,20 +633,3 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   `claude --plugin-url …/releases/latest/download/aind.zip`. The zip is a snapshot — re-deploy
   after changes; bump `plugin.json` `version` for a new release tag. `aind.zip` is gitignored.
 
-## Likely next steps
-
-1. Finish the **Copilot CLI validation**: complete the intake E2E (parity with Claude) and confirm
-   the renamed Claude hook loads via the custom `hooks` manifest path (`claude --plugin-dir … --debug`).
-   Optionally add a **"verify bash first; never reimplement a script — stop instead" guard** so a
-   consumer without bash fails loud rather than improvising (the open hardening item from D22).
-2. Live-exercise the **plan-revision loop** (D21): leave PR comments + reply to assumption
-   threads, re-run `/aind:plan`, confirm it ingests the feedback and pushes to the same PR
-   (`aind-revise-plan-pr.sh` `status`/`begin`/`push`).
-3. **Live-validate the dreaming phase** (D30): on a testbed with a `lint` skill that runs an
-   uninstalled eslint, run `/aind:implement` and confirm the coder emits the missing-eslint defect as
-   an `observation` lesson (`aind-emit-lesson.sh` → `aind/lessons`), then run **`/aind:dream`** and
-   confirm the cold `aind-dreamer` clusters it, the human curates (Gate 1), and it proposes the
-   skill fix as one `.claude` PR (Gate 2). Exercise the `gh`-live phases of `aind-dream.sh`
-   (`start`/`open-pr`) and the human-PR-feedback→`correction`-lesson path via a `/aind:plan` or
-   `/aind:implement` revise run. Confirm the dreamer stays inside `.claude` and routes a structural
-   finding to `aind-dream.sh note` (`.aind/parking-lot.md`).

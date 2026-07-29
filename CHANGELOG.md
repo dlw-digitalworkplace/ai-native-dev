@@ -4,7 +4,7 @@ All notable changes to the **aind** plugin are documented here. The format follo
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/). Each version matches the `vX.Y.Z` GitHub Release that
 `deploy.sh` cuts from the `version` in `.claude-plugin/plugin.json` (kept in sync with
-`.github/plugin/plugin.json`). Design rationale for each change lives in `design-log.md`, cited by
+`.github/plugin/plugin.json`). Design rationale for each change lives in `design-log/`, cited by
 decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
@@ -202,7 +202,7 @@ decision ID (e.g. D23).
 
 ### Notes
 - **Two orthogonal axes now:** the **agent host** (Claude Code vs GitHub Copilot CLI, D22) and the
-  **code host** (GitHub vs ADO Repos, D36). Docs updated in lockstep: `design-log.md` (D36),
+  **code host** (GitHub vs ADO Repos, D36). Docs updated in lockstep: `design-log/` (D36),
   `design-doc.md`, `README.md`, `GETTING-STARTED.md`, `docs/index.html`, `CLAUDE.md`, and the
   project-template env sample / `CLAUDE.md`.
 
@@ -253,7 +253,7 @@ decision ID (e.g. D23).
     so re-running bought nothing and only cost a full cycle each pass.
 
 ### Notes
-- **Prompt-only change — no scripts touched.** Docs updated in lockstep: `design-log.md` (D35) and
+- **Prompt-only change — no scripts touched.** Docs updated in lockstep: `design-log/` (D35) and
   `CLAUDE.md`.
 
 ## [0.11.0] — 2026-07-09
@@ -291,7 +291,7 @@ decision ID (e.g. D23).
 - **Prompt-only change — no scripts touched.** Accepted residual: a diff-reading reviewer *reduces*
   but does not eliminate test-gaming/inflation; **mutation testing** in a project's CI is the
   named-not-built mechanical upgrade a team can add (objective gates are CI's job).
-- Docs updated in lockstep: `design-log.md` (D33 + D8/D9/D14/D15 marked superseded), `design-doc.md`,
+- Docs updated in lockstep: `design-log/` (D33 + D8/D9/D14/D15 marked superseded), `design-doc.md`,
   `README.md`, `CLAUDE.md`, and the flow diagram (`docs/index.html`).
 
 ### Validated

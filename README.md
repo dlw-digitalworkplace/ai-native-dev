@@ -10,7 +10,7 @@ selected by `AIND_CODE_HOST`). Work items always live in Azure DevOps.
 
 This README covers **what it is** and **where it stands**. To set it up and use it, see
 **[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
-`design-log.md`, with the flow diagram in `docs/index.html`.
+`design-log/`, with the flow diagram in `docs/index.html`.
 
 > **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase —
 > **coding** (`/aind:implement`, which builds the code PR then drives an independent **code review**
@@ -69,7 +69,7 @@ State is tracked by a single `AIND status - <state>` tag on the ADO work item; t
   review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
   reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
 
-Rationale for every choice is in `design-log.md` (decisions **D1–D36**).
+Rationale for every choice is in `design-log/` (decisions **D1–D36**).
 
 ## Repository layout
 
@@ -84,7 +84,7 @@ rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
 agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser)
 project-template/            What a project copies into its own .claude/
 deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log.md The design and the decisions (D1–D36)
+design-doc.md, design-log/ The design and the decisions (D1–D36)
 GETTING-STARTED.md           Prerequisites, install, setup, usage
 ```
 
@@ -121,6 +121,6 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 - **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
 - **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log.md`** — decisions D1–D41 with rationale.
+- **`design-log/`** — decisions D1–D41 with rationale.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
 - **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
