@@ -28,7 +28,7 @@ All the steps below then run from the main checkout.
 **Then stamp the phase start (telemetry).** Best-effort usage telemetry — records nothing unless the
 project opted in, and never blocks close-out:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" coder
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" completer
 ```
 
 1. **Verify the code PR is merged.** Resolve the story's code PR and confirm it is `MERGED`:
@@ -84,7 +84,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" coder
    silent no-op when the project hasn't opted in.
    Never fails close-out:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" coder
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" completer
    ```
 
 ## Report

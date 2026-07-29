@@ -18,12 +18,13 @@
 # in different places and shapes. So, mirroring how aind-forge.sh hides the code host, this file
 # hides the AGENT host behind one collector with two backends. Measurement is by TIMESTAMP WINDOW:
 # `begin` stamps a start marker and `report` sums only the usage inside the window, so attribution is
-# per-phase even when several phases share one session. Two windows, deliberately: the **duration** is
-# [begin, report] (active work time, excludes idle); the Claude **token** window is HEAD-ANCHORED back
-# to this command's `<command-name>/aind:…` invocation in the transcript, so it also captures the
-# command-load turn (a full cache-read that fires before `begin` can run — real phase cost). The
-# trailing post-`report` narration turn is not captured (report can't see its own future); it is
-# marginal and shrinks to noise on multi-turn phases.
+# per-phase even when several phases share one session. On Claude both the **token** window and the
+# **duration** are HEAD-ANCHORED back to this command's invocation turn in the transcript (matched by
+# its `<command-message>…</command-message>` envelope), not to `begin`: the command-load + grounding
+# turn (a full cache-read) fires a beat before `begin` can run, so anchoring to `begin` would drop it
+# from both. Copilot has no invocation tag, so both start at `begin`. The trailing post-`report`
+# narration turn is still not captured (report can't see its own future); it is marginal and shrinks
+# with phase length, though a phase's closing full-context cache-read leaves a small raw-token tail.
 #
 #   Claude  : ~/.claude/projects/<slug>/<session>.jsonl — assistant lines carry message.model +
 #             message.usage (input/output/cache_creation/cache_read) + top-level ISO `timestamp`.
@@ -179,24 +180,30 @@ _claude_metrics() {
 
 # HEAD-ANCHOR the token window: a slash command's first turn (the model reading the command +
 # grounding context, a full cache-read) happens BEFORE it can run the `begin` bash step, so a
-# [begin, now] window drops that turn. The transcript records the invocation as a structured
-# `<command-name>/aind:…</command-name>` tag, so we start the token window at the timestamp of the
-# MOST RECENT such invocation at/before `hi` — which is exactly this command's start, and (in a shared
-# session) never reaches back into a prior phase. Falls back to the marker's start if none is found.
+# [begin, now] window drops that turn. The transcript records a real invocation as a user turn wrapped
+# in a `<command-message>…</command-message>` + `<command-name>/…</command-name>` envelope, so we start
+# the token window at the timestamp of the MOST RECENT such invocation at/before `hi` — which is
+# exactly this command's start, and (in a shared session) never reaches back into a prior phase.
+# We match the well-formed `<command-message>` envelope, NOT a bare `<command-name>` substring: a phase
+# that reads a file/command/tool-output merely QUOTING the literal string `<command-name>` (this very
+# script's comments do) would otherwise be mistaken for an invocation and jump the anchor forward,
+# silently truncating the window from the front. Falls back to the marker's start if none is found.
 _claude_anchor_lo() {
   local f="$1" fallback="$2" hi="$3" ts
   ts="$(jq -rs --arg hi "$hi" '
     [ .[]
       | select((.timestamp // "") <= $hi)
-      | select(((.message.content // "") | tostring) | test("<command-name>"))
+      | select(((.message.content // "") | tostring) | test("<command-message>[^<]*</command-message>"))
       | .timestamp ] | max // empty' "$f" 2>/dev/null)"
   [[ -n "$ts" ]] && printf '%s' "$ts" || printf '%s' "$fallback"
 }
 
-# Claude models map with the head-anchored window (marker `lo` is the fallback / duration anchor).
+# Claude models map with the head-anchored window (marker `lo` is the fallback). Exposes the resolved
+# anchor in USAGE_ANCHOR so `report` can head-anchor the DURATION to the same point.
 _claude_models() {
   local f="$1" lo="$2" hi="$3" clo
   clo="$(_claude_anchor_lo "$f" "$lo" "$hi")"
+  USAGE_ANCHOR="$clo"
   _claude_metrics "$f" "$clo" "$hi"
 }
 
@@ -238,7 +245,7 @@ _copilot_metrics() {
 aind_collect_usage() {
   local lo="$1" hi="$2" forced cf="" pf=""
   forced="$(printf '%s' "${AIND_AGENT_HOST:-}" | tr '[:upper:]' '[:lower:]' | tr -d '\r')"
-  USAGE_HOST=""; USAGE_MODELS='{}'; USAGE_FILE=""
+  USAGE_HOST=""; USAGE_MODELS='{}'; USAGE_FILE=""; USAGE_ANCHOR=""
   case "$forced" in
     claude)  _claude_file  && { USAGE_HOST=claude;  USAGE_MODELS="$(_claude_models   "$USAGE_FILE" "$lo" "$hi")"; return 0; }; return 1 ;;
     copilot) _copilot_file && { USAGE_HOST=copilot; USAGE_MODELS="$(_copilot_metrics "$USAGE_FILE" "$lo" "$hi")"; return 0; }; return 1 ;;
@@ -343,7 +350,9 @@ _phase_of() {
   case "$1" in
     intake)                echo intake ;;
     planner)               echo plan ;;
+    approver)              echo approve ;;
     coder|reviewer|polish) echo build ;;
+    completer)             echo complete ;;
     *)                     echo unknown ;;
   esac
 }
@@ -361,19 +370,32 @@ cmd_report() {
   [[ -f "$marker" ]] || { aind_warn "no telemetry marker for AB#${id} ${agent} (begin not run?) — skipping"; return 0; }
   aind_require_cmd jq >/dev/null 2>&1 || { aind_warn "jq not found — telemetry skipped"; return 0; }
 
-  local lo hi start_epoch now_epoch seconds
+  local lo hi start_epoch now_epoch seconds win_start_epoch started_out
   lo="$(jq -r '.started_at // empty' "$marker" 2>/dev/null)"
   start_epoch="$(jq -r '.started_epoch // empty' "$marker" 2>/dev/null)"
   hi="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
   now_epoch="$(date +%s)"
   [[ -n "$lo" && -n "$start_epoch" ]] || { aind_warn "telemetry marker for AB#${id} ${agent} is unreadable — skipping"; rm -f "$marker"; return 0; }
   rm -f "$marker"   # consume it now: `begin` re-creates it next run, so a stale marker can't widen a later window
-  seconds=$(( now_epoch - start_epoch )); (( seconds < 0 )) && seconds=0
 
   if ! aind_collect_usage "$lo" "$hi"; then
     aind_warn "no session events file found for this repo (host may not expose usage) — telemetry skipped for AB#${id} ${agent}"
     return 0
   fi
+
+  # Duration window: default [begin, report]. When the host exposed a head-anchor (Claude: this
+  # command's invocation turn, which fires a beat before `begin` could run), extend the START back to
+  # it — the same head-anchor the token window uses — so time and tokens span the same window and the
+  # command-load/grounding turn at the front isn't dropped. Copilot has no invocation tag → begin-based.
+  win_start_epoch="$start_epoch"; started_out="$lo"
+  if [[ -n "${USAGE_ANCHOR:-}" && "$USAGE_ANCHOR" != "$lo" ]]; then
+    local anchor_epoch
+    anchor_epoch="$(date -u -d "$USAGE_ANCHOR" +%s 2>/dev/null || echo "")"
+    if [[ "$anchor_epoch" =~ ^[0-9]+$ ]] && (( anchor_epoch < win_start_epoch )); then
+      win_start_epoch="$anchor_epoch"; started_out="$USAGE_ANCHOR"
+    fi
+  fi
+  seconds=$(( now_epoch - win_start_epoch )); (( seconds < 0 )) && seconds=0
   local models="${USAGE_MODELS:-}"; [[ -n "$models" ]] || models='{}'
   printf '%s' "$models" | jq -e . >/dev/null 2>&1 || models='{}'
 
@@ -398,7 +420,7 @@ cmd_report() {
   fname="aind-telemetry-${id}-${phase}-${agent}-${stamp}.json"
   rec="$(mktemp)"
   jq -nc --arg wi "$id" --arg phase "$phase" --arg agent "$agent" --arg host "$USAGE_HOST" \
-        --arg started "$lo" --arg ended "$hi" --argjson seconds "$seconds" --argjson models "$models" \
+        --arg started "$started_out" --arg ended "$hi" --argjson seconds "$seconds" --argjson models "$models" \
         '{work_item:$wi, phase:$phase, agent:$agent, host:$host, started_at:$started, ended_at:$ended, seconds:$seconds, models:$models}' \
         > "$rec" 2>/dev/null
   atturl="$(_attach_upload "$fname" "$rec")"

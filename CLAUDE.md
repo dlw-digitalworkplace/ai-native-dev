@@ -43,8 +43,9 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 ## Current status (2026-07-28)
 
 - **Per-phase usage telemetry — raw tokens (work-item attachment) + time (numeric field), no cost
-  (D42, 2026-07-28, live-validated — intake single-tree + implement in worktree mode).** Each ADO-touching phase
-  (`/aind:intake`, `/aind:plan`, `/aind:implement`, `/aind:complete`) records **raw usage only** onto
+  (D42, 2026-07-28, live-validated — intake single-tree + implement in worktree mode; anchor/label
+  fixes 2026-07-29 from a log-based drift study).** Each ADO-touching phase
+  (`/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`, `/aind:complete`) records **raw usage only** onto
   the work item — a **per-model, per-token-type** token breakdown + wall-clock time — with **no cost,
   no rate card, no rendered on-item view** (pricing is done entirely offline against the stored data,
   a separate story, so history can be re-priced anytime). Opt-in via a `telemetry` block in
@@ -555,12 +556,19 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   `<main-checkout>/.aind/usage/<id>-<agent>.json` — rooted at the **main checkout** (via
   `git --git-common-dir`) so `begin` (session on main) and `report` (session may have cd'd into a
   worktree) agree; `report` consumes the marker on read (so a stale marker can't widen a later window).
-  **Duration** = `[begin, report]` (active work time). The Claude **token** window is **head-anchored**:
+  On Claude **both** the **token** window and the **duration** are **head-anchored** (not `begin`-based):
   a slash command's first turn (reading the command + grounding context — a full cache-read) fires
-  *before* it can run the `begin` bash step, so the token window starts at the timestamp of the most
-  recent `<command-name>/aind:…` invocation in the transcript (`_claude_anchor_lo`), pulling that load
-  turn in. The trailing post-`report` narration turn is still unmeasured (report can't see its own
-  future) — marginal, and negligible on multi-turn phases. Copilot has no such tag, so it uses `begin`.
+  *before* it can run the `begin` bash step, so both windows start at the timestamp of the most recent
+  invocation in the transcript at/before `report` (`_claude_anchor_lo` sets `USAGE_ANCHOR`; `report`
+  reuses it for the duration start). **The anchor matches the well-formed `<command-message>…</command-message>`
+  envelope, NOT a bare `<command-name>` substring** — a phase that reads a file/command/tool-output
+  merely *quoting* the string `<command-name>` (this script's own comments do) would otherwise be taken
+  for an invocation and jump the anchor forward, silently truncating the window (observed on a live
+  plan phase: a `Read` of `aind-usage.sh` cost ~16% of that phase's tokens before the envelope fix).
+  Copilot has no invocation tag, so both windows use `begin`. The trailing post-`report` narration turn
+  is still unmeasured (report can't see its own future) — a log-based drift study over two real stories
+  put it at ~5% of output / ~9% of raw tokens (a closing full-context cache-read) and ~18% of active
+  time; only a `Stop`/`SessionEnd` hook could close that residual.
 - **ADO attachment = the token-breakdown truth; a numeric field = time.** `_attach_upload` POSTs to
   `{org}/{project}/_apis/wit/attachments?fileName=…` then `_attach_link` adds an `AttachedFile`
   relation via a work-item JSON-Patch. As with `aind-status.sh`/`aind-forge.sh`, the `/fields/…` and

@@ -23,6 +23,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled >/dev/null 2>&1 \
   && cd "$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" main-root)"
 ```
 
+**Then stamp the phase start (telemetry).** Best-effort usage telemetry — records nothing unless the
+project opted in, and never blocks close-out:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" approver
+```
+
 1. **Confirm the plan PR is merged.** The plan PR's branch protection requires every
    assumption/open-question thread to be resolved before merge, so a merged PR
    structurally guarantees each assumption was addressed. If it is not yet merged, stop —
@@ -46,6 +52,13 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled >/dev/null 2>&1 \
    this session to the main checkout, the worktree removes cleanly. If it *still* warns that the
    worktree couldn't be removed (e.g. another shell is sitting inside it), run
    `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout as a fallback.
+
+4. **Record consumption (telemetry).** Best-effort — records this phase's token breakdown (a per-model
+   JSON attachment on the work item) and its wall-clock time (to the configured duration field); a
+   silent no-op when the project hasn't opted in. Never fails close-out:
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" approver
+   ```
 
 This completes the plan phase; the build phase (out of scope for this iteration) begins from
 `Ready for implementation`.

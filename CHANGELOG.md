@@ -9,6 +9,26 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.18.1] — 2026-07-29
+
+### Fixed
+- **Telemetry head-anchor no longer false-matches a quoted `<command-name>`** (D42). The Claude token
+  window anchored to the most recent transcript line containing the bare substring `<command-name>`,
+  which also matched any file/command/tool-output *quoting* that string — including `aind-usage.sh`'s
+  own comments. On a live plan phase this jumped the anchor forward and silently dropped ~16% of the
+  phase's tokens off the front. The anchor now matches the well-formed
+  `<command-message>…</command-message>` invocation envelope, which only a real slash-command turn
+  carries.
+
+### Changed
+- **The phase duration is now head-anchored too** (D42, Claude). Previously `[begin, report]`, it now
+  starts at the same command-invocation anchor as the token window, so the command-load/grounding
+  turn at the front (a few tens of seconds that ran before `begin` could fire) is no longer dropped.
+  Copilot (no invocation tag) stays `begin`-based.
+- **`/aind:approve-plan` now records telemetry**, and `/aind:complete` is recorded under a `complete`
+  phase (via a `completer` agent) instead of being mislabeled `build` (D42). `_phase_of` gains
+  `approver → approve` and `completer → complete`. Telemetry now covers all five ADO-touching phases.
+
 ## [0.18.0] — 2026-07-28
 
 ### Added

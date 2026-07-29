@@ -245,7 +245,7 @@ formula is baked into the flow.
    Onboard/kickstart also add `.aind/usage/` to `.gitignore` (transient per-phase markers); add it by
    hand if you configured telemetry manually.
 
-Now `/aind:intake`, `/aind:plan`, `/aind:implement`, and `/aind:complete` each, at their end:
+Now `/aind:intake`, `/aind:plan`, `/aind:approve-plan`, `/aind:implement`, and `/aind:complete` each, at their end:
 - **attach a JSON record** to the work item — `aind-telemetry-<id>-<phase>-…json`, one append-only file
   per phase-run, holding the per-model token breakdown (input / output / cache-write / cache-read).
   This is the durable trace; there's deliberately no rendered table on the item (it would only add
