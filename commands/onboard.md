@@ -23,7 +23,17 @@ instead, which elicits the project's shape through a guided conversation. (Come 
 ## Procedure
 
 ### 1. Survey the codebase
-Explore breadth-first to understand the project. Look at:
+Explore breadth-first to understand the project. **Start with any existing agent/convention
+instruction files — they are pre-distilled project rules and your single highest-signal input:**
+- `.github/copilot-instructions.md`, `.github/instructions/*`, `AGENTS.md`, a root `CLAUDE.md`,
+  `.cursorrules` / `.cursor/rules/*`, `.windsurfrules`, and `CONTRIBUTING.md`.
+- **Read these before inferring anything, and treat their content as authoritative evidence.**
+  When one describes a convention (how documentation is written, a branching model, a coding
+  standard), fold it into the matching rule file and cite it as the source — never re-derive it
+  from scratch or silently drop it. An instruction file that describes a convention is itself
+  sufficient evidence for the corresponding rule area.
+
+Then survey the rest of the repo:
 - Top-level layout and notable directories.
 - Package/build manifests: `package.json`, `*.csproj`/`*.sln`, `pom.xml`/`build.gradle`,
   `go.mod`, `pyproject.toml`/`requirements.txt`, `Cargo.toml`, etc.
@@ -39,10 +49,13 @@ look through **three lenses** — most repos need rules from more than one:
    web-jobs/workers/functions, infrastructure/IaC, shared libraries, mobile, CI/CD. These are
    *examples, not a checklist.*
 2. **Cross-cutting concerns with a notable or non-standard approach.** e.g. authentication /
-   authorization, security, logging/observability, error handling, config/secrets, i18n. Give
-   one its **own** rule file when the project does it in a specific or unusual way that a
-   planner must respect — e.g. a custom **pin-code auth** scheme deserves its own
-   `authentication.md`.
+   authorization, security, logging/observability, error handling, config/secrets, i18n, and
+   **documentation conventions** (a structured `docs/` system, or a written docs standard). Give
+   one its **own** rule file when the project does it in a specific or unusual way that a planner
+   must respect — e.g. a custom **pin-code auth** scheme deserves its own `authentication.md`, and
+   a `docs/` tree with an enforced structure (numbered pages, one-subject-per-page) plus a written
+   standard deserves a `documentation.md`. An existing instruction file (step 1) that describes
+   such a convention is automatic evidence for its rule.
 3. **Functional / domain architecture.** The product's core structural concepts and
    invariants — *what the app is and the rules everything must obey*, not its tech stack. e.g.
    "the app is composed of mini-apps", "every entity is scoped to a couple of IDs / a tenant",
@@ -67,13 +80,17 @@ start each file with the DRAFT banner (see below). See
 and a section shape to follow — it is a guide, **not** a set of files to reproduce.
 
 ### 4. Draft `.claude/CLAUDE.md`
-Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, then:
-- Keep the **AIND operational rules** block verbatim.
-- Keep the **AIND configuration** section as-is — it documents the two-file model (shared
-  `.claude/aind.settings.json` + gitignored `.claude/aind.env`). The actual per-project values are
-  written into `aind.settings.json` in step 6; don't duplicate them here (avoids drift).
-- Replace the placeholder `@rules/*` imports with one `@rules/<area>.md` line for **exactly the
-  rule files you created** in step 3 — no more, no fewer.
+Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md` (restructured so **project guidance
+leads** and AIND is a compact operational layer below it). Fill it so the file reads as *"how we
+work in THIS project"*:
+- **Lead with project context** — what the repo is, its main surfaces/layers, where the docs live —
+  then the `@rules/<area>.md` imports immediately after.
+- Include one `@rules/<area>.md` line for **exactly the rule files you created** in step 3 — no
+  more, no fewer. Generate this list **after** all rule files exist so it can't drift.
+- Keep the **AIND operational rules** block verbatim (it's short by design).
+- Keep the **AIND configuration** section as the template now has it — a compact pointer to the
+  two-file model. Do **not** re-inline the long worktree/telemetry prose or duplicate the
+  per-project values (they live in `aind.settings.json`, written in step 6) — avoids drift.
 
 ### 5. Stub discovered project skills → `.claude/skills/<name>/SKILL.md`
 From the manifests/CI/scripts, extract the real **deterministic dev workflows** and stub a skill
@@ -84,6 +101,18 @@ e.g. `deploy`, `migrate` (DB migrations), `seed` (test/dev data), `codegen` / `s
 actual command in each skill body and mark assumptions as DRAFT. These feed the planner and the
 build phase ("what can be scripted should be scripted"). **Evidence-only:** only create a skill for
 a command you actually found in the repo — don't emit a `deploy` skill just because deploy is common.
+
+**The evidence bar for a skill is a real *practice*, not just an invocable command.** A configured
+runner is not proof the practice exists — a `dotnet test`-able `.sln` whose only test project is a
+*load* test, or a `"test": "vitest run"` script with no test files, means there is a runner but **no
+test suite**. Before stubbing build/test/lint/e2e skills, check for the actual artifacts (real test
+files/projects, lint config actually in use):
+- **Practice clearly exists** → stub the skill normally.
+- **Runner configured but no artifacts found** → still stub it (the team may intend to add them),
+  but mark it **UNVERIFIED in the frontmatter `description`**, not only the body — the `description`
+  is what an agent reads when selecting a skill, so the hedge must live there. e.g.
+  `description: "(UNVERIFIED) test runner configured but no tests found — confirm before relying on this."`
+- **No runner and no artifacts** → no skill.
 
 ### 6. Create the config files
 Detect what you can, ask the human for the rest, then **write** the two config files (don't just
@@ -137,6 +166,10 @@ Run the preflight probe and relay its checklist:
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 ```
+(On **GitHub Copilot CLI / Windows**, if this fails with "bash not found", Git's `bash` isn't first
+on PATH — invoke the script via the Git bash binary and surface the PATH fix as a prerequisite.
+Never reimplement these scripts in PowerShell: that silently breaks the single-status-tag invariant
+and comment signing.)
 
 ### 8. Summarize to the user
 - The rule areas you found (across the three lenses) and the files you drafted (paths), and

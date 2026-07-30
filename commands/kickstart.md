@@ -88,18 +88,23 @@ and note it.
    conventions the user actually decided; put every unsettled point under a **`TODO (undecided)`**
    note rather than inventing a convention. Create a file only for an area with real content or real
    open questions — no empty stubs for common categories.
-2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`. Keep the
-   **AIND operational rules** block verbatim, and keep the **AIND configuration** section as-is (it
-   documents the two-file model — shared `aind.settings.json` + gitignored `aind.env`). The decided
-   values go into `aind.settings.json` in step 6.4; don't duplicate them here. Replace the `@rules/*`
-   placeholders with one `@rules/<area>.md` line for **exactly** the files you created — no more, no fewer.
+2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, which
+   **leads with project context + rule imports** and keeps AIND as a compact layer below. Fill the
+   project-context section from the conversation. Keep the **AIND operational rules** block verbatim
+   and the **AIND configuration** section as the template has it (don't re-inline worktree/telemetry
+   prose). The decided values go into `aind.settings.json` in step 6.4; don't duplicate them here.
+   Replace the `@rules/*` placeholders with one `@rules/<area>.md` line for **exactly** the files you
+   created — no more, no fewer.
 3. **`.claude/skills/<name>/SKILL.md`** — **placeholder stubs** for the intended dev workflows.
    Build / test / run-app / lint are the common core, but don't stop there — stub any scriptable,
    repeatable workflow the project intends (e.g. `deploy`, `migrate`, `seed`, `codegen` / `scaffold`,
    `format`, `start-deps`, `generate-client`, `e2e`). Since the toolchain likely doesn't exist yet,
-   write the *intended* command and mark it clearly, e.g. `TODO: verify once the toolchain exists`. Do
-   not write a confident command you haven't been told is real, and stub **only** the workflows the
-   user actually intends — don't emit a `deploy` skill just because deploy is common.
+   write the *intended* command and mark it clearly as unverified — in **both** the frontmatter
+   `description` (what an agent reads when selecting a skill) and the body, e.g.
+   `description: "(UNVERIFIED — toolchain not built yet) …"` alongside a body `TODO: verify once the
+   toolchain exists`. Do not write a confident command you haven't been told is real, and stub
+   **only** the workflows the user actually intends — don't emit a `deploy` skill just because deploy
+   is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
    gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
    branch); also ask whether to **enable worktrees** (default: no) and whether to **track per-phase

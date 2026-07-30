@@ -1,42 +1,38 @@
-# <Project> — AIND project rules
+# <Project>
 
-> Copy this file to `.claude/CLAUDE.md` in your project and fill in the blanks.
-> It layers on top of the installed **aind** plugin (commands, agents, skills, hooks).
+> Project guidance for AI agents in this repo, loaded automatically by the **aind** plugin. Keep
+> this file about the *project*; the AIND workflow config sits below as a compact operational layer.
 
-## AIND configuration
+## Project context
 
-Configuration lives in **two files** under `.claude/`, both auto-loaded by the AIND scripts (no
-manual `source` needed):
+<!-- 2–5 sentences: what this repo is, its main surfaces/layers (e.g. .NET Azure Functions backend
+     + React/Vite admin portal), the domain in one line, and where the docs live.
+     /aind:onboard fills this in from the codebase. -->
 
-- **`.claude/aind.settings.json`** — shared project config, **checked in** so the whole team gets it.
-- **`.claude/aind.env`** — secrets + per-user overrides, **gitignored** (never committed).
+## Project rules
 
-`/aind:onboard` (or `/aind:kickstart`) creates both for you and adds the gitignore line; the only
-manual step is pasting your PAT into `.claude/aind.env`.
+<!-- One @import per rule file in .claude/rules/. There is NO fixed list of domains — import exactly
+     the rule files that fit THIS codebase, across three lenses: technical layers present;
+     cross-cutting concerns with a notable approach (auth, docs conventions, …); functional/domain
+     architecture. See rules/_TEMPLATE.md. Evidence-only: no test framework -> no testing rule.
+     Replace the placeholders below with your real rule files. -->
 
-**`.claude/aind.settings.json`** (shared, checked in):
+@rules/<area-1>.md
+@rules/<area-2>.md
 
-| Key | Value for this project |
-|---|---|
-| `ado.org` | `https://dev.azure.com/<your-ado-org>` |
-| `ado.project` | `<your-ado-project>` |
-| `ado.repo` | `<your-ado-repo>` (used when `codeHost` = `ado`) |
-| `codeHost` | `github` (default) \| `ado` — where code + PRs live |
-| `github.repo` | `<owner>/<repo>` (used when `codeHost` = `github`) |
-| `integrationBranch` | `<main \| develop \| …>` |
-| `planBranchPrefix` | `aind/plan/` (optional override) |
-| `lessonsBranch` | `aind/lessons` (optional override; dreaming-phase exhaust branch) |
-| `worktree` | parallel-work settings — see the section below |
-| `telemetry` | optional per-phase token/time tracking to ADO — see the section below (off by default) |
+## Project-specific guidance
 
-**`.claude/aind.env`** (gitignored — secrets + per-user only):
+<!-- Anything agents must respect that isn't a full rule file: build/run/test entrypoints (the
+     actual commands live as project *skills* in .claude/skills/), branch naming, key gotchas. -->
 
-| Variable | Value |
-|---|---|
-| `AZURE_DEVOPS_EXT_PAT` | *(a PAT with Work Items r/w + Code r/w — never commit)* |
-| `AIND_ACTOR` | *(optional; defaults to `git config user.email`)* |
+---
 
-## AIND operational rules (apply to every agent run here)
+## AIND workflow layer
+
+The sections below configure the **aind** plugin — operational scaffolding. Keep them, but the
+project content above is the primary guidance.
+
+### AIND operational rules (apply to every agent run here)
 
 - **One status tag.** A work item carries exactly one `AIND status - <state>` tag. Only ever
   change it via the `aind-status` skill (atomic swap). Never add/remove status tags by hand.
@@ -48,87 +44,21 @@ manual step is pasting your PAT into `.claude/aind.env`.
   resolve via the PR and the `AIND-LINKS` block. The work-item ID is the join value.
 - **Don't author stories.** Intake suggests fixes; the human owns the story text.
 
-## Parallel work with worktrees (optional)
+### AIND configuration
 
-To work several stories at once from one clone (e.g. implement one while planning the next), opt into
-git worktrees via the **`worktree`** block of `.claude/aind.settings.json`: set
-`"enabled": true`. Setting it back to `false` (or removing the block) returns everything to
-single-tree behaviour.
+Config lives in **two files** under `.claude/`, both auto-loaded (no manual `source` needed):
 
-```json
-"worktree": {
-  "enabled": true,
-  "worktreeRoot": ".claude/worktrees",
-  "copyFiles": [".claude/aind.env", ".claude/settings.local.json"],
-  "symlinkDirs": ["node_modules"]
-}
-```
+- **`.claude/aind.settings.json`** — shared, **checked in**. Source of truth for ADO org/project,
+  code host + repo, integration branch, and the optional `worktree` / `telemetry` blocks. See
+  `aind.settings.sample.json` for every key and its meaning.
+- **`.claude/aind.env`** — secrets + per-user overrides, **gitignored**. Holds `AZURE_DEVOPS_EXT_PAT`
+  (Work Items r/w + Code r/w) and optional `AIND_ACTOR`.
 
-- `enabled` — the on/off switch (`false` or absent = single-tree, every command as before).
-- `worktreeRoot` — where per-phase worktrees are created (default `.claude/worktrees`, repo-relative).
-  **Add it to `.gitignore`** (e.g. `.claude/worktrees/`).
-- `copyFiles` — gitignored files **or folders** a fresh worktree would lack, copied in at creation:
-  e.g. `aind.env` (config), `settings.local.json` (permission allowlist), a runtime file like `.env`,
-  or a whole folder like `.vscode/` or `certs/`. Each entry is a repo-relative path (a file is copied,
-  a directory is copied recursively) and is removed again before the worktree is torn down.
-- `symlinkDirs` (optional) — heavyweight gitignored **directories** a worktree should **share** with
-  the main checkout rather than re-populate (chiefly `node_modules`; also `.next/cache`, a Python
-  `.venv`, build caches). Each is *linked* into the worktree at creation — a directory **junction** on
-  Windows (no admin needed) or a symlink on macOS/Linux — so one install serves every worktree. Omit
-  it or leave it `[]` to share nothing.
+`/aind:onboard` (or `/aind:kickstart`) creates both and adds the gitignore line; the only manual step
+is pasting your PAT into `.claude/aind.env`.
 
-**Front-end note (`node_modules`).** Sharing is a real convenience but it's genuinely *shared* state:
-a branch that adds/changes a dependency must run an install (which updates the one shared store), and
-a `npm install` running in one worktree can disturb a build in another. If you need true per-branch
-dependency isolation, prefer **pnpm** — its global content-addressable store makes each worktree's
-own `pnpm install` near-instant and hardlinked, with no shared-state hazard and nothing to configure
-here. Use `symlinkDirs` when pnpm isn't an option (npm/yarn projects) and the shared trade-off is
-acceptable.
-
-Run it: launch each session in the **main checkout** (it stays on the integration branch).
-`/aind:plan` and `/aind:implement` create and drive a worktree per story; `/aind:approve-plan` and
-`/aind:complete` retire it — **run those close-out commands from the main checkout**, not from inside
-a worktree (a session can't remove its own working directory). Parallelism comes from opening more
-than one terminal in the main checkout, each driving a different story.
-
-## Usage telemetry (optional)
-
-Each AIND phase can record **raw usage** onto the story's ADO work item — a per-model, per-token-type
-breakdown, plus wall-clock time. It stores raw numbers only: **no cost, no rate card** — pricing is
-done entirely offline (a separate concern), so history can be re-priced anytime. Opt in via the
-**`telemetry`** block of `.claude/aind.settings.json`:
-
-```json
-"telemetry": {
-  "enabled": true,
-  "durationField": "Custom.AindDurationSec"
-}
-```
-
-- **Token detail is stored as a JSON attachment** on the work item — one small append-only
-  `aind-telemetry-<id>-<phase>-…json` per phase-run (models × input/output/cache-write/cache-read).
-  No custom field is needed for tokens; you read/aggregate the attachments in your own tooling.
-- **Time** accumulates into **one** numeric field. Add an integer field to your ADO process and put its
-  *reference name* in `durationField`; each phase adds its seconds to the running story total. Omit
-  `durationField` to record only the token attachments. Leave `enabled: false` (or omit the block) to
-  keep telemetry off — the phases run exactly as before.
-- Works on both hosts (Claude Code and GitHub Copilot CLI). Claude records the full per-model
-  breakdown; **Copilot records output tokens only** (its logs expose no per-message model or
-  input/cache). Time is exact on both.
-
-## Project rules
-
-<!-- One @import per rule file in .claude/rules/. There is NO fixed list of domains —
-     import exactly the rule files that fit THIS codebase. /aind:onboard generates them from
-     the code across three lenses: technical layers present, cross-cutting concerns with a
-     notable approach (e.g. a custom auth scheme), and functional/domain architecture. See
-     rules/_TEMPLATE.md. Evidence-only: no test framework -> no testing rule, etc.
-
-     The lines below are PLACEHOLDERS — replace them with your real rule files: -->
-
-@rules/<area-1>.md
-@rules/<area-2>.md
-
-<!-- Add project-specific guidance below: build/run/test commands, branch naming strategy,
-     architecture notes, etc. Project-specific *skills* (how to run the app) go in
-     .claude/skills/. -->
+**Optional features** (both off by default, both configured in `aind.settings.json` — see
+GETTING-STARTED and the sample settings file for details):
+- **Worktrees** (`worktree.enabled: true`) — work several stories in parallel from one clone.
+- **Usage telemetry** (`telemetry.enabled: true`) — per-phase raw token/time recorded onto the ADO
+  work item (raw numbers only; pricing done offline).
