@@ -621,9 +621,12 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   (assign at merge time, not when the PR is opened, so two open PRs don't both claim D43). A
   decision that supersedes/amends an earlier one adds a new file and marks the old file's **Status**
   line (e.g. `Superseded by D44`) — the only edit to an existing decision file.
-- **Never bump the plugin `version` in a feature PR.** Version bumps live in a **separate release
-  commit on `main`** (both manifests kept in sync), so parallel feature PRs never collide on
-  `plugin.json` / `.github/plugin/plugin.json`. See the publishing note below.
+- **Each feature PR bumps the `version` and adds its `CHANGELOG.md` entry**, so every merge is
+  directly deployable via `deploy.sh` (semver: **minor** for a feature, **patch** for a fix; keep
+  Keep-a-Changelog form). Bump **both** manifests together (`.claude-plugin/plugin.json` +
+  `.github/plugin/plugin.json`). This is the one shared file the per-decision/design-log split did
+  **not** de-conflict — two open PRs both touch `version`/`CHANGELOG.md` — but PRs land
+  **sequentially**, so the second just rebases and re-bumps. See the publishing note below.
 - **Script invocation:** commands/skills call scripts as `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"`
   (not direct exec) so the plugin runs even when a zip/clone drops the executable bit. Keep new
   calls in that form.
