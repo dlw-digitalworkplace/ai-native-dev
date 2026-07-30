@@ -1,9 +1,9 @@
 # PR-07 — Plan co-forming: interactive sparring when attended, threads when not
 
-_Status: planned (re-based 2026-07-28 onto v0.18.0 / D42 — no config/forge dependency; only a
-step-renumbering caveat, see the Task breakdown note). Independent of the registry chain. Touches
-D5/D23's proceed-on-assumption doctrine — the D-entry must reconcile the two, not silently weaken
-either. New D-entry required (D43+)._
+_Status: **implemented 2026-07-30 (D44)** — re-based onto v0.18.0 and built; the attended/headless
+run mode is **configurable** (added from review — see the resolved detection question). Independent
+of the registry chain. Reconciles D5/D23's proceed-on-assumption doctrine — the invariant is *no
+silent decision*, not "never ask"._
 
 ## Context
 The plan phase is designed as "never block waiting for an answer — proceed on assumption, record
@@ -87,8 +87,12 @@ current file. The progressive-disclosure concern below is sharper now that plan.
    resolution channels of one doctrine ("no *silent* decisions" is the invariant).
 
 ## Assumptions & open questions
-- Detection of "attended": presence of the AskUserQuestion tool + not `claude -p`? Verify what the
-  hosts expose; fallback is asking one probe question and treating a tool error as headless.
+- **Detection of "attended" — RESOLVED (configurable, from review).** The run mode is
+  `attended | headless | auto`, precedence **command arg (`/aind:plan <id> headless`) > `planning.mode`
+  (settings / `AIND_PLAN_MODE`) > auto-detect** (AskUserQuestion present + not `claude -p`).
+  Auto-detection alone was insufficient — a dev may want to force **headless** in an interactive
+  session (kick off planning before bed, review the PR next morning). Resolved by
+  `scripts/aind-planmode.sh` + the `planning.mode` config key.
 - Ceiling: one batch is the default (the empirical base rate is 2–5 assumption items per plan in
   this repo's own runs); allow a second round only when an answer invalidates other items.
 - Does Copilot CLI support an AskUserQuestion equivalent? If not: attended co-forming is
@@ -112,4 +116,7 @@ load; if fast-track escalations or reviewer findings climb, tighten the triage c
 - [ ] D-entry recorded reconciling co-forming with proceed-on-assumption.
 
 ## Files affected
-`commands/plan.md`, `design-log/`.
+`commands/plan.md` (mode resolution + steps 1.5/4.5 + `AskUserQuestion`), `commands/implement.md`
+(micro-plan escalation guard), `scripts/aind-planmode.sh` (new), `scripts/aind-common.sh`
+(`planning.mode` → `AIND_PLAN_MODE`), `project-template/aind.settings.sample.json` +
+`project-template/CLAUDE.md` (the `planning` key), `design-log/D44`.
