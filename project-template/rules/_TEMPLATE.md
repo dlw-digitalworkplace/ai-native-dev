@@ -5,8 +5,34 @@
 > `frontend.md`, `backend.md`, `authentication.md`, and `mini-apps.md`, and that is correct.
 > `/aind:onboard` generates these for you from the code; this file shows the shape to follow.
 
-Each rule file is read by the planner and (later) the reviewer, so keep rules **concrete,
-observed, and enforceable** — a rule grounded in a real file beats a generic best-practice.
+Each rule file is read by the planner and (later) the reviewer, so keep rules **concrete, grounded,
+and enforceable** — a rule tied to a real file beats a generic best-practice. **Write them as
+directives, not observations:** "New abstractions **must** live in a `Contracts/` folder (see
+`…/Contracts/IGraphDataService.cs`)" — not "some code observes interfaces in Contracts folders." The
+draft as a whole is a suggestion you review and prune; each rule you keep is a requirement the flow
+enforces, so its text should read like one.
+
+**Capture coding conventions, not just the repo map.** Structural rules ("keep code in the right
+layer") are table stakes; the valuable rules are the implementation patterns a contributor must
+match. Write a rule for each pattern that genuinely recurs (evidence-only — skip what isn't there).
+These prompts lean toward a service/web app — **translate them to whatever your project actually is
+(a library, a CLI, a script collection, a data pipeline, IaC…) and go beyond them:**
+logging/observability (or a script's output convention), error/exception handling, naming,
+folder/module organisation, interface/abstraction or public-API placement, composition/wiring
+(DI, a registry, an entry point), imports/references, I/O & data patterns, state management
+(front-end), the public contract of a unit (params, return shapes, exit codes, back-compat),
+validation, config/secrets access, and test patterns. For anything already enforced by tooling
+(`.editorconfig`, eslint, `ruff`, `PSScriptAnalyzer`, …), point to the tool rather than restating it.
+
+**Flag conflicting conventions as a decision.** When the repo has competing patterns for the same
+concern, don't silently pick one. Record it as a decision the human resolves (onboarding asks during
+its run); keep the chosen rule as the directive and the alternatives as a short note:
+
+```markdown
+> **Convention decision (resolved <date> / to resolve):** <the competing patterns seen, with a file
+> for each>. Chosen: <the rule now in force above>. Alternatives considered: <option B>, <option C>.
+```
+
 Look through three lenses; most repos need files from more than one:
 
 ## Lens 1 — Technical layers / components *(only those present)*

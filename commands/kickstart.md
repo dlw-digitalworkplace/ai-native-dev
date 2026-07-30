@@ -85,9 +85,12 @@ and note it.
 1. **`.claude/rules/<area>.md`** — one per **decided** area, kebab-case, following the three-lens
    shape in `${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` (technical layers present;
    cross-cutting concerns with a notable approach; functional/domain architecture). Write the
-   conventions the user actually decided; put every unsettled point under a **`TODO (undecided)`**
-   note rather than inventing a convention. Create a file only for an area with real content or real
-   open questions — no empty stubs for common categories.
+   conventions the user actually decided **as directives** ("New code must …"), not hedged
+   observations — a decided convention is a rule the flow will enforce. Put every unsettled point
+   under a **`TODO (undecided)`** note rather than inventing a convention. When the user is torn
+   between competing options, capture it with the **Convention decision** block from `_TEMPLATE.md`
+   (chosen option as the rule, alternatives noted). Create a file only for an area with real content
+   or real open questions — no empty stubs for common categories.
 2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, which
    **leads with project context + rule imports** and keeps AIND as a compact layer below. Fill the
    project-context section from the conversation. Keep the **AIND operational rules** block verbatim
@@ -163,8 +166,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 Prefix every generated markdown file with:
 ```
 <!-- AIND KICKSTART DRAFT — intended design captured in conversation, NOT yet validated against
-     code. Review and correct before relying on it; re-run /aind:onboard once code exists to
-     reconcile. Suggestions, not ground truth. -->
+     code. The rules below are written as requirements to enforce once kept; this DRAFT status means
+     YOU review and decide which to keep before relying on them. Re-run /aind:onboard once code
+     exists to reconcile. -->
 ```
 
 ## Notes

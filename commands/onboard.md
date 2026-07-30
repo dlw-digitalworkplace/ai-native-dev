@@ -41,6 +41,24 @@ Then survey the rest of the repo:
 - Infra/IaC, container files, docs directories.
 - Existing conventions: linters/formatters, test setup, folder naming.
 
+**Then read real source — this is not optional.** Manifests and directory listings only reveal the
+*map* of the repo; the actual coding conventions live in the code. Open a **representative sample**
+of the project's real units and read it properly. **What a "unit" is depends entirely on the
+project type — adapt the sample to what this repo actually is, don't force a web-app shape onto it:**
+- a web back-end/front-end → a few services, an endpoint/controller/function, a component, a hook;
+- a **library / package** → the public API surface, the main modules, a couple of internal
+  implementations, the packaging manifest;
+- a **script collection** (PowerShell/Bash/Python) → several representative scripts end-to-end —
+  param/arg handling, error handling, output/logging style;
+- a **CLI**, **data pipeline / notebooks**, **infra/IaC**, **mobile app**, etc. → the equivalent
+  core units for that kind of project.
+
+Also open the tooling configs that encode a style (whatever the stack uses — `.editorconfig`,
+`eslint`/`prettier`, `ruff`/`black`/`flake8`, `PSScriptAnalyzer`, `Directory.Build.props`,
+`tsconfig`, …). You are reading to extract the **recurring patterns a new contributor would be
+expected to follow** — see the convention checklist in step 3. Skimming file names is the mistake
+that produces shallow, map-only rules.
+
 ### 2. Decide which rule areas this codebase actually needs
 There is **no fixed list of domains**. Derive the rule areas from evidence in *this* repo, and
 look through **three lenses** — most repos need rules from more than one:
@@ -73,11 +91,62 @@ nothing else.
 
 ### 3. Draft one rule file per area → `.claude/rules/<area>.md`
 Name each file after the area in kebab-case (`frontend.md`, `backend.md`, `authentication.md`,
-`mini-apps.md` or `domain-model.md`, …). For each, write concrete, **observed** conventions and
-invariants, each grounded in where you saw it (cite files/paths). Phrase as suggestions and
-start each file with the DRAFT banner (see below). See
-`${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` for the three rule-area categories
-and a section shape to follow — it is a guide, **not** a set of files to reproduce.
+`mini-apps.md` or `domain-model.md`, …). For each, write concrete conventions and invariants, each
+grounded in where you saw it (cite files/paths), and start each file with the DRAFT banner (below).
+See `${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` for the rule-area categories and a
+section shape — a guide, **not** a set of files to reproduce.
+
+**Write rules as directives, not as hedged observations.** The whole draft is a suggestion (the
+human reviews and decides which rules survive — that is what the DRAFT banner and step 8 handoff
+cover). But each rule that stays *will be enforced* by the planner and reviewer, so its text must
+read as a **requirement**: "New service abstractions **must** live in a `Contracts/` folder"
+(grounded in a cited example) — **not** "some code observes interfaces in Contracts folders." Do not
+use "suggested/observed conventions" as section headers. Imperative + cited evidence is the target.
+
+**Go past the map — capture the *coding* conventions.** Structural rules ("keep code in the right
+layer") are necessary but not sufficient; the high-value rules are the implementation patterns a
+coder must match. From the source you read in step 1, write a rule for **every pattern that genuinely
+recurs** (evidence-only — no evidence, no rule).
+
+The list below is a **prompt to think with, not a boundary or a checklist to complete** — and it
+leans toward a service/web app. **Translate each item to whatever THIS project is, and go beyond the
+list** to whatever conventions actually matter for this kind of code. The point is to capture *this
+repo's* real rules, whatever shape they take:
+- **Logging / observability** — e.g. message-template logging, scopes, correlation ids; for a script
+  it might be a `Write-Verbose`/output convention.
+- **Error / exception handling** — how failures are caught, wrapped, surfaced; what context is kept.
+- **Naming** — modules, files, types, functions, symbols.
+- **Folder / module organisation** — what each folder or module is *for* (e.g. abstractions vs
+  implementations vs models; a library's public API vs internals).
+- **Interface / abstraction / public-API placement** — where contracts or exported surfaces live.
+- **Composition / wiring** — dependency injection, a plugin registry, a script's entry/dispatch, etc.
+- **Imports / references** — path aliases vs relative, module import style, namespacing.
+- **I/O & data patterns** — the standard request/response/error flow, DB access, file/stream handling.
+- **State management** (front-end) — local vs server-cache vs global store, and when.
+- **Public contract of a unit** — for a library/CLI/script: parameters, return shapes, exit codes,
+  argument parsing, versioning/back-compat expectations.
+- **Validation**, **config/secrets access**, and **test patterns** where a convention exists.
+
+For a Python library, a PowerShell script set, a CLI, a data pipeline, or an IaC repo the *items*
+differ but the *job is identical*: read the real code, find what recurs, and write it as a rule.
+- **Lint / format baseline** — read `.editorconfig`/eslint/prettier and state the baseline; where a
+  convention is already machine-enforced, **point to the tool** rather than restating the rule (keeps
+  rule files about what tooling can't catch, and avoids bloat).
+
+Bias toward conventions that (a) recur, (b) a contributor could plausibly get wrong, and (c) aren't
+already enforced by tooling — that keeps rule files sharp rather than exhaustive.
+
+**Detect and resolve conflicting conventions.** A real repo often has *competing* patterns for the
+same concern (two state-management approaches, two error-handling styles, a folder convention applied
+inconsistently). Don't silently pick one and don't bury it as a vague note. For each **material**
+conflict (one that changes how a coder would write code):
+1. Ask the human to resolve it **during this run** via `AskUserQuestion` — present the concrete
+   competing options (a copy-pasteable candidate rule for each), with your recommended default first.
+2. Write the **chosen** option as the imperative rule in the relevant rule file, and keep a short
+   **Convention decision** note beneath it recording the alternatives that were considered (so the
+   choice is auditable and revisitable).
+Immaterial/cosmetic inconsistencies that tooling already normalises don't need a question — just note
+the baseline. Ask about the ones that matter; don't turn onboarding into an interrogation.
 
 ### 4. Draft `.claude/CLAUDE.md`
 Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md` (restructured so **project guidance
@@ -196,6 +265,8 @@ and comment signing.)
   — briefly — any common category you **deliberately skipped** because the codebase had no
   evidence for it (e.g. "no testing rule: no test framework found").
 - The skills you stubbed and the commands behind them.
+- Any **convention conflicts** you resolved with the human during the run, and the option chosen for
+  each (each also recorded as a Convention decision note in the rule file).
 - The prerequisite status from preflight, with the `[FAIL]`/`[MANUAL]` items called out as
   the team's next setup steps (ADO PAT, code-host access — `gh` for GitHub or `az repos` for ADO —
   jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub integration
@@ -212,7 +283,8 @@ and comment signing.)
 Prefix every generated markdown file with:
 ```
 <!-- AIND ONBOARDING DRAFT — generated by /onboard from this codebase.
-     Review, correct, and edit before relying on it. Suggestions, not ground truth. -->
+     The rules below are written as requirements the flow will enforce once kept; this DRAFT status
+     means YOU review and decide which to keep, correct, or drop before relying on them. -->
 ```
 
 ## Notes
