@@ -4,7 +4,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-07-30)
 
-- **Onboarding rule depth, convention capture & conflict resolution (D44, 2026-07-30, live-validated
+- **Onboarding rule depth, convention capture & conflict resolution (D45, 2026-07-30, live-validated
   on a real .NET + React repo over successive Copilot-CLI runs).** `/aind:onboard` (and its greenfield
   twin `/aind:kickstart`) now produce deep, enforceable rules on the **first pass** instead of shallow
   map-only rules the human had to hand-correct. Same D18 boundaries (evidence-only, suggest-don't-assert,

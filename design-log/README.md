@@ -54,7 +54,8 @@ Each decision is its own file in this directory; a new decision = a new `D<N>-<s
 | D41 | Config streamlining — one shared checked-in settings file + a secrets-only env file, created by onboarding (config/packaging side of the D1–D15 line; relates to D18, D31, D36, D37, D39) | [D41](D41-config-streamlining.md) | Active | 2026-07-23 |
 | D42 | Usage telemetry — per-phase raw tokens (work-item attachment) + time (numeric field), no cost (config/packaging side of the D1–D15 line; relates to D30, D22, D36, D41) | [D42](D42-usage-telemetry.md) | Active | 2026-07-28 |
 | D43 | Status projection — native ADO State mirror by adopting the project's existing states (config side of the D1–D15 line; relates to D3, D4, D41) | [D43](D43-ado-state-mirror.md) | Active | 2026-07-29 |
-| D44 | Onboarding rule depth, convention capture, and conflict resolution (config layer; extends D18, mirrors into D31) | [D44](D44-onboarding-rule-depth.md) | Active | 2026-07-30 |
+| D44 | Planning — plan co-forming: attended sparring vs headless threads, configurable run mode (config side of the D1–D15 line; relates to D5, D23, D6, D22, D41) | [D44](D44-plan-sparring-mode.md) | Active | 2026-07-30 |
+| D45 | Onboarding rule depth, convention capture, and conflict resolution (config layer; extends D18, mirrors into D31) | [D45](D45-onboarding-rule-depth.md) | Active | 2026-07-30 |
 
 ---
 

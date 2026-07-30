@@ -117,6 +117,19 @@ inflate the count — the cold reviewer judges the tests' coverage *and* fidelit
 a green test that asserts the wrong thing is a blocking finding. If the plan recommended **no** tests
 (the project has no test practice), write none and do not bootstrap a framework.
 
+**Micro-plan escalation guard ("everything is a null check until it isn't").** If the plan is a
+**fast-track micro-plan** (the planner triaged the story as trivial) and the change turns out bigger
+than that — you find yourself adding a new file, introducing a data contract, or touching a
+cross-cutting rule — **stop**: the triage was wrong. Do **not** quietly expand the micro-plan into a
+full implementation. Flag it for a full re-plan (Stuck-state, or tell the human to re-run
+`/aind:plan`), and emit a `correction` lesson so the triage bar can tighten:
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" coder correction self-report <<'EOF'
+A fast-track micro-plan underestimated this story — implementation hit <a new file / a data contract
+/ a cross-cutting rule> the trivial triage didn't anticipate.
+EOF
+```
+
 ### A5. Polish (in-context)
 Before opening the PR, re-read the cited rule files and make a light pass over your own diff:
 style, formatting, naming, self-consistency, and any dead code or stray debugging. **Polish only —

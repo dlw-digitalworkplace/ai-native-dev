@@ -40,8 +40,10 @@ plan's "Success criteria beyond code" section.
     or amends a recorded decision (01 vs the approve-plan recorder shape; 05 vs D25's plugin delivery
     and D16/D30's one-repo dreamer boundary), the new entry says so explicitly and marks the old
     file's `Status` line — the one allowed edit to an existing decision file.
-  - **Version:** do **not** bump `plugin.json` / `.github/plugin/plugin.json` `version` in a feature
-    PR — versions are bumped in a separate release commit on `main`.
+  - **Version + CHANGELOG:** each feature PR **does** bump the `version` (both manifests, in sync)
+    and add its `CHANGELOG.md` entry, so the merge is deployable (minor for a feature, patch for a
+    fix). This is the **one** shared touch the restructure didn't remove — resolved by merge order
+    (PRs land sequentially; the second rebases and re-bumps).
 - **Friction ledger:** every D-entry states the feature's per-story decision delta — which human
   decisions it adds, removes, or moves down into the harness, who pays and who benefits, and when
   (today's story vs future stories vs the org). Time-shifted value is legitimate; unaccounted value
