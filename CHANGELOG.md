@@ -9,7 +9,7 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
-## [Unreleased]
+## [0.20.0] — 2026-07-30
 
 ### Changed
 - **Onboarding now produces deep, enforceable rules on the first pass** (D45). `/aind:onboard` was
