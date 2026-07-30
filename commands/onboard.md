@@ -59,6 +59,23 @@ Also open the tooling configs that encode a style (whatever the stack uses — `
 expected to follow** — see the convention checklist in step 3. Skimming file names is the mistake
 that produces shallow, map-only rules.
 
+**Separately, read for the functional/domain architecture — this is the lens most often missed.**
+The convention-reading above finds *how code is written*; this pass finds *what the app is and how
+it's structured as a domain*. Trace it deliberately — reading a service and a component tells you the
+tech, not the domain:
+- The **core domain abstraction and its extension/variability model** — the thing the codebase is
+  organised *around* and how you plug new behaviour into it. e.g. a base connector + pluggable
+  per-connector orchestrators behind a dispatcher; an app-of-mini-apps; a plugin registry; a
+  library's public API + strategy interfaces; a CLI's command set. Find it via the central
+  abstractions, the dispatcher/registry/orchestrator, marker/base types, and the product docs.
+- The **main flow/pipeline** end-to-end, and where variability plugs in.
+- The **key entities, their relationships, and the invariants** every feature must uphold.
+- **How you add a new "unit" of the domain** (a new connector / mini-app / plugin / command) — the
+  concrete extension recipe. This is the single highest-value functional rule for the planner and
+  coder, because whole stories map directly onto it.
+This applies to any project type — a library's extension points, a pipeline's stage model, an IaC
+repo's module topology are all "functional architecture." See lens 3 in step 2.
+
 ### 2. Decide which rule areas this codebase actually needs
 There is **no fixed list of domains**. Derive the rule areas from evidence in *this* repo, and
 look through **three lenses** — most repos need rules from more than one:
@@ -76,11 +93,20 @@ look through **three lenses** — most repos need rules from more than one:
    such a convention is automatic evidence for its rule.
 3. **Functional / domain architecture.** The product's core structural concepts and
    invariants — *what the app is and the rules everything must obey*, not its tech stack. e.g.
-   "the app is composed of mini-apps", "every entity is scoped to a couple of IDs / a tenant",
-   the key entities and how they relate. Infer this from the README/product docs, the
-   domain/entity model, routing structure, core folder/module names, central abstractions, and
-   recurring scoping patterns in queries. **Most apps have a functional architecture worth a
-   rule** — actively look for it; don't stop at the technical layers.
+   "the app is composed of mini-apps", "connectors extend a base model and plug into a shared
+   orchestrator", "every entity is scoped to a couple of IDs / a tenant". Capture the **core domain
+   abstraction and its extension model**, the main flow, the key entities/invariants, and **how you
+   add a new unit of the domain** (see the functional-architecture reading pass in step 1). Infer it
+   from the product docs, the domain/entity model, central abstractions, dispatchers/registries,
+   base/marker types, and recurring scoping patterns. **This is the most commonly missed lens and
+   often the most valuable — do not stop at the technical layers.** Name the file after the domain
+   concept (`connectors.md`, `mini-apps.md`, `domain-model.md`), not after a tech layer.
+
+**Completeness check before you finalize:** most repos need **at least one lens-3
+(functional/domain) rule** — if you drafted only technical-layer and cross-cutting rules, that is a
+red flag you stopped at the map. Re-examine the domain and either add the functional rule or state
+explicitly in the summary (step 8) why this repo genuinely has none (rare — e.g. a pure utility
+library with no domain model).
 
 **Strictly evidence-only — this is the key rule.** Create a rule file **only** for an area that
 genuinely exists in the codebase. If there is **no** test framework, write **no** testing rule;
@@ -170,6 +196,18 @@ e.g. `deploy`, `migrate` (DB migrations), `seed` (test/dev data), `codegen` / `s
 actual command in each skill body and mark assumptions as DRAFT. These feed the planner and the
 build phase ("what can be scripted should be scripted"). **Evidence-only:** only create a skill for
 a command you actually found in the repo — don't emit a `deploy` skill just because deploy is common.
+
+**Required frontmatter — every `SKILL.md` must start with a `name` *and* a `description`** (a
+missing `name` triggers a host "Skill should provide a name" warning). `name` must match the skill's
+directory (`backend-build/SKILL.md` → `name: backend-build`); add `allowed-tools: Bash` for a skill
+that runs a command:
+```
+---
+name: backend-build
+description: Build the .NET backend solution.
+allowed-tools: Bash
+---
+```
 
 **The evidence bar for a skill is a real *practice*, not just an invocable command.** A configured
 runner is not proof the practice exists — a `dotnet test`-able `.sln` whose only test project is a
@@ -263,7 +301,8 @@ and comment signing.)
 ### 8. Summarize to the user
 - The rule areas you found (across the three lenses) and the files you drafted (paths), and
   — briefly — any common category you **deliberately skipped** because the codebase had no
-  evidence for it (e.g. "no testing rule: no test framework found").
+  evidence for it (e.g. "no testing rule: no test framework found"). **Explicitly name the
+  functional/domain rule you wrote** — or, if you wrote none, why this repo has no domain model.
 - The skills you stubbed and the commands behind them.
 - Any **convention conflicts** you resolved with the human during the run, and the option chosen for
   each (each also recorded as a Convention decision note in the rule file).

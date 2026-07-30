@@ -61,19 +61,26 @@ i18n. Typical sections:
 - Common mistakes to avoid:
 ```
 
-## Lens 3 — Functional / domain architecture *(almost always worth one)*
-Capture *what the app is and the rules everything must obey* — not the tech stack. Examples:
-"the app is composed of mini-apps", "every entity is scoped to a couple of IDs / a tenant", the
-core entities and how they relate. Infer from the README, the domain/entity model, routing,
-core module names, and recurring scoping patterns. Typical sections:
+## Lens 3 — Functional / domain architecture *(the most commonly missed — almost always worth one)*
+Capture *what the app is and the rules everything must obey* — not the tech stack. This is the lens
+that gets skipped when you stop at "backend/frontend" rules, and it's usually the most valuable.
+Examples: "connectors extend a base model and plug into a shared orchestrator", "the app is composed
+of mini-apps", "every entity is scoped to a couple of IDs / a tenant". Infer from the product docs,
+the domain/entity model, central abstractions, dispatchers/registries, base/marker types, and
+recurring scoping patterns. Typical sections:
 
 ```markdown
-# <Domain concept> rules  (e.g. Mini-apps & ID scoping)
-- The core concept (e.g. app-of-mini-apps; each scoped to <ids>):
+# <Domain concept> rules  (e.g. Connectors & orchestration)
+- The core domain abstraction & its extension/variability model (what the code is organised around):
 - Key entities and relationships:
 - Invariants every feature must respect (e.g. always scope queries to <ids>):
+- How to add a new unit of the domain (the extension recipe — a new connector / mini-app / plugin):
 - Where this shows up in the code:
 ```
+
+> **If you wrote only technical-layer + cross-cutting rules, stop and re-check the domain** — you
+> probably missed the functional lens. A repo with genuinely no domain model (e.g. a pure utility
+> library) is the rare exception, not the norm.
 
 > **Evidence-only:** no test framework → no `testing.md`; no docs system → no `docs.md`.
 > Absence of evidence means no file — never emit a stub just because a category is common.

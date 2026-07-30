@@ -37,7 +37,11 @@ rule). A thin, honest draft beats a thick, fabricated one.
 Have a genuine conversation. Cover: what the project is and what it's **for**; the goals and the
 problems it solves; who the users are; the core **domain entities** and how they relate; the
 **invariants** every feature must respect (e.g. tenancy/ID scoping, money handling, an audit rule);
-and any **business constraints** (compliance, deadlines, budget, regulatory or contractual limits).
+the intended **core domain abstraction and its extension model** — the thing the system will be
+organised around and **how a new unit of the domain gets added** (a new connector / mini-app /
+plugin / command); and any **business constraints** (compliance, deadlines, budget, regulatory or
+contractual limits). The functional/domain rule is the most valuable and the most commonly skipped —
+make sure the conversation produces one (or a clear TODO if the domain isn't decided yet).
 
 ### 2. Elicit — architectural level *(seeds technical-layer + cross-cutting rules)*
 Cover the **context and components** (how the pieces fit — client/API/worker/infra, external
@@ -105,9 +109,11 @@ and note it.
    write the *intended* command and mark it clearly as unverified — in **both** the frontmatter
    `description` (what an agent reads when selecting a skill) and the body, e.g.
    `description: "(UNVERIFIED — toolchain not built yet) …"` alongside a body `TODO: verify once the
-   toolchain exists`. Do not write a confident command you haven't been told is real, and stub
-   **only** the workflows the user actually intends — don't emit a `deploy` skill just because deploy
-   is common.
+   toolchain exists`. Every `SKILL.md` must start with a `name` (matching its directory) **and** a
+   `description` in the frontmatter (a missing `name` triggers a "Skill should provide a name"
+   warning); add `allowed-tools: Bash` for a command-running skill. Do not write a confident command
+   you haven't been told is real, and stub **only** the workflows the user actually intends — don't
+   emit a `deploy` skill just because deploy is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
    gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
    branch); also ask whether to **enable worktrees** (default: no) and whether to **track per-phase
