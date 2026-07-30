@@ -57,8 +57,10 @@ Config lives in **two files** under `.claude/`, both auto-loaded (no manual `sou
 `/aind:onboard` (or `/aind:kickstart`) creates both and adds the gitignore line; the only manual step
 is pasting your PAT into `.claude/aind.env`.
 
-**Optional features** (both off by default, both configured in `aind.settings.json` — see
+**Optional features** (all off by default, all configured in `aind.settings.json` — see
 GETTING-STARTED and the sample settings file for details):
 - **Worktrees** (`worktree.enabled: true`) — work several stories in parallel from one clone.
 - **Usage telemetry** (`telemetry.enabled: true`) — per-phase raw token/time recorded onto the ADO
   work item (raw numbers only; pricing done offline).
+- **Native-State mirror** (`stateMap`) — mirror AIND status onto the work item's built-in ADO State
+  so the board follows the flow; filled by `/aind:map-states` (off = `{}` or absent).

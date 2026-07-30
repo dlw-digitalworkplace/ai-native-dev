@@ -154,6 +154,10 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 - A clear next-steps note: **these are intended-design drafts — review and edit, then commit**; paste
   the PAT; create the first stories and run `/aind:intake <id>`; and **once real code exists, run
   `/aind:onboard` to reconcile these drafts against the actual codebase.**
+- Optional: if the team reads the ADO **board**, run **`/aind:map-states`** once the project's
+  work-item States exist — it mirrors AIND status onto the native State field by adopting the states
+  the process template already has (nothing forced). Left for later here because a greenfield board
+  may not be set up yet.
 
 ## GREENFIELD DRAFT banner
 Prefix every generated markdown file with:
