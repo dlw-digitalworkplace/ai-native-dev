@@ -9,6 +9,25 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.19.0] — 2026-07-30
+
+### Added
+- **Native ADO State mirror — adopt the project's existing states** (D43). The AIND status tag can
+  now mirror onto the work item's built-in **State** field, so the board reflects the flow. New
+  **`/aind:map-states`** discovers the project's actual states + their categories and **adopts** them
+  — auto-mapping each AIND status to the state in its universal category (Proposed/InProgress/
+  Resolved/Completed) and asking only on genuine ambiguity — writing a `stateMap` into
+  `.claude/aind.settings.json`. `aind-status.sh` then moves the native State after each tag write
+  (best-effort: the tag stays authoritative, an unmapped status is skipped, and no map = unchanged).
+  New `scripts/aind-states.sh`; `/aind:onboard` offers the mapping and `/aind:kickstart` points at it.
+- **Plan co-forming — attended sparring vs headless threads, configurable run mode** (D44).
+  `/aind:plan` gains an **attended** mode that triages the story (a one-tap fast-track for trivial
+  ones), asks the dev's **steer** before drafting, and **spars** the drafted assumptions live (only
+  the unresolved items become PR threads) — while the **headless** proceed-on-assumption path is
+  byte-identical to before. The mode is **configurable**: an explicit arg (`/aind:plan <id> headless`)
+  wins, then `planning.mode` in `aind.settings.json` (or `AIND_PLAN_MODE`), else auto-detect. New
+  `scripts/aind-planmode.sh`; `commands/implement.md` gains a micro-plan escalation guard.
+
 ## [0.18.1] — 2026-07-29
 
 ### Fixed

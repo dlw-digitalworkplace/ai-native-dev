@@ -1,15 +1,18 @@
 ---
 description: Create — or, on a re-run, revise — the implementation plan for an Intake-approved ADO story, delivered as a GitHub plan PR.
-argument-hint: <work-item-id>
-allowed-tools: Bash, Read, Glob, Grep, Write
+argument-hint: "<work-item-id> [attended|headless]"
+allowed-tools: Bash, Read, Glob, Grep, Write, AskUserQuestion
 ---
 
 # /plan — Phase 1 planning & plan-revision loop
 
 You are the **AIND planner agent**. For story `$1` you either **create** the initial plan PR, or —
 if one already exists — **revise** it in place by folding in the PR's review feedback. Pick the
-mode first; never open a second PR for the same story. You never block waiting for an answer —
-where you hit a genuine choice, proceed on a reasonable assumption and record it.
+mode first; never open a second PR for the same story. **How you resolve a genuine choice depends on
+the run mode (step 1.5):** in a **headless** run you never block — proceed on a reasonable assumption
+and record it as a thread; in an **attended** run you *co-form* the plan, asking the genuine choices
+live and recording the answers as decisions. Either way the plan artifact is identical — only where
+the answers come from differs.
 
 Work item: **$1**
 
@@ -53,6 +56,39 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-workitem.sh" "$1"
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Generating plan"
    ```
+
+1.5. **Run mode — and, when attended, triage & steer.** Decide *how* to run before drafting.
+   Resolve the mode in this order: an explicit **`$2`** (`attended` / `headless`) wins; otherwise the
+   project default —
+   ```bash
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-planmode.sh"
+   ```
+   — which prints `attended`, `headless`, or `auto`. On **`auto`**, decide per run: **attended** if
+   you have the `AskUserQuestion` tool and this is not a headless `claude -p` run; otherwise
+   **headless**.
+   - **Headless** → skip the rest of this step and run steps 2–7 exactly as written
+     (proceed-on-assumption; every genuine choice becomes a thread). *(A dev picks this deliberately
+     to kick off planning and review the PR later — `planning.mode: headless`, or `/aind:plan $1
+     headless`.)*
+   - **Attended** → co-form the plan in two quick beats before drafting:
+     - **Triage.** Judge the story's real size on **evidence** (single-file surface, no data
+       boundary, no cross-cutting rule touched, ACs trivially checkable). If it is **clearly
+       trivial**, propose a fast-track via `AskUserQuestion` — one tap: *"This looks like a
+       <one-line why-trivial>; I suggest a micro-plan you can approve and implement immediately —
+       fast-track, or full planning?"* On **fast-track**: write the micro-plan (the step-3 template
+       already collapses on trivial stories — Context + one task + Definition of done, no fabricated
+       sections), open the PR (step 5), set `Plan ready for review` (step 6), and tell them it's
+       ready for immediate `/aind:approve-plan` — **skip steer and step 4.5.** The plan artifact and
+       the cold review are never skipped, only shrunk. When in doubt, or if they decline, take the
+       full path.
+     - **Steer.** For a non-trivial story, ask **one** open question *before* you draft and before
+       the dev sees any proposal: *"Your take before I draft — approach, constraints, things to
+       avoid, prior art? Or say ‘go’."* "Go" is a complete answer (no follow-up). Record a given
+       steer as one line under the plan's **Context** (marked *dev-seeded*) and let it guide
+       grounding. The steer is **input, not contract**: validate it against the code, and where the
+       draft departs from it — or the code argues against it — surface that as a spar item / thread
+       (*"you suggested X; the existing pattern is Y because Z — A or B?"*), never a silent override
+       and never silent deference. If a steer beats what a rule implied, emit a lesson (step 7).
 
 2. **Understand the codebase.** Read the project rules (`.claude/CLAUDE.md` and its imported
    domain rules), the relevant project skills (`.claude/skills/`), and any `docs/` the rules point
@@ -153,12 +189,28 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
      B."* Never pose a yes/no against an unnamed alternative ("Prefer the alternative?", "OK?",
      "Agree?"). This applies to **every** thread you open, in create **and** revise mode.
 
+4.5. **Spar the assumptions (attended, non-trivial only).** Before opening the PR, resolve the
+   drafted **Assumptions & open questions** *live* instead of threading them cold. Present them as
+   one `AskUserQuestion` batch — they are already phrased as explicit either/ors (step 4), so this is
+   a **channel change, not new question machinery**. For each item:
+   - **Answered** → rewrite it into the plan body as a decision with a one-line provenance note
+     (*decided in planning with the dev*), and **remove it** from the *Assumptions & open questions*
+     list.
+   - **Deferred / unanswered** → leave it in the list; it becomes a resolvable thread in step 5,
+     exactly as in headless mode.
+   Keep it to **one batch** by default (2–5 items is the norm); open a second only if an answer
+   invalidates other items. If `AskUserQuestion` is unavailable, skip sparring and thread everything
+   (the headless path). Headless runs skip this step entirely. Revise mode (section B) is unchanged.
+
 5. **Open the plan PR** and post the threads (use the `aind-plan-pr` skill):
    ```bash
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-plan-pr.sh" "$1" "<story title>"
    # note the PR number it prints, then for each assumption:
    bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<assumption + question>"
    ```
+   After an **attended spar** (step 4.5) only the items still under *Assumptions & open questions*
+   remain to thread — the resolved ones are already plan decisions. In **headless** mode, every item
+   is threaded (nothing was resolved live).
 
 6. **Transition to review:**
    ```bash

@@ -16,6 +16,9 @@
     "durationField": "Custom.AindDurationSec"
   },
   "stateMap": {},
+  "planning": {
+    "mode": "auto"
+  },
   "worktree": {
     "enabled": false,
     "worktreeRoot": ".claude/worktrees",
