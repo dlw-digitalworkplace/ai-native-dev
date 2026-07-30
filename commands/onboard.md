@@ -276,9 +276,9 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require   # resolves + creates the item dir
   cp "${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md" "<item-dir>/_TEMPLATE.md"  # reference copy
   ```
-  Tell the human to create the first story with
-  `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" new "<title>"` and then edit its Description /
-  Acceptance Criteria; the AIND phases drive its `state` automatically.
+  Tell the human to create the first story with **`/aind:new-item`** (a guided draft-for-review; or
+  `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" new "<title>"` for the bare scaffold) and then
+  edit its Description / Acceptance Criteria; the AIND phases drive its `state` automatically.
 
 **Update `.gitignore`** idempotently (append only if the line is absent):
 ```bash

@@ -142,7 +142,8 @@ and note it.
    - **File tracker only** — seed the item store so `new` works: run
      `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require` (creates the dir) and copy
      `${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md` into it as `_TEMPLATE.md` for reference.
-     Point the human at `aind-tracker.sh new "<title>"` to create the first stories.
+     Point the human at **`/aind:new-item`** (guided draft-for-review) — or `aind-tracker.sh new
+     "<title>"` for the bare scaffold — to create the first stories.
 
    Then update `.gitignore` idempotently (append only if the line is absent):
    ```bash

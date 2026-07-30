@@ -38,7 +38,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ```
 .claude-plugin/plugin.json   manifest (name: aind)
-commands/   onboard, kickstart, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
+commands/   onboard, kickstart, new-item, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
 scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D45); aind-usage.sh = per-phase usage telemetry (D42)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format

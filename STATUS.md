@@ -18,7 +18,8 @@ _Fluid project state: what is built, what is validated, what is next. The stable
   make no-deadlock structural (the plugin can write while the file is open in an editor). It is
   *simpler* than ADO: the scalar `state:` kills the single-tag dance and the native-State mirror; no
   `md_to_html`/`display:none` carrier; `dependsOn:` replaces relation-URL parsing; `tracker_new`
-  scaffolds from `project-template/item-template.md` (id = `max+1`). The six work-item scripts become
+  scaffolds from `project-template/item-template.md` (id = `max+1`), wrapped by a guided
+  **`/aind:new-item`** command (Q&A → drafts the item file for review; file-tracker only). The six work-item scripts become
   thin tracker callers (`aind-workitem` now emits normalised JSON); `aind-usage` write-side and
   `aind-links`'s URL route through the adapter; telemetry verbs are best-effort. `aind-common` maps
   `.tracker`/`.trackerDir` and generalises its config sentinel; `aind-preflight` gained a file branch

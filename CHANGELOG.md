@@ -22,7 +22,8 @@ decision ID (e.g. D23).
   `## Comments` sections; the plugin updates metadata and appends signed comments via atomic writes
   and never edits prose (file-per-item + atomic `mv` = no write-contention deadlock, even with the
   file open in an editor). New `project-template/item-template.md`; create stories with
-  `aind-tracker.sh new "<title>"`. The six work-item scripts (`aind-workitem`, `aind-status`,
+  `aind-tracker.sh new "<title>"`, or the guided **`/aind:new-item`** command (a short Q&A that drafts
+  the item file for review — file tracker only). The six work-item scripts (`aind-workitem`, `aind-status`,
   `aind-comment`, `aind-deps`, and the write side of `aind-usage`, plus `aind-links`) become thin
   callers of tracker verbs; `aind-workitem` now emits normalised JSON. `/aind:onboard` and
   `/aind:kickstart` elicit the tracker and write `.tracker`/`.trackerDir` (gitignoring only the in-repo
