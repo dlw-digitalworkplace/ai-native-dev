@@ -40,7 +40,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 .claude-plugin/plugin.json   manifest (name: aind)
 commands/   onboard, kickstart, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-usage.sh = per-phase usage telemetry (D42)
+scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D45); aind-usage.sh = per-phase usage telemetry (D42)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
@@ -392,6 +392,30 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   old `aind-worktree.config.json` is no longer read.
 - **Onboard/kickstart create+fill both files** (PAT as a `<pat>` placeholder — never write a real
   secret) and append the gitignore lines idempotently; they no longer just drop `.sample` copies.
+
+**Work-item tracker (D45).**
+- **All work-item mechanics go through `aind-tracker.sh`** — never call `az boards` or the ADO `wit`
+  REST API directly from a work-item script. Verbs (`tracker_fetch`, `tracker_get_state`/`set_state`,
+  `tracker_comment`, `tracker_deps`, `tracker_attach`, `tracker_field_accumulate`, `tracker_link_pr`,
+  `tracker_url`, `tracker_new`) dispatch on `AIND_TRACKER` (`ado` default | `file`) to `_ado_*` /
+  `_file_*`. A caller sources the tracker (which sources `aind-common.sh`), calls `tracker_require`,
+  then uses verbs. This is a **third axis** distinct from D22 (agent host) and D36 (code host).
+- **`file` backend = one markdown file per item** (`<AIND_TRACKER_DIR>/<id>.md`, default
+  `<main-checkout>/.aind/items`, may be outside the repo). Key off the **main checkout**
+  (`git --git-common-dir`), never `$PWD` — same worktree trap as D42. The no-deadlock guarantee is
+  structural: file-per-item + a **machine-owned flat-scalar front-matter block** (only the adapter
+  rewrites it; no YAML parser) vs **human-owned `##` sections** (Description/Acceptance read-only,
+  Comments append-only) + **atomic temp-then-`mv`** writes (never holds the file open). Don't add
+  nested front-matter or a YAML dependency; don't let the adapter edit prose.
+- **`tracker_set_state`/`tracker_comment` are fatal on failure; the telemetry verbs
+  (`tracker_attach`, `tracker_field_accumulate`) must be best-effort** — their internal `_ado_api` /
+  `_file_fm_set` calls (which `aind_die`→`exit`) run inside a `( … )` subshell so a failure warns and
+  returns non-zero instead of aborting the phase (same discipline as D42).
+- **File-backend signing holds by routing** (every comment goes through `tracker_comment`, which
+  signs with a real `<!-- AIND-AGENT: <name> -->` — markdown, no `display:none` span), not the ADO
+  PreToolUse URL hook (which has no file-write analogue). Don't reintroduce the HTML carrier for files.
+- **The ADO PR→item link stays in `aind-forge.sh`** (`az repos pr work-item add`); `tracker_link_pr`
+  is a no-op on ADO and records the URL in the item's `links:` for the file backend.
 
 **Code host / forge (D36).**
 - **All PR/comment/thread mechanics go through `aind-forge.sh`** — never call `gh` or `az repos`

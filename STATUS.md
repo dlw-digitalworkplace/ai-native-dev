@@ -4,6 +4,32 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-07-30)
 
+- **Pluggable work-item tracker — a local markdown-file backend (D45, 2026-07-30, offline-validated;
+  live-validation pending).** Where work items live is now a **third pluggable axis** (alongside the
+  D22 agent host and D36 code host), selected per project by `AIND_TRACKER=ado|file` (default `ado`,
+  so existing projects are byte-for-byte unaffected) behind a new **`scripts/aind-tracker.sh`** adapter
+  that mirrors the D36 forge. The **`file` backend = one markdown file per work item** under a
+  configurable `trackerDir` (default `<main-checkout>/.aind/items`, **may live outside the repo**) —
+  built for the motivating case of **no ADO backlog / code-only PAT access**. The no-deadlock
+  requirement rules out a single CSV/Excel (Excel's exclusive lock *is* the deadlock; one shared file
+  serialises writes); file-per-item + a **machine-owned front-matter block** (`state`, `dependsOn`,
+  `links`, `durationSeconds` — flat scalars, no YAML parser) split from **human-owned `##` sections**
+  (`Description`/`Acceptance` read-only, `Comments` append-only) + **atomic temp-then-`mv` writes**
+  make no-deadlock structural (the plugin can write while the file is open in an editor). It is
+  *simpler* than ADO: the scalar `state:` kills the single-tag dance and the native-State mirror; no
+  `md_to_html`/`display:none` carrier; `dependsOn:` replaces relation-URL parsing; `tracker_new`
+  scaffolds from `project-template/item-template.md` (id = `max+1`). The six work-item scripts become
+  thin tracker callers (`aind-workitem` now emits normalised JSON); `aind-usage` write-side and
+  `aind-links`'s URL route through the adapter; telemetry verbs are best-effort. `aind-common` maps
+  `.tracker`/`.trackerDir` and generalises its config sentinel; `aind-preflight` gained a file branch
+  (az/PAT/ext now conditional on ADO tracker *or* code host). `/aind:onboard` + `/aind:kickstart`
+  elicit the tracker and write the keys (gitignoring only the in-repo default, seeding the template);
+  `/aind:map-states` + the native-State mirror are gated to the ADO tracker; the three work-item skills
+  and `project-template/CLAUDE.md` are genericised. Signing for the file backend holds by routing (all
+  comments go through `tracker_comment`), not the ADO URL hook. Script + docs + templates only; the
+  flow, status model, gates, and PR contract are untouched. **Offline-validated** (24-check file-backend
+  suite against a temp store + `bash -n` + preflight in file mode); **live E2E pending** on a real
+  no-ADO repo (onboard→`tracker_new`→intake→plan→implement→complete).
 - **Onboarding rule depth, convention capture & conflict resolution (D44, 2026-07-30, live-validated
   on a real .NET + React repo over successive Copilot-CLI runs).** `/aind:onboard` (and its greenfield
   twin `/aind:kickstart`) now produce deep, enforceable rules on the **first pass** instead of shallow

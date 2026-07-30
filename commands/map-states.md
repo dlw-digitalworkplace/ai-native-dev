@@ -6,6 +6,11 @@ allowed-tools: Bash, AskUserQuestion, Read
 
 # /map-states — adopt the project's existing ADO States for the status mirror
 
+> **ADO tracker only.** This command applies when work items live in **Azure DevOps Boards**
+> (`tracker: "ado"`). With the **file** tracker there is no separate native State to mirror — the
+> AIND state *is* the item's `state:` field — so if `AIND_TRACKER=file`, stop and tell the user this
+> step doesn't apply.
+
 You configure the **native-State mirror**: when the flow moves a story through its phases, the ADO
 work item's built-in **State** field should follow, so anyone reading the board sees progress without
 looking at the AIND tag. You do this by **adopting the states the project already has** — you never

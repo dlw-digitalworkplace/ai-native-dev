@@ -52,10 +52,14 @@ logging/observability, error handling, config/secrets, i18n. Give a concern its 
 the project will handle it in a specific or non-standard way a planner must respect.
 
 ### 3. Elicit — operational level *(seeds CLAUDE.md config + skills)*
-Cover: the **repo / branch strategy** (integration branch name, branch naming); the **ADO org +
-project** (work items always live in ADO); the **code host** — where the code + pull requests will
-live, **GitHub** or **Azure DevOps Repos** — and the matching repo target (the GitHub `<owner>/<repo>`
-or the ADO repo name), which may not exist yet (that's fine, note it as a prerequisite); and the
+Cover: the **repo / branch strategy** (integration branch name, branch naming); the **work-item
+tracker** — where stories live: **`ado`** (Azure DevOps Boards; then get the org + project) or
+**`file`** (a local markdown file per work item; then get the item-store directory, default
+`.aind/items`, any absolute path allowed). Suggest, don't assert — a greenfield project with no ADO
+backlog is a natural `file` case; leave the choice visible rather than guessing. Then the **code
+host** — where the code + pull requests will live, **GitHub** or **Azure DevOps Repos** — and the
+matching repo target (the GitHub `<owner>/<repo>` or the ADO repo name), which may not exist yet
+(that's fine, note it as a prerequisite); and the
 **intended dev workflows** and CI/CD plans. Build / test / run tooling is the common core,
 but ask about any other scriptable, repeatable workflow the project will have — deploy, DB
 migrations, dev/test data seeding, codegen/scaffolding, formatting, starting local dependencies
@@ -115,24 +119,30 @@ and note it.
    you haven't been told is real, and stub **only** the workflows the user actually intends — don't
    emit a `deploy` skill just because deploy is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
-   gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
-   branch); also ask whether to **enable worktrees** (default: no) and whether to **track per-phase
-   token/time telemetry** onto the ADO work item (default: no — token detail is stored as a JSON
-   attachment on the work item, and time in **one** numeric field the project must define; ask for
-   that duration field's reference name if yes). Then **write** the files:
+   gathered the operational values in step 3 (tracker + its config, code host, repo target,
+   integration branch); also ask whether to **enable worktrees** (default: no) and whether to **track
+   per-phase token/time telemetry** onto the work item (default: no — token detail is stored as a JSON
+   attachment, and time as a duration total; for the `ado` tracker ask for a numeric duration field's
+   reference name if yes; the `file` tracker needs none). Then **write** the files:
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
    ```
    - `.claude/aind.settings.json` — base it on
      `${CLAUDE_PLUGIN_ROOT}/project-template/aind.settings.sample.json`, filled with the decided
-     values. Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`); leave
-     the other at its placeholder, and leave any not-yet-decided value at its placeholder. Set
-     `worktree.enabled` per the answer; leave the rest of the `worktree` block at its sample defaults.
-     Set the `telemetry` block from the answer — `enabled: true` (and `durationField` if the user gave
-     one) when they opted in, else leave it `enabled: false` (inert). **This file is checked in**
-     (shared config).
-   - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`, leaving
-     `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret). **Gitignored.**
+     values. Set `tracker`; for `ado` fill the `ado` block (drop `trackerDir`), for `file` set
+     `trackerDir` (default `.aind/items`, or an absolute path). Set only the repo key matching the
+     chosen host (`github.repo` **or** `ado.repo`); leave the other at its placeholder, and leave any
+     not-yet-decided value at its placeholder. Set `worktree.enabled` per the answer; leave the rest of
+     the `worktree` block at its sample defaults. Set the `telemetry` block from the answer —
+     `enabled: true` (and, for `ado`, `durationField` if the user gave one) when they opted in, else
+     leave it `enabled: false` (inert). **This file is checked in** (shared config).
+   - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the
+     `ado` tracker leave `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real
+     secret); the `file` tracker needs no work-item PAT. **Gitignored.**
+   - **File tracker only** — seed the item store so `new` works: run
+     `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require` (creates the dir) and copy
+     `${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md` into it as `_TEMPLATE.md` for reference.
+     Point the human at `aind-tracker.sh new "<title>"` to create the first stories.
 
    Then update `.gitignore` idempotently (append only if the line is absent):
    ```bash
@@ -140,6 +150,8 @@ and note it.
    grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
    # only if worktrees were enabled:
    grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
+   # only for the file tracker with the in-repo default store (not an external path):
+   grep -qxF '.aind/items/' .gitignore 2>/dev/null || echo '.aind/items/' >> .gitignore
    ```
 
 ### 7. Report prerequisites
@@ -157,11 +169,13 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
   the ADO project and the code-host repo, ADO PAT, code-host access — `gh` for GitHub or `az repos`
   for ADO — jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub
   integration and the branch policy requiring comment resolution before merge).
-- **The config you created:** `.claude/aind.settings.json` (shared, checked in) and `.claude/aind.env`
-  (gitignored) — the one manual step left is **pasting the ADO PAT** into `.claude/aind.env` (written
-  as a `<pat>` placeholder); note the gitignore line(s) you added.
+- **The config you created:** `.claude/aind.settings.json` (shared, checked in — including the chosen
+  `tracker`) and `.claude/aind.env` (gitignored). For the **`ado` tracker** the one manual step left
+  is **pasting the ADO PAT** into `.claude/aind.env` (written as a `<pat>` placeholder); the **`file`
+  tracker** needs no work-item PAT. Note the gitignore line(s) you added.
 - A clear next-steps note: **these are intended-design drafts — review and edit, then commit**; paste
-  the PAT; create the first stories and run `/aind:intake <id>`; and **once real code exists, run
+  the PAT if using ADO; create the first stories (`aind-tracker.sh new "<title>"` for the file
+  tracker, or in ADO Boards) and run `/aind:intake <id>`; and **once real code exists, run
   `/aind:onboard` to reconcile these drafts against the actual codebase.**
 - Optional: if the team reads the ADO **board**, run **`/aind:map-states`** once the project's
   work-item States exist — it mirrors AIND status onto the native State field by adopting the states

@@ -114,6 +114,10 @@ EOF
 
     PR_URL="$(forge_pr_create "$AIND_INTEGRATION_BRANCH" "$BRANCH" "Implement: ${TITLE} (AB#${ID})" "$BODY_FILE" "$ID")"
 
+    # Record the PR on the work item (best-effort; no-op for the ADO tracker, which links natively at
+    # create time — appends the URL to the item's links for the file backend).
+    bash "$SCRIPT_DIR/aind-tracker.sh" link-pr "$ID" "$PR_URL" >/dev/null 2>&1 || true
+
     echo "aind: opened code PR for work item $ID"
     echo "$PR_URL"
     ;;

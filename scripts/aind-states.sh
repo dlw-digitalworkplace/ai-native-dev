@@ -21,7 +21,7 @@
 #   write    : read a JSON object {"<aind-status>":"<state>", …} on stdin and merge it into .stateMap
 #              of the project's .claude/aind.settings.json (found by walking up from $PWD).
 #
-# The resolved map lives in aind.settings.json (shared config, D41); aind-common.sh surfaces it as
+# The resolved map lives in aind.settings.json (shared config); aind-common.sh surfaces it as
 # AIND_STATE_MAP and aind-status.sh mirrors the native State after each tag write. Best-effort
 # throughout — an unmapped status is simply not mirrored, and the AIND tag stays the source of truth.
 

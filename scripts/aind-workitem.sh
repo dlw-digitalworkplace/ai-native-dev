@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
 # aind-workitem.sh <work-item-id>
-# Fetches an ADO work item as JSON — the grounding input for intake and the planner.
-# Outputs the raw work-item JSON (fields incl. title, description, acceptance criteria,
-# tags) to stdout for the agent to read.
+# Fetches a work item as normalised JSON — the grounding input for intake and the planner.
+# Output keys: { id, title, description, acceptanceCriteria, state, dependsOn[], links[] }.
+#
+# The tracker backend is selected by config (AIND_TRACKER): Azure DevOps Boards or a local
+# markdown-file store. description/acceptanceCriteria may be HTML (ADO) or markdown (file) — read
+# through the markup. This script is read-only; it never modifies the story.
 #
 # Usage: aind-workitem.sh 123
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-tracker.sh
+source "$SCRIPT_DIR/aind-tracker.sh"
 
 ID="${1:-}"
 [[ -n "$ID" ]] || aind_die "usage: aind-workitem.sh <work-item-id>"
-aind_require_env AIND_ADO_ORG AZURE_DEVOPS_EXT_PAT
-aind_require_cmd az
-
-# `az boards work-item show` reads AZURE_DEVOPS_EXT_PAT automatically.
-# --expand all so the agent sees fields + relations (linked PRs, etc.).
-az boards work-item show \
-  --id "$ID" \
-  --org "$(aind_org)" \
-  --expand all \
-  --output json
+tracker_require
+tracker_fetch "$ID"
