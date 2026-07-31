@@ -4,7 +4,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-07-30)
 
-- **Pluggable work-item tracker — a local markdown-file backend (D45, 2026-07-30, offline-validated;
+- **Pluggable work-item tracker — a local markdown-file backend (D46, 2026-07-30, offline-validated;
   live-validation pending).** Where work items live is now a **third pluggable axis** (alongside the
   D22 agent host and D36 code host), selected per project by `AIND_TRACKER=ado|file` (default `ado`,
   so existing projects are byte-for-byte unaffected) behind a new **`scripts/aind-tracker.sh`** adapter
@@ -31,7 +31,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
   flow, status model, gates, and PR contract are untouched. **Offline-validated** (24-check file-backend
   suite against a temp store + `bash -n` + preflight in file mode); **live E2E pending** on a real
   no-ADO repo (onboard→`tracker_new`→intake→plan→implement→complete).
-- **Onboarding rule depth, convention capture & conflict resolution (D44, 2026-07-30, live-validated
+- **Onboarding rule depth, convention capture & conflict resolution (D45, 2026-07-30, live-validated
   on a real .NET + React repo over successive Copilot-CLI runs).** `/aind:onboard` (and its greenfield
   twin `/aind:kickstart`) now produce deep, enforceable rules on the **first pass** instead of shallow
   map-only rules the human had to hand-correct. Same D18 boundaries (evidence-only, suggest-don't-assert,

@@ -1,4 +1,4 @@
-# D45 — Pluggable work-item tracker — a local markdown-file backend as an alternative to Azure DevOps Boards
+# D46 — Pluggable work-item tracker — a local markdown-file backend as an alternative to Azure DevOps Boards
 
 - **Area:** Pluggable work-item tracker — a local file store as an alternative to Azure DevOps Boards (cross-cutting; packaging, config side of the D1–D15 line; relates to D3, D4, D17, D36, D41, D42)
 - **Date:** 2026-07-30

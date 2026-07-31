@@ -20,6 +20,8 @@
 #                                 .stateMap                -> AIND_STATE_MAP (optional, compact JSON;
 #                                                             native-State mirror, produced by
 #                                                             /aind:map-states, read by aind-status.sh)
+#                                 .planning.mode           -> AIND_PLAN_MODE (optional; auto|attended|
+#                                                             headless — the /aind:plan run mode default)
 #                               (token detail is stored as a work-item attachment, not a field.)
 #                               (the .worktree block is read by aind-worktree.sh, not exported here.)
 #   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
@@ -203,6 +205,7 @@ aind_autosource_env() {
           aind_export_from_settings AIND_TELEMETRY_DURATION_FIELD "$sf" '.telemetry.durationField'
           # stateMap is an object, not a scalar — surface it as a compact JSON string.
           aind_export_from_settings AIND_STATE_MAP                "$sf" '(.stateMap // empty) | tojson'
+          aind_export_from_settings AIND_PLAN_MODE                "$sf" '.planning.mode'
         fi
       fi
       return 0

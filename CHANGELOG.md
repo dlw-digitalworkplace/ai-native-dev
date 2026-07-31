@@ -9,10 +9,10 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
-## [Unreleased]
+## [0.21.0] — 2026-07-31
 
 ### Added
-- **Pluggable work-item tracker — a local markdown-file backend** (D45). Where work items live is now
+- **Pluggable work-item tracker — a local markdown-file backend** (D46). Where work items live is now
   selectable per project via `AIND_TRACKER=ado|file` (default `ado`, so existing projects are
   unaffected), behind a new tracker adapter `scripts/aind-tracker.sh` that mirrors the D36 forge
   adapter. The `file` backend keeps **one markdown file per work item** under a configurable
@@ -30,8 +30,10 @@ decision ID (e.g. D23).
   default); `aind-preflight` gained a file-tracker branch; `/aind:map-states` and the native-State
   mirror are gated to the ADO tracker. Offline-validated (24-check file-backend suite); live E2E pending.
 
+## [0.20.0] — 2026-07-30
+
 ### Changed
-- **Onboarding now produces deep, enforceable rules on the first pass** (D44). `/aind:onboard` was
+- **Onboarding now produces deep, enforceable rules on the first pass** (D45). `/aind:onboard` was
   drafting shallow, map-only rules ("keep code in the right layer") and leaving the real conventions
   for the human to extract by hand. The command and templates are sharpened — same D18 boundaries
   (evidence-only, suggest-don't-assert, config-layer-only), deeper capture:
@@ -55,20 +57,39 @@ decision ID (e.g. D23).
     surfaced during the run via a question (a candidate rule per option), the chosen option becomes
     the rule, and the alternatives are kept as a **Convention decision** note.
   - The same changes are mirrored into `/aind:kickstart` (D31).
-- **`project-template/CLAUDE.md` restructured to lead with the project** (D44). Project context +
+- **`project-template/CLAUDE.md` restructured to lead with the project** (D45). Project context +
   rule imports come first; the AIND config is a compact operational layer beneath, with the long
   worktree/telemetry prose replaced by pointers to `aind.settings.sample.json` / GETTING-STARTED — so
   a project's `CLAUDE.md` reads as "how we work in THIS project", not an AIND template.
 
 ### Fixed
-- **Onboarding no longer fabricates a test capability from a bare runner** (D44). A configured runner
+- **Onboarding no longer fabricates a test capability from a bare runner** (D45). A configured runner
   with no test artifacts (a `dotnet test`-able `.sln` whose only test project is a load test; a
   `"test": "vitest run"` script with no test files) is now stubbed but flagged **UNVERIFIED in the
   skill `description`** (what an agent reads when selecting a skill), not silently asserted as a real
   test suite.
-- **Stubbed skills always include the required `name` frontmatter** (D44) — a missing `name` was
+- **Stubbed skills always include the required `name` frontmatter** (D45) — a missing `name` was
   triggering a host "Skill should provide a name" warning. Every generated `SKILL.md` now carries
   `name` (matching its directory) + `description` (+ `allowed-tools` for a command-runner).
+
+## [0.19.0] — 2026-07-30
+
+### Added
+- **Native ADO State mirror — adopt the project's existing states** (D43). The AIND status tag can
+  now mirror onto the work item's built-in **State** field, so the board reflects the flow. New
+  **`/aind:map-states`** discovers the project's actual states + their categories and **adopts** them
+  — auto-mapping each AIND status to the state in its universal category (Proposed/InProgress/
+  Resolved/Completed) and asking only on genuine ambiguity — writing a `stateMap` into
+  `.claude/aind.settings.json`. `aind-status.sh` then moves the native State after each tag write
+  (best-effort: the tag stays authoritative, an unmapped status is skipped, and no map = unchanged).
+  New `scripts/aind-states.sh`; `/aind:onboard` offers the mapping and `/aind:kickstart` points at it.
+- **Plan co-forming — attended sparring vs headless threads, configurable run mode** (D44).
+  `/aind:plan` gains an **attended** mode that triages the story (a one-tap fast-track for trivial
+  ones), asks the dev's **steer** before drafting, and **spars** the drafted assumptions live (only
+  the unresolved items become PR threads) — while the **headless** proceed-on-assumption path is
+  byte-identical to before. The mode is **configurable**: an explicit arg (`/aind:plan <id> headless`)
+  wins, then `planning.mode` in `aind.settings.json` (or `AIND_PLAN_MODE`), else auto-detect. New
+  `scripts/aind-planmode.sh`; `commands/implement.md` gains a micro-plan escalation guard.
 
 ## [0.18.1] — 2026-07-29
 

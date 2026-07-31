@@ -40,7 +40,7 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 .claude-plugin/plugin.json   manifest (name: aind)
 commands/   onboard, kickstart, new-item, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D45); aind-usage.sh = per-phase usage telemetry (D42)
+scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D46); aind-usage.sh = per-phase usage telemetry (D42)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
@@ -393,7 +393,7 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
 - **Onboard/kickstart create+fill both files** (PAT as a `<pat>` placeholder — never write a real
   secret) and append the gitignore lines idempotently; they no longer just drop `.sample` copies.
 
-**Work-item tracker (D45).**
+**Work-item tracker (D46).**
 - **All work-item mechanics go through `aind-tracker.sh`** — never call `az boards` or the ADO `wit`
   REST API directly from a work-item script. Verbs (`tracker_fetch`, `tracker_get_state`/`set_state`,
   `tracker_comment`, `tracker_deps`, `tracker_attach`, `tracker_field_accumulate`, `tracker_link_pr`,
@@ -645,9 +645,12 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   (assign at merge time, not when the PR is opened, so two open PRs don't both claim D43). A
   decision that supersedes/amends an earlier one adds a new file and marks the old file's **Status**
   line (e.g. `Superseded by D44`) — the only edit to an existing decision file.
-- **Never bump the plugin `version` in a feature PR.** Version bumps live in a **separate release
-  commit on `main`** (both manifests kept in sync), so parallel feature PRs never collide on
-  `plugin.json` / `.github/plugin/plugin.json`. See the publishing note below.
+- **Each feature PR bumps the `version` and adds its `CHANGELOG.md` entry**, so every merge is
+  directly deployable via `deploy.sh` (semver: **minor** for a feature, **patch** for a fix; keep
+  Keep-a-Changelog form). Bump **both** manifests together (`.claude-plugin/plugin.json` +
+  `.github/plugin/plugin.json`). This is the one shared file the per-decision/design-log split did
+  **not** de-conflict — two open PRs both touch `version`/`CHANGELOG.md` — but PRs land
+  **sequentially**, so the second just rebases and re-bumps. See the publishing note below.
 - **Script invocation:** commands/skills call scripts as `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"`
   (not direct exec) so the plugin runs even when a zip/clone drops the executable bit. Keep new
   calls in that form.

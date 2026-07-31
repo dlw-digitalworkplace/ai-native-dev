@@ -1,4 +1,4 @@
-# D44 — Onboarding rule depth, convention capture, and conflict resolution
+# D45 — Onboarding rule depth, convention capture, and conflict resolution
 
 - **Area:** Project onboarding (pre-flow; config layer) — extends D18, mirrors into D31
 - **Date:** 2026-07-30
