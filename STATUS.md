@@ -4,8 +4,8 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-07-30)
 
-- **Pluggable work-item tracker — a local markdown-file backend (D46, 2026-07-30, offline-validated;
-  live-validation pending).** Where work items live is now a **third pluggable axis** (alongside the
+- **Pluggable work-item tracker — a local markdown-file backend (D46, 2026-07-30, offline-validated
+  + live-validated end-to-end).** Where work items live is now a **third pluggable axis** (alongside the
   D22 agent host and D36 code host), selected per project by `AIND_TRACKER=ado|file` (default `ado`,
   so existing projects are byte-for-byte unaffected) behind a new **`scripts/aind-tracker.sh`** adapter
   that mirrors the D36 forge. The **`file` backend = one markdown file per work item** under a
@@ -29,8 +29,8 @@ _Fluid project state: what is built, what is validated, what is next. The stable
   and `project-template/CLAUDE.md` are genericised. Signing for the file backend holds by routing (all
   comments go through `tracker_comment`), not the ADO URL hook. Script + docs + templates only; the
   flow, status model, gates, and PR contract are untouched. **Offline-validated** (24-check file-backend
-  suite against a temp store + `bash -n` + preflight in file mode); **live E2E pending** on a real
-  no-ADO repo (onboard→`tracker_new`→intake→plan→implement→complete).
+  suite against a temp store + `bash -n` + preflight in file mode) and **live-validated end-to-end** on a
+  real no-ADO repo (onboard→`tracker_new`→intake→plan→implement→complete).
 - **Onboarding rule depth, convention capture & conflict resolution (D45, 2026-07-30, live-validated
   on a real .NET + React repo over successive Copilot-CLI runs).** `/aind:onboard` (and its greenfield
   twin `/aind:kickstart`) now produce deep, enforceable rules on the **first pass** instead of shallow

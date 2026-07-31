@@ -28,7 +28,8 @@ decision ID (e.g. D23).
   callers of tracker verbs; `aind-workitem` now emits normalised JSON. `/aind:onboard` and
   `/aind:kickstart` elicit the tracker and write `.tracker`/`.trackerDir` (gitignoring only the in-repo
   default); `aind-preflight` gained a file-tracker branch; `/aind:map-states` and the native-State
-  mirror are gated to the ADO tracker. Offline-validated (24-check file-backend suite); live E2E pending.
+  mirror are gated to the ADO tracker. Offline-validated (24-check file-backend suite) and live-validated
+  end-to-end on a real no-ADO repo.
 
 ## [0.20.0] — 2026-07-30
 
