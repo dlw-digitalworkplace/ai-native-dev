@@ -9,6 +9,28 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.21.0] — 2026-07-31
+
+### Added
+- **Pluggable work-item tracker — a local markdown-file backend** (D46). Where work items live is now
+  selectable per project via `AIND_TRACKER=ado|file` (default `ado`, so existing projects are
+  unaffected), behind a new tracker adapter `scripts/aind-tracker.sh` that mirrors the D36 forge
+  adapter. The `file` backend keeps **one markdown file per work item** under a configurable
+  `trackerDir` (default `<repo>/.aind/items`, **may be outside the repo**) — for projects with no ADO
+  backlog / code-only PAT access. Each item is a machine-owned front-matter block (`state`,
+  `dependsOn`, `links`, telemetry) + human-owned `## Description` / `## Acceptance Criteria` /
+  `## Comments` sections; the plugin updates metadata and appends signed comments via atomic writes
+  and never edits prose (file-per-item + atomic `mv` = no write-contention deadlock, even with the
+  file open in an editor). New `project-template/item-template.md`; create stories with
+  `aind-tracker.sh new "<title>"`, or the guided **`/aind:new-item`** command (a short Q&A that drafts
+  the item file for review — file tracker only). The six work-item scripts (`aind-workitem`, `aind-status`,
+  `aind-comment`, `aind-deps`, and the write side of `aind-usage`, plus `aind-links`) become thin
+  callers of tracker verbs; `aind-workitem` now emits normalised JSON. `/aind:onboard` and
+  `/aind:kickstart` elicit the tracker and write `.tracker`/`.trackerDir` (gitignoring only the in-repo
+  default); `aind-preflight` gained a file-tracker branch; `/aind:map-states` and the native-State
+  mirror are gated to the ADO tracker. Offline-validated (24-check file-backend suite) and live-validated
+  end-to-end on a real no-ADO repo.
+
 ## [0.20.0] — 2026-07-30
 
 ### Changed

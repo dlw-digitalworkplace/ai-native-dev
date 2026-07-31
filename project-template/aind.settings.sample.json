@@ -1,4 +1,6 @@
 {
+  "tracker": "ado",
+  "trackerDir": ".aind/items",
   "ado": {
     "org": "https://dev.azure.com/<your-ado-org>",
     "project": "<your-ado-project>",

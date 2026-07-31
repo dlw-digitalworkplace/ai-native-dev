@@ -233,14 +233,23 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
 - **Integration branch** from the repo's default branch.
 
 **Ask** (via `AskUserQuestion`) for what you can't detect:
-- The **ADO org URL** and **project** (work items always live in ADO), if not derivable.
+- The **work-item tracker** — where stories live (suggest, don't assert):
+  - **`ado`** — Azure DevOps Boards work items (the default). Choose this when the project has an ADO
+    backlog you can reach. Default-highlight it when the code host is ADO.
+  - **`file`** — a local **markdown file per work item** (no external tracker). Choose this when there
+    is **no backlog / no ADO access** (e.g. code-only access via a PAT). Default-highlight it when the
+    code host is not ADO. Then ask for the **item-store directory**, defaulting to `.aind/items` inside
+    the repo; make clear **any absolute path is accepted, including outside the repo** (a synced
+    folder, a home dir) for the code-only case.
+- If tracker = `ado`: the **ADO org URL** and **project**, if not derivable.
 - Confirm the **code host** when the remote was ambiguous.
 - Whether to **enable worktrees** for parallel work (default: no).
-- Whether to **track per-phase token/time telemetry** onto the ADO work item (default: no). The token
-  breakdown is stored as a JSON **attachment** on the work item (no custom field needed); **time**
-  accumulates into **one** numeric field. If yes, ask for that duration field's reference name (e.g.
-  `Custom.AindDurationSec`) — the project's ADO process must define it as an integer field. Telemetry
-  still records the token attachment even when no duration field is configured.
+- Whether to **track per-phase token/time telemetry** onto the work item (default: no). The token
+  breakdown is stored as a JSON **attachment** (an ADO work-item attachment, or a file under the
+  item store's `attachments/`); **time** accumulates into a duration total. For the `ado` tracker, if
+  yes, ask for a numeric duration field's reference name (e.g. `Custom.AindDurationSec`) — the ADO
+  process must define it as an integer field; telemetry still records the token attachment without
+  one. For the `file` tracker no field is needed (time accumulates in the item's `durationSeconds`).
 
 **Write** the files:
 ```bash
@@ -248,15 +257,28 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
 ```
 - `.claude/aind.settings.json` — base it on
   `${CLAUDE_PLUGIN_ROOT}/project-template/aind.settings.sample.json`, filled with the detected +
-  answered values. Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`);
-  leave the other at its placeholder. Set `worktree.enabled` per the answer; leave the rest of the
-  `worktree` block at its sample defaults. Set the `telemetry` block from the answer: if the user opted
-  in, set `enabled: true` (and `durationField` to their field's `refName` if they gave one); otherwise
-  leave it `enabled: false` (telemetry stays inert). **This file is checked in** (shared
-  config).
-- `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`, leaving
-  `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret). **This file is
-  gitignored.**
+  answered values. Set `tracker` to the chosen backend. For `ado`: fill the `ado` block and drop
+  `trackerDir`. For `file`: set `trackerDir` to the chosen path (an absolute path if outside the repo;
+  the in-repo default `.aind/items` otherwise) and leave the `ado` block at its placeholders (unused).
+  Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`); leave the other at
+  its placeholder. Set `worktree.enabled` per the answer; leave the rest of the `worktree` block at its
+  sample defaults. Set the `telemetry` block from the answer: if the user opted in, set `enabled: true`
+  (and, for the `ado` tracker, `durationField` to their field's `refName` if they gave one); otherwise
+  leave it `enabled: false` (telemetry stays inert). **This file is checked in** (shared config).
+- `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the
+  `ado` tracker, leave `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret).
+  For the `file` tracker no work-item PAT is needed (a code-host token may still be — e.g. `gh` auth
+  or an ADO Code PAT). **This file is gitignored.**
+- **File tracker only** — create the item store and seed the template so `new` works and the human
+  can see the fixed structure. Only add the gitignore line when the store is the in-repo default (an
+  external path is never touched by gitignore logic):
+  ```bash
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require   # resolves + creates the item dir
+  cp "${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md" "<item-dir>/_TEMPLATE.md"  # reference copy
+  ```
+  Tell the human to create the first story with **`/aind:new-item`** (a guided draft-for-review; or
+  `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" new "<title>"` for the bare scaffold) and then
+  edit its Description / Acceptance Criteria; the AIND phases drive its `state` automatically.
 
 **Update `.gitignore`** idempotently (append only if the line is absent):
 ```bash
@@ -264,11 +286,15 @@ grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >
 grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
 # only if worktrees were enabled:
 grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
+# only for the file tracker AND only when the item store is the in-repo default (not an external path):
+grep -qxF '.aind/items/' .gitignore 2>/dev/null || echo '.aind/items/' >> .gitignore
 ```
 (`.aind/usage/` holds transient per-phase telemetry markers — always gitignored, harmless when the
 feature is off.)
 
-### 6.5 Offer the native-State mirror (optional)
+### 6.5 Offer the native-State mirror (optional — ADO tracker only)
+**Skip this step entirely when the tracker is `file`** — the file backend stores the AIND state
+directly as the item's `state:` field, so there is no separate native State to mirror.
 AIND tracks flow state in its own status **tag**; a team that reads the ADO **board** may also want
 the work item's built-in **State** field to follow along. Offer it — **`AskUserQuestion`**: "mirror
 AIND status onto the native State field?" (a good default for board-reading teams). If **yes**, run
@@ -310,11 +336,13 @@ and comment signing.)
   the team's next setup steps (ADO PAT, code-host access — `gh` for GitHub or `az repos` for ADO —
   jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub integration
   and the branch policy that requires comment resolution before merge).
-- **The config you created:** `.claude/aind.settings.json` (shared, checked in — review its values)
-  and `.claude/aind.env` (gitignored). The one manual step left is **pasting the ADO PAT** into
-  `.claude/aind.env` (it was written as a `<pat>` placeholder). Note you added the gitignore line(s).
-  If you set up the native-State mirror, note the `stateMap` written (and that `/aind:map-states`
-  re-runs it later).
+- **The config you created:** `.claude/aind.settings.json` (shared, checked in — review its values,
+  including the chosen `tracker`) and `.claude/aind.env` (gitignored). For the **`ado` tracker**, the
+  one manual step left is **pasting the ADO PAT** into `.claude/aind.env` (written as a `<pat>`
+  placeholder). For the **`file` tracker**, no work-item PAT is needed — note the item-store path and
+  how to create the first story (`aind-tracker.sh new "<title>"`). Note you added the gitignore
+  line(s). If you set up the native-State mirror (ADO only), note the `stateMap` written (and that
+  `/aind:map-states` re-runs it later).
 - A clear note: **the rules/skills are drafts — review and edit before committing**, then run
   `/aind:intake <id>` on a story to start the flow.
 

@@ -47,10 +47,12 @@
 # Token detail is stored as an attachment (no field); only time uses a numeric field.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
-
-aind_warn() { echo "aind: [WARN] $*" >&2; }
+# shellcheck source=aind-tracker.sh
+# Source the tracker adapter (re-exports aind-common.sh). The write side of telemetry — the
+# per-run token-breakdown attachment and the accumulating duration total — goes through the tracker
+# verbs (tracker_attach / tracker_field_accumulate) so it lands wherever the item lives (an ADO work
+# item or a local markdown file). aind_warn is provided by aind-common.sh.
+source "$SCRIPT_DIR/aind-tracker.sh"
 
 # Enabled iff explicitly opted in.
 _telemetry_enabled() {
@@ -263,87 +265,9 @@ aind_collect_usage() {
   return 0
 }
 
-# ------------------------------------------------------------------------------------------------
-# ADO numeric field accumulation (generalised from aind-status.sh's patch_tags — same auth + UTF-8-safe
-# body-from-file PATCH, but any field and a JSON-number value).
-# ------------------------------------------------------------------------------------------------
-
-# Echo the current numeric value of a field (empty if unset/absent).
-_field_get() {
-  local id="$1" ref="$2" url resp
-  url="$(aind_org)/_apis/wit/workitems/${id}?fields=${ref}&api-version=7.1"
-  resp="$(curl -s -u ":${AZURE_DEVOPS_EXT_PAT}" "$url" 2>/dev/null)" || return 1
-  printf '%s' "$resp" | jq -r --arg f "$ref" '.fields[$f] // empty' 2>/dev/null | tr -d '\r'
-}
-
-# PATCH a field to a numeric value (op:add when it was empty, else replace).
-_field_set() {
-  local id="$1" ref="$2" value="$3" op="$4" body url resp code msg tmp
-  # Build the "/fields/" prefix INSIDE jq — a shell arg starting with "/" gets rewritten to a Windows
-  # path by MSYS on Git-Bash (e.g. /fields/x -> C:/Program Files/Git/fields/x), same trap as the ADO
-  # inline-thread filePath. The ref itself never has a leading slash, so it passes as --arg safely.
-  body="$(jq -nc --arg op "$op" --arg ref "$ref" --argjson val "$value" \
-    '[{op:$op, path:("/fields/" + $ref), value:$val}]')" || return 1
-  url="$(aind_org)/_apis/wit/workitems/${id}?api-version=7.1"
-  tmp="$(mktemp)"; printf '%s' "$body" > "$tmp"
-  resp="$(curl -s -w $'\n%{http_code}' -u ":${AZURE_DEVOPS_EXT_PAT}" \
-    -H 'Content-Type: application/json-patch+json' -X PATCH "$url" --data-binary @"$tmp" 2>/dev/null)"
-  rm -f "$tmp"
-  code="${resp##*$'\n'}"; msg="${resp%$'\n'*}"
-  if [[ "$code" != 2* ]]; then
-    aind_warn "field '$ref' update on AB#${id} failed (HTTP ${code}): $(printf '%s' "$msg" | jq -r '.message // empty' 2>/dev/null)"
-    return 1
-  fi
-  return 0
-}
-
-# Add `delta` (integer) to the running total in `ref` for work item `id`.
-_field_accumulate() {
-  local id="$1" ref="$2" delta="$3" cur op new
-  cur="$(_field_get "$id" "$ref")"
-  # Only integer totals are stored; a non-numeric current value is treated as 0 (and replaced).
-  if [[ "$cur" =~ ^[0-9]+$ ]]; then op=replace; else cur=0; op=add; fi
-  new=$(( cur + delta ))
-  _field_set "$id" "$ref" "$new" "$op"
-}
-
-# ------------------------------------------------------------------------------------------------
-# ADO work-item attachments (the token-breakdown trace). Work items are ADO-native regardless of the
-# code host, so this lives here (like aind-comment.sh), not in the forge adapter.
-# ------------------------------------------------------------------------------------------------
-
-# Upload a file as a work-item attachment; echoes the attachment URL on success.
-_attach_upload() {
-  local fname="$1" file="$2" url resp code body
-  url="$(aind_org)/${AIND_ADO_PROJECT}/_apis/wit/attachments?fileName=${fname}&api-version=7.1"
-  resp="$(curl -s -w $'\n%{http_code}' -u ":${AZURE_DEVOPS_EXT_PAT}" \
-    -H 'Content-Type: application/json' -X POST "$url" --data-binary @"$file" 2>/dev/null)" || return 1
-  code="${resp##*$'\n'}"; body="${resp%$'\n'*}"
-  if [[ "$code" != 2* ]]; then
-    aind_warn "telemetry attachment upload failed (HTTP ${code}): $(printf '%s' "$body" | jq -r '.message // empty' 2>/dev/null)"
-    return 1
-  fi
-  printf '%s' "$body" | jq -r '.url // empty'
-}
-
-# Link an uploaded attachment to a work item via a JSON-Patch AttachedFile relation. The "/relations/-"
-# path is built INSIDE jq (an argv starting with "/" is rewritten to a Windows path by MSYS on Git-Bash).
-_attach_link() {
-  local id="$1" atturl="$2" fname="$3" body url resp code msg tmp
-  body="$(jq -nc --arg u "$atturl" --arg n "$fname" \
-    '[{op:"add", path:"/relations/-", value:{rel:"AttachedFile", url:$u, attributes:{name:$n, comment:"AIND telemetry"}}}]')" || return 1
-  url="$(aind_org)/_apis/wit/workitems/${id}?api-version=7.1"
-  tmp="$(mktemp)"; printf '%s' "$body" > "$tmp"
-  resp="$(curl -s -w $'\n%{http_code}' -u ":${AZURE_DEVOPS_EXT_PAT}" \
-    -H 'Content-Type: application/json-patch+json' -X PATCH "$url" --data-binary @"$tmp" 2>/dev/null)"
-  rm -f "$tmp"
-  code="${resp##*$'\n'}"; msg="${resp%$'\n'*}"
-  if [[ "$code" != 2* ]]; then
-    aind_warn "linking telemetry attachment to AB#${id} failed (HTTP ${code}): $(printf '%s' "$msg" | jq -r '.message // empty' 2>/dev/null)"
-    return 1
-  fi
-  return 0
-}
+# The write side (numeric-field accumulation + the token-breakdown attachment) now lives in the
+# tracker adapter as tracker_field_accumulate / tracker_attach, so telemetry lands wherever the item
+# lives (an ADO work item or a local markdown file). See scripts/aind-tracker.sh.
 
 # Phase label for an agent (so the record/attachment is stage-tagged without the caller passing it).
 _phase_of() {
@@ -408,8 +332,10 @@ cmd_report() {
 
   local phase; phase="$(_phase_of "$agent")"
 
-  # Writing needs ADO org + project + PAT. Without them, print the numbers and stop (echo-only mode).
-  if [[ -z "${AIND_ADO_ORG:-}" || -z "${AIND_ADO_PROJECT:-}" || -z "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
+  # Writing goes through the tracker. The ADO backend needs org + project + PAT; without them, print
+  # the numbers and stop (echo-only mode). The file backend can always write (the item store is local).
+  if [[ "$(aind_tracker_kind)" == ado ]] \
+     && { [[ -z "${AIND_ADO_ORG:-}" || -z "${AIND_ADO_PROJECT:-}" || -z "${AZURE_DEVOPS_EXT_PAT:-}" ]]; }; then
     echo "aind: telemetry AB#${id} ${agent} (host=${USAGE_HOST}) ${seconds}s, models: ${msum} — not written (ADO org/project/PAT unset)"
     return 0
   fi
@@ -423,15 +349,18 @@ cmd_report() {
         --arg started "$started_out" --arg ended "$hi" --argjson seconds "$seconds" --argjson models "$models" \
         '{work_item:$wi, phase:$phase, agent:$agent, host:$host, started_at:$started, ended_at:$ended, seconds:$seconds, models:$models}' \
         > "$rec" 2>/dev/null
-  atturl="$(_attach_upload "$fname" "$rec")"
-  rm -f "$rec"
-  if [[ -n "$atturl" ]] && _attach_link "$id" "$atturl" "$fname"; then
+  if tracker_attach "$id" "$rec" "$fname"; then
     wrote+=" attached ${fname}"
   fi
+  rm -f "$rec"
 
-  # Accumulate wall-clock seconds into the one numeric field (queryable per story), if configured.
-  if [[ -n "${AIND_TELEMETRY_DURATION_FIELD:-}" ]]; then
-    _field_accumulate "$id" "$AIND_TELEMETRY_DURATION_FIELD" "$seconds" && wrote+=" ${AIND_TELEMETRY_DURATION_FIELD}+=${seconds}s"
+  # Accumulate wall-clock seconds into the tracker's duration total. The file backend always keeps a
+  # `durationSeconds` total (the field ref is irrelevant there); the ADO backend does so only when a
+  # numeric duration field is configured (AIND_TELEMETRY_DURATION_FIELD).
+  if [[ "$(aind_tracker_kind)" == file ]]; then
+    tracker_field_accumulate "$id" durationSeconds "$seconds" && wrote+=" duration+=${seconds}s"
+  elif [[ -n "${AIND_TELEMETRY_DURATION_FIELD:-}" ]]; then
+    tracker_field_accumulate "$id" "$AIND_TELEMETRY_DURATION_FIELD" "$seconds" && wrote+=" ${AIND_TELEMETRY_DURATION_FIELD}+=${seconds}s"
   fi
 
   echo "aind: telemetry AB#${id} ${agent} (host=${USAGE_HOST}) ${seconds}s, models: ${msum} →${wrote:- (nothing written)}"

@@ -32,6 +32,8 @@ if [[ -z "${AIND_ADO_ORG:-}" ]]; then
         _pf_set AIND_ADO_ORG            '.ado.org'
         _pf_set AIND_ADO_PROJECT        '.ado.project'
         _pf_set AIND_ADO_REPO           '.ado.repo'
+        _pf_set AIND_TRACKER            '.tracker'
+        _pf_set AIND_TRACKER_DIR        '.trackerDir'
         _pf_set AIND_CODE_HOST          '.codeHost'
         _pf_set AIND_GH_REPO            '.github.repo'
         _pf_set AIND_INTEGRATION_BRANCH '.integrationBranch'
@@ -48,6 +50,10 @@ if [[ -z "${AIND_ADO_ORG:-}" ]]; then
 fi
 
 HOST="${AIND_CODE_HOST:-github}"
+TRACKER="${AIND_TRACKER:-ado}"
+# ADO tooling (az + azure-devops ext + PAT) is needed when EITHER the work-item tracker OR the code
+# host is Azure DevOps.
+if [[ "$TRACKER" == "ado" || "$HOST" == "ado" ]]; then NEED_ADO=1; else NEED_ADO=0; fi
 
 pass=0; warn=0; fail=0
 
@@ -60,6 +66,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 echo "AIND preflight — prerequisites for the plan phase"
 echo "-------------------------------------------------"
+echo "Work-item tracker: $TRACKER"
 echo "Code host: $HOST"
 echo
 
@@ -67,13 +74,19 @@ echo "Tools:"
 for c in bash git curl; do
   if have "$c"; then ok "$c present"; else bad "$c not found (required)"; fi
 done
-if have az; then ok "az present ($(az version --query '"azure-cli"' -o tsv 2>/dev/null || echo '?'))"; else bad "az (Azure CLI) not found — required for ADO work items"; fi
+if have az; then
+  ok "az present ($(az version --query '"azure-cli"' -o tsv 2>/dev/null || echo '?'))"
+elif (( NEED_ADO )); then
+  bad "az (Azure CLI) not found — required for Azure DevOps (work items and/or code host)"
+else
+  ok "az not required (tracker=$TRACKER, code host=$HOST)"
+fi
 if have az && az extension show --name azure-devops >/dev/null 2>&1; then
   ok "az devops extension installed"
-elif [[ "$HOST" == "ado" ]]; then
-  bad "az 'azure-devops' extension not detected — required for ADO code host (az repos). Install: az extension add --name azure-devops"
+elif (( NEED_ADO )); then
+  bad "az 'azure-devops' extension not detected — required for Azure DevOps (az boards / az repos). Install: az extension add --name azure-devops"
 else
-  warning "az 'azure-devops' extension not detected — install with: az extension add --name azure-devops"
+  manual "az 'azure-devops' extension not needed (tracker=$TRACKER, code host=$HOST)"
 fi
 if [[ "$HOST" == "github" ]]; then
   if have gh; then ok "gh present"; else bad "gh (GitHub CLI) not found — required for the GitHub code host"; fi
@@ -89,17 +102,50 @@ if [[ "$HOST" == "github" ]] && have gh; then
 fi
 if [[ -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
   ok "AZURE_DEVOPS_EXT_PAT is set"
+elif (( NEED_ADO )); then
+  bad "AZURE_DEVOPS_EXT_PAT not set — needed for Azure DevOps (work items and/or code r/w)"
 else
-  bad "AZURE_DEVOPS_EXT_PAT not set — needed for ADO Work Items r/w${HOST:+ (and Code r/w for the ADO code host)}"
+  ok "AZURE_DEVOPS_EXT_PAT not required (tracker=$TRACKER, code host=$HOST)"
 fi
 
 echo
 echo "AIND configuration (shared — .claude/aind.settings.json):"
-_cfg=(AIND_ADO_ORG AIND_ADO_PROJECT AIND_INTEGRATION_BRANCH)
+_cfg=(AIND_INTEGRATION_BRANCH)
+if [[ "$TRACKER" == "ado" ]]; then _cfg+=(AIND_ADO_ORG AIND_ADO_PROJECT); fi
 if [[ "$HOST" == "ado" ]]; then _cfg+=(AIND_ADO_REPO); else _cfg+=(AIND_GH_REPO); fi
 for v in "${_cfg[@]}"; do
   if [[ -n "${!v:-}" ]]; then ok "$v=${!v}"; else warning "$v not set (see .claude/aind.settings.json)"; fi
 done
+
+# File tracker: report the item-store directory, its default resolution, writability, and (only when
+# it resolves inside the repo) whether it is gitignored.
+if [[ "$TRACKER" == "file" ]]; then
+  if ! have jq; then
+    warning "jq not present — the file tracker needs jq to read/write items"
+  fi
+  _tdir="${AIND_TRACKER_DIR:-}"
+  if [[ -z "$_tdir" ]]; then
+    _gcd="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$_gcd" ]]; then _troot="$(cd "$(dirname "$_gcd")" && pwd)"; _tdir="$_troot/.aind/items"; fi
+  fi
+  case "$_tdir" in "~"|"~/"*) _tdir="${HOME}${_tdir#\~}" ;; esac
+  if [[ -z "$_tdir" ]]; then
+    bad "file tracker: AIND_TRACKER_DIR not set and not in a git repo — set '.trackerDir' (absolute path) in .claude/aind.settings.json"
+  else
+    if mkdir -p "$_tdir" 2>/dev/null && [[ -w "$_tdir" ]]; then
+      ok "file tracker dir writable: $_tdir"
+    else
+      bad "file tracker dir not writable: $_tdir (check the path / permissions)"
+    fi
+    if git check-ignore -q "$_tdir" 2>/dev/null; then
+      ok "file tracker dir is gitignored"
+    elif git rev-parse --show-toplevel >/dev/null 2>&1 && [[ "$_tdir" == "$(git rev-parse --show-toplevel)"* ]]; then
+      warning "file tracker dir '$_tdir' is inside the repo but not gitignored — add it to .gitignore if you don't want items committed"
+    else
+      ok "file tracker dir is outside the repo (not tracked by git)"
+    fi
+  fi
+fi
 
 echo
 echo "Worktrees (parallel work — optional):"
@@ -157,7 +203,7 @@ if [[ "$HOST" == "ado" ]] && have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_
     bad "cannot access ADO repo $AIND_ADO_REPO (PAT 'Code' scope? repo/project name?) — needed for the ADO code host"
   fi
 fi
-if have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_ADO_PROJECT:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
+if [[ "$TRACKER" == "ado" ]] && have az && [[ -n "${AIND_ADO_ORG:-}" && -n "${AIND_ADO_PROJECT:-}" && -n "${AZURE_DEVOPS_EXT_PAT:-}" ]]; then
   # Probe work-item READ access with a project-scoped query (proves org reachability + PAT +
   # Work Items read in one call). Does not assume any particular work-item id exists, so an
   # empty project still passes instead of false-warning.
@@ -171,8 +217,10 @@ fi
 
 echo
 echo "Manual checks (cannot be auto-verified):"
-if [[ "$HOST" == "github" ]]; then
+if [[ "$TRACKER" == "ado" && "$HOST" == "github" ]]; then
   manual "Azure Boards <-> GitHub integration connected (so AB#<id> in a PR links to the work item)"
+fi
+if [[ "$HOST" == "github" ]]; then
   manual "Integration branch has 'require conversation resolution before merging' enabled (so assumption threads gate the plan-PR merge)"
 else
   manual "Integration branch has a branch policy requiring all comments resolved before completion (so assumption threads gate the plan-PR merge)"

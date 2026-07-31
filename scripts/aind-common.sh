@@ -49,6 +49,8 @@ AIND_STATES=(
 )
 
 aind_die() { echo "aind: $*" >&2; exit 1; }
+# Non-fatal warning to stderr (shared by best-effort callers: telemetry, the tracker file backend).
+aind_warn() { echo "aind: [WARN] $*" >&2; }
 
 # Require a set of env vars to be non-empty.
 aind_require_env() {
@@ -168,7 +170,10 @@ aind_export_from_settings() {
 # override). Within a project, .claude/aind.env is sourced FIRST (secrets + per-user overrides win),
 # then .claude/aind.settings.json fills any AIND_* var still unset.
 aind_autosource_env() {
-  [[ -n "${AIND_ADO_ORG:-}" ]] && return 0   # already configured — don't override
+  # Already configured — don't override. Either sentinel counts: AIND_ADO_ORG for the ADO tracker
+  # (the historical marker), AIND_TRACKER for a non-ADO tracker (e.g. the file backend, which sets
+  # no ADO org). A parent shell / CI that pre-exports either wins.
+  [[ -n "${AIND_ADO_ORG:-}" || -n "${AIND_TRACKER:-}" ]] && return 0
   local dir="$PWD" cdir sf
   while :; do
     cdir="$dir/.claude"
@@ -187,6 +192,10 @@ aind_autosource_env() {
           aind_export_from_settings AIND_ADO_ORG            "$sf" '.ado.org'
           aind_export_from_settings AIND_ADO_PROJECT        "$sf" '.ado.project'
           aind_export_from_settings AIND_ADO_REPO           "$sf" '.ado.repo'
+          # Work-item tracker: which backend holds work items, and — for the file backend —
+          # where the per-item markdown files live (absolute; may be outside the repo).
+          aind_export_from_settings AIND_TRACKER            "$sf" '.tracker'
+          aind_export_from_settings AIND_TRACKER_DIR        "$sf" '.trackerDir'
           aind_export_from_settings AIND_CODE_HOST          "$sf" '.codeHost'
           aind_export_from_settings AIND_GH_REPO            "$sf" '.github.repo'
           aind_export_from_settings AIND_INTEGRATION_BRANCH "$sf" '.integrationBranch'

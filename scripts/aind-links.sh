@@ -17,8 +17,8 @@
 #   parse : read a PR body on stdin, print the block's key: value lines.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=aind-common.sh
-source "$SCRIPT_DIR/aind-common.sh"
+# shellcheck source=aind-tracker.sh
+source "$SCRIPT_DIR/aind-tracker.sh"
 
 MODE="${1:-}"
 
@@ -27,9 +27,9 @@ case "$MODE" in
     ID="${2:-}"
     PLAN_PR_URL="${3:-}"
     [[ -n "$ID" ]] || aind_die "usage: aind-links.sh write <work-item-id> [plan-pr-url]"
-    aind_require_env AIND_ADO_ORG AIND_ADO_PROJECT
-    ORG="$(aind_org)"
-    WORKITEM_URL="${ORG}/${AIND_ADO_PROJECT}/_workitems/edit/${ID}"
+    tracker_require
+    # The work-item locator: an ADO edit URL, or the item file's path in the file backend.
+    WORKITEM_URL="$(tracker_url "$ID")"
     {
       echo "<!-- AIND-LINKS"
       echo "work-item: ${WORKITEM_URL}"
