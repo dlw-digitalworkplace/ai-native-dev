@@ -23,13 +23,58 @@ instead, which elicits the project's shape through a guided conversation. (Come 
 ## Procedure
 
 ### 1. Survey the codebase
-Explore breadth-first to understand the project. Look at:
+Explore breadth-first to understand the project. **Start with any existing agent/convention
+instruction files — they are pre-distilled project rules and your single highest-signal input:**
+- `.github/copilot-instructions.md`, `.github/instructions/*`, `AGENTS.md`, a root `CLAUDE.md`,
+  `.cursorrules` / `.cursor/rules/*`, `.windsurfrules`, and `CONTRIBUTING.md`.
+- **Read these before inferring anything, and treat their content as authoritative evidence.**
+  When one describes a convention (how documentation is written, a branching model, a coding
+  standard), fold it into the matching rule file and cite it as the source — never re-derive it
+  from scratch or silently drop it. An instruction file that describes a convention is itself
+  sufficient evidence for the corresponding rule area.
+
+Then survey the rest of the repo:
 - Top-level layout and notable directories.
 - Package/build manifests: `package.json`, `*.csproj`/`*.sln`, `pom.xml`/`build.gradle`,
   `go.mod`, `pyproject.toml`/`requirements.txt`, `Cargo.toml`, etc.
 - CI/CD: `.github/workflows/*`, `azure-pipelines.yml`, `.gitlab-ci.yml`, `Makefile`.
 - Infra/IaC, container files, docs directories.
 - Existing conventions: linters/formatters, test setup, folder naming.
+
+**Then read real source — this is not optional.** Manifests and directory listings only reveal the
+*map* of the repo; the actual coding conventions live in the code. Open a **representative sample**
+of the project's real units and read it properly. **What a "unit" is depends entirely on the
+project type — adapt the sample to what this repo actually is, don't force a web-app shape onto it:**
+- a web back-end/front-end → a few services, an endpoint/controller/function, a component, a hook;
+- a **library / package** → the public API surface, the main modules, a couple of internal
+  implementations, the packaging manifest;
+- a **script collection** (PowerShell/Bash/Python) → several representative scripts end-to-end —
+  param/arg handling, error handling, output/logging style;
+- a **CLI**, **data pipeline / notebooks**, **infra/IaC**, **mobile app**, etc. → the equivalent
+  core units for that kind of project.
+
+Also open the tooling configs that encode a style (whatever the stack uses — `.editorconfig`,
+`eslint`/`prettier`, `ruff`/`black`/`flake8`, `PSScriptAnalyzer`, `Directory.Build.props`,
+`tsconfig`, …). You are reading to extract the **recurring patterns a new contributor would be
+expected to follow** — see the convention checklist in step 3. Skimming file names is the mistake
+that produces shallow, map-only rules.
+
+**Separately, read for the functional/domain architecture — this is the lens most often missed.**
+The convention-reading above finds *how code is written*; this pass finds *what the app is and how
+it's structured as a domain*. Trace it deliberately — reading a service and a component tells you the
+tech, not the domain:
+- The **core domain abstraction and its extension/variability model** — the thing the codebase is
+  organised *around* and how you plug new behaviour into it. e.g. a base connector + pluggable
+  per-connector orchestrators behind a dispatcher; an app-of-mini-apps; a plugin registry; a
+  library's public API + strategy interfaces; a CLI's command set. Find it via the central
+  abstractions, the dispatcher/registry/orchestrator, marker/base types, and the product docs.
+- The **main flow/pipeline** end-to-end, and where variability plugs in.
+- The **key entities, their relationships, and the invariants** every feature must uphold.
+- **How you add a new "unit" of the domain** (a new connector / mini-app / plugin / command) — the
+  concrete extension recipe. This is the single highest-value functional rule for the planner and
+  coder, because whole stories map directly onto it.
+This applies to any project type — a library's extension points, a pipeline's stage model, an IaC
+repo's module topology are all "functional architecture." See lens 3 in step 2.
 
 ### 2. Decide which rule areas this codebase actually needs
 There is **no fixed list of domains**. Derive the rule areas from evidence in *this* repo, and
@@ -39,17 +84,29 @@ look through **three lenses** — most repos need rules from more than one:
    web-jobs/workers/functions, infrastructure/IaC, shared libraries, mobile, CI/CD. These are
    *examples, not a checklist.*
 2. **Cross-cutting concerns with a notable or non-standard approach.** e.g. authentication /
-   authorization, security, logging/observability, error handling, config/secrets, i18n. Give
-   one its **own** rule file when the project does it in a specific or unusual way that a
-   planner must respect — e.g. a custom **pin-code auth** scheme deserves its own
-   `authentication.md`.
+   authorization, security, logging/observability, error handling, config/secrets, i18n, and
+   **documentation conventions** (a structured `docs/` system, or a written docs standard). Give
+   one its **own** rule file when the project does it in a specific or unusual way that a planner
+   must respect — e.g. a custom **pin-code auth** scheme deserves its own `authentication.md`, and
+   a `docs/` tree with an enforced structure (numbered pages, one-subject-per-page) plus a written
+   standard deserves a `documentation.md`. An existing instruction file (step 1) that describes
+   such a convention is automatic evidence for its rule.
 3. **Functional / domain architecture.** The product's core structural concepts and
    invariants — *what the app is and the rules everything must obey*, not its tech stack. e.g.
-   "the app is composed of mini-apps", "every entity is scoped to a couple of IDs / a tenant",
-   the key entities and how they relate. Infer this from the README/product docs, the
-   domain/entity model, routing structure, core folder/module names, central abstractions, and
-   recurring scoping patterns in queries. **Most apps have a functional architecture worth a
-   rule** — actively look for it; don't stop at the technical layers.
+   "the app is composed of mini-apps", "connectors extend a base model and plug into a shared
+   orchestrator", "every entity is scoped to a couple of IDs / a tenant". Capture the **core domain
+   abstraction and its extension model**, the main flow, the key entities/invariants, and **how you
+   add a new unit of the domain** (see the functional-architecture reading pass in step 1). Infer it
+   from the product docs, the domain/entity model, central abstractions, dispatchers/registries,
+   base/marker types, and recurring scoping patterns. **This is the most commonly missed lens and
+   often the most valuable — do not stop at the technical layers.** Name the file after the domain
+   concept (`connectors.md`, `mini-apps.md`, `domain-model.md`), not after a tech layer.
+
+**Completeness check before you finalize:** most repos need **at least one lens-3
+(functional/domain) rule** — if you drafted only technical-layer and cross-cutting rules, that is a
+red flag you stopped at the map. Re-examine the domain and either add the functional rule or state
+explicitly in the summary (step 8) why this repo genuinely has none (rare — e.g. a pure utility
+library with no domain model).
 
 **Strictly evidence-only — this is the key rule.** Create a rule file **only** for an area that
 genuinely exists in the codebase. If there is **no** test framework, write **no** testing rule;
@@ -60,20 +117,75 @@ nothing else.
 
 ### 3. Draft one rule file per area → `.claude/rules/<area>.md`
 Name each file after the area in kebab-case (`frontend.md`, `backend.md`, `authentication.md`,
-`mini-apps.md` or `domain-model.md`, …). For each, write concrete, **observed** conventions and
-invariants, each grounded in where you saw it (cite files/paths). Phrase as suggestions and
-start each file with the DRAFT banner (see below). See
-`${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` for the three rule-area categories
-and a section shape to follow — it is a guide, **not** a set of files to reproduce.
+`mini-apps.md` or `domain-model.md`, …). For each, write concrete conventions and invariants, each
+grounded in where you saw it (cite files/paths), and start each file with the DRAFT banner (below).
+See `${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` for the rule-area categories and a
+section shape — a guide, **not** a set of files to reproduce.
+
+**Write rules as directives, not as hedged observations.** The whole draft is a suggestion (the
+human reviews and decides which rules survive — that is what the DRAFT banner and step 8 handoff
+cover). But each rule that stays *will be enforced* by the planner and reviewer, so its text must
+read as a **requirement**: "New service abstractions **must** live in a `Contracts/` folder"
+(grounded in a cited example) — **not** "some code observes interfaces in Contracts folders." Do not
+use "suggested/observed conventions" as section headers. Imperative + cited evidence is the target.
+
+**Go past the map — capture the *coding* conventions.** Structural rules ("keep code in the right
+layer") are necessary but not sufficient; the high-value rules are the implementation patterns a
+coder must match. From the source you read in step 1, write a rule for **every pattern that genuinely
+recurs** (evidence-only — no evidence, no rule).
+
+The list below is a **prompt to think with, not a boundary or a checklist to complete** — and it
+leans toward a service/web app. **Translate each item to whatever THIS project is, and go beyond the
+list** to whatever conventions actually matter for this kind of code. The point is to capture *this
+repo's* real rules, whatever shape they take:
+- **Logging / observability** — e.g. message-template logging, scopes, correlation ids; for a script
+  it might be a `Write-Verbose`/output convention.
+- **Error / exception handling** — how failures are caught, wrapped, surfaced; what context is kept.
+- **Naming** — modules, files, types, functions, symbols.
+- **Folder / module organisation** — what each folder or module is *for* (e.g. abstractions vs
+  implementations vs models; a library's public API vs internals).
+- **Interface / abstraction / public-API placement** — where contracts or exported surfaces live.
+- **Composition / wiring** — dependency injection, a plugin registry, a script's entry/dispatch, etc.
+- **Imports / references** — path aliases vs relative, module import style, namespacing.
+- **I/O & data patterns** — the standard request/response/error flow, DB access, file/stream handling.
+- **State management** (front-end) — local vs server-cache vs global store, and when.
+- **Public contract of a unit** — for a library/CLI/script: parameters, return shapes, exit codes,
+  argument parsing, versioning/back-compat expectations.
+- **Validation**, **config/secrets access**, and **test patterns** where a convention exists.
+
+For a Python library, a PowerShell script set, a CLI, a data pipeline, or an IaC repo the *items*
+differ but the *job is identical*: read the real code, find what recurs, and write it as a rule.
+- **Lint / format baseline** — read `.editorconfig`/eslint/prettier and state the baseline; where a
+  convention is already machine-enforced, **point to the tool** rather than restating the rule (keeps
+  rule files about what tooling can't catch, and avoids bloat).
+
+Bias toward conventions that (a) recur, (b) a contributor could plausibly get wrong, and (c) aren't
+already enforced by tooling — that keeps rule files sharp rather than exhaustive.
+
+**Detect and resolve conflicting conventions.** A real repo often has *competing* patterns for the
+same concern (two state-management approaches, two error-handling styles, a folder convention applied
+inconsistently). Don't silently pick one and don't bury it as a vague note. For each **material**
+conflict (one that changes how a coder would write code):
+1. Ask the human to resolve it **during this run** via `AskUserQuestion` — present the concrete
+   competing options (a copy-pasteable candidate rule for each), with your recommended default first.
+2. Write the **chosen** option as the imperative rule in the relevant rule file, and keep a short
+   **Convention decision** note beneath it recording the alternatives that were considered (so the
+   choice is auditable and revisitable).
+Immaterial/cosmetic inconsistencies that tooling already normalises don't need a question — just note
+the baseline. Ask about the ones that matter; don't turn onboarding into an interrogation.
 
 ### 4. Draft `.claude/CLAUDE.md`
-Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, then:
-- Keep the **AIND operational rules** block verbatim.
-- Keep the **AIND configuration** section as-is — it documents the two-file model (shared
-  `.claude/aind.settings.json` + gitignored `.claude/aind.env`). The actual per-project values are
-  written into `aind.settings.json` in step 6; don't duplicate them here (avoids drift).
-- Replace the placeholder `@rules/*` imports with one `@rules/<area>.md` line for **exactly the
-  rule files you created** in step 3 — no more, no fewer.
+Base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md` (restructured so **project guidance
+leads** and AIND is a compact operational layer below it). Fill it so the file reads as *"how we
+work in THIS project"*:
+- **Lead with project context** — what the repo is, its main surfaces/layers, where the docs live —
+  then the `@rules/<area>.md` imports immediately after.
+- Include one `@rules/<area>.md` line for **exactly the rule files you created** in step 3 — no
+  more, no fewer. Generate this list **after** all rule files exist so it can't drift.
+- Keep the **AIND operational rules** block verbatim (it's short by design).
+- Keep the **AIND configuration** section as the template now has it — a compact pointer to the
+  two-file model. Do **not** re-inline the long worktree/telemetry prose or duplicate the
+  per-project values (they live in `aind.settings.json`, written in step 6) — avoids drift.
 
 ### 5. Stub discovered project skills → `.claude/skills/<name>/SKILL.md`
 From the manifests/CI/scripts, extract the real **deterministic dev workflows** and stub a skill
@@ -84,6 +196,30 @@ e.g. `deploy`, `migrate` (DB migrations), `seed` (test/dev data), `codegen` / `s
 actual command in each skill body and mark assumptions as DRAFT. These feed the planner and the
 build phase ("what can be scripted should be scripted"). **Evidence-only:** only create a skill for
 a command you actually found in the repo — don't emit a `deploy` skill just because deploy is common.
+
+**Required frontmatter — every `SKILL.md` must start with a `name` *and* a `description`** (a
+missing `name` triggers a host "Skill should provide a name" warning). `name` must match the skill's
+directory (`backend-build/SKILL.md` → `name: backend-build`); add `allowed-tools: Bash` for a skill
+that runs a command:
+```
+---
+name: backend-build
+description: Build the .NET backend solution.
+allowed-tools: Bash
+---
+```
+
+**The evidence bar for a skill is a real *practice*, not just an invocable command.** A configured
+runner is not proof the practice exists — a `dotnet test`-able `.sln` whose only test project is a
+*load* test, or a `"test": "vitest run"` script with no test files, means there is a runner but **no
+test suite**. Before stubbing build/test/lint/e2e skills, check for the actual artifacts (real test
+files/projects, lint config actually in use):
+- **Practice clearly exists** → stub the skill normally.
+- **Runner configured but no artifacts found** → still stub it (the team may intend to add them),
+  but mark it **UNVERIFIED in the frontmatter `description`**, not only the body — the `description`
+  is what an agent reads when selecting a skill, so the hedge must live there. e.g.
+  `description: "(UNVERIFIED) test runner configured but no tests found — confirm before relying on this."`
+- **No runner and no artifacts** → no skill.
 
 ### 6. Create the config files
 Detect what you can, ask the human for the rest, then **write** the two config files (don't just
@@ -157,12 +293,19 @@ Run the preflight probe and relay its checklist:
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 ```
+(On **GitHub Copilot CLI / Windows**, if this fails with "bash not found", Git's `bash` isn't first
+on PATH — invoke the script via the Git bash binary and surface the PATH fix as a prerequisite.
+Never reimplement these scripts in PowerShell: that silently breaks the single-status-tag invariant
+and comment signing.)
 
 ### 8. Summarize to the user
 - The rule areas you found (across the three lenses) and the files you drafted (paths), and
   — briefly — any common category you **deliberately skipped** because the codebase had no
-  evidence for it (e.g. "no testing rule: no test framework found").
+  evidence for it (e.g. "no testing rule: no test framework found"). **Explicitly name the
+  functional/domain rule you wrote** — or, if you wrote none, why this repo has no domain model.
 - The skills you stubbed and the commands behind them.
+- Any **convention conflicts** you resolved with the human during the run, and the option chosen for
+  each (each also recorded as a Convention decision note in the rule file).
 - The prerequisite status from preflight, with the `[FAIL]`/`[MANUAL]` items called out as
   the team's next setup steps (ADO PAT, code-host access — `gh` for GitHub or `az repos` for ADO —
   jq, and the host-specific manual items preflight lists, e.g. the Azure Boards↔GitHub integration
@@ -179,7 +322,8 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 Prefix every generated markdown file with:
 ```
 <!-- AIND ONBOARDING DRAFT — generated by /onboard from this codebase.
-     Review, correct, and edit before relying on it. Suggestions, not ground truth. -->
+     The rules below are written as requirements the flow will enforce once kept; this DRAFT status
+     means YOU review and decide which to keep, correct, or drop before relying on them. -->
 ```
 
 ## Notes

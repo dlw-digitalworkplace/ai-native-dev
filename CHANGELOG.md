@@ -9,6 +9,48 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.20.0] — 2026-07-30
+
+### Changed
+- **Onboarding now produces deep, enforceable rules on the first pass** (D45). `/aind:onboard` was
+  drafting shallow, map-only rules ("keep code in the right layer") and leaving the real conventions
+  for the human to extract by hand. The command and templates are sharpened — same D18 boundaries
+  (evidence-only, suggest-don't-assert, config-layer-only), deeper capture:
+  - **Reads existing agent-instruction files first** — `.github/copilot-instructions.md`,
+    `.github/instructions/*`, `AGENTS.md`, a root `CLAUDE.md`, `.cursorrules`/`.cursor/rules/*`,
+    `.windsurfrules`, `CONTRIBUTING.md` — and folds their conventions into rules (an instruction file
+    describing a convention is sufficient evidence for that rule area).
+  - **Mandatory representative-source read** (adapted to project type — web app, library, script
+    collection, CLI, pipeline, IaC) plus the style-encoding tooling configs, so rules reflect the
+    actual code, not just manifests.
+  - **A distinct functional/domain reading pass** (the most-missed lens): the core domain abstraction
+    and its **extension model**, and **how you add a new unit of the domain** — with a completeness
+    guard that requires a functional rule or an explicit reason none exists.
+  - **Rules written as directives, not hedged observations** — the *draft* is the suggestion the
+    human prunes; each kept rule is a requirement the planner/reviewer enforce. DRAFT banner reworded
+    to match.
+  - **A stack-agnostic convention checklist** (logging, error handling, naming, folder/module roles,
+    abstraction placement, wiring, imports, I/O patterns, state, a unit's public contract, …) framed
+    as a prompt to adapt, not a boundary; where tooling already enforces a rule, point to the tool.
+  - **Conflict detection with interactive resolution** — a material competing-pattern conflict is
+    surfaced during the run via a question (a candidate rule per option), the chosen option becomes
+    the rule, and the alternatives are kept as a **Convention decision** note.
+  - The same changes are mirrored into `/aind:kickstart` (D31).
+- **`project-template/CLAUDE.md` restructured to lead with the project** (D45). Project context +
+  rule imports come first; the AIND config is a compact operational layer beneath, with the long
+  worktree/telemetry prose replaced by pointers to `aind.settings.sample.json` / GETTING-STARTED — so
+  a project's `CLAUDE.md` reads as "how we work in THIS project", not an AIND template.
+
+### Fixed
+- **Onboarding no longer fabricates a test capability from a bare runner** (D45). A configured runner
+  with no test artifacts (a `dotnet test`-able `.sln` whose only test project is a load test; a
+  `"test": "vitest run"` script with no test files) is now stubbed but flagged **UNVERIFIED in the
+  skill `description`** (what an agent reads when selecting a skill), not silently asserted as a real
+  test suite.
+- **Stubbed skills always include the required `name` frontmatter** (D45) — a missing `name` was
+  triggering a host "Skill should provide a name" warning. Every generated `SKILL.md` now carries
+  `name` (matching its directory) + `description` (+ `allowed-tools` for a command-runner).
+
 ## [0.19.0] — 2026-07-30
 
 ### Added

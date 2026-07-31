@@ -2,8 +2,33 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `docs/plans/` for the planned-feature backlog and `design-log/` for the decision record._
 
-## Current status (2026-07-28)
+## Current status (2026-07-30)
 
+- **Onboarding rule depth, convention capture & conflict resolution (D45, 2026-07-30, live-validated
+  on a real .NET + React repo over successive Copilot-CLI runs).** `/aind:onboard` (and its greenfield
+  twin `/aind:kickstart`) now produce deep, enforceable rules on the **first pass** instead of shallow
+  map-only rules the human had to hand-correct. Same D18 boundaries (evidence-only, suggest-don't-assert,
+  config-layer-only); the change is depth + voice: it **reads existing agent-instruction files first**
+  (`.github/copilot-instructions.md`, `.github/instructions/*`, `AGENTS.md`, `CLAUDE.md`, cursor/windsurf
+  rules, `CONTRIBUTING.md`) and folds them into rules; does a **mandatory representative-source read**
+  adapted to project type (web app / library / script collection / CLI / pipeline / IaC); runs a
+  **distinct functional/domain reading pass** (the core domain abstraction + its extension model +
+  *how you add a new unit of the domain*) behind a **completeness guard** (a functional rule, or a
+  stated reason none exists); writes rules as **directives** (the draft is the suggestion; each kept
+  rule is an enforced requirement — DRAFT banner reworded); probes a **stack-agnostic convention
+  checklist** (logging, error handling, naming, folder/module roles, abstraction placement, wiring,
+  imports, I/O, state, a unit's public contract, lint baseline — pointing to tooling where it already
+  enforces a rule); and **detects competing patterns and resolves each material one interactively**
+  (`AskUserQuestion` — a candidate rule per option; chosen option becomes the rule, alternatives kept
+  as a Convention decision note). Two fixes ride along: a bare test **runner with no test artifacts**
+  is stubbed but flagged **UNVERIFIED in the skill `description`** (not asserted as a real suite), and
+  every stubbed `SKILL.md` carries the required **`name` frontmatter** (kills the "Skill should provide
+  a name" host warning). `project-template/CLAUDE.md` is restructured **project-first** (context + rule
+  imports lead; AIND config a compact layer beneath; worktree/telemetry detail replaced by pointers).
+  Prompt/template only (`commands/onboard.md`, `commands/kickstart.md`, `project-template/CLAUDE.md`,
+  `project-template/rules/_TEMPLATE.md`); the flow, status model, gates, and PR contract are untouched.
+  Residual is model variance — the completeness guard makes a miss *visible* rather than silent, and
+  the dreaming loop (D30) remains the mechanism for the long tail.
 - **Per-phase usage telemetry — raw tokens (work-item attachment) + time (numeric field), no cost
   (D42, 2026-07-28, live-validated — intake single-tree + implement in worktree mode).** Each ADO-touching phase
   (`/aind:intake`, `/aind:plan`, `/aind:implement`, `/aind:complete`) records **raw usage only** onto

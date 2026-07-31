@@ -95,7 +95,7 @@ GETTING-STARTED.md           Prerequisites, install, setup, usage
 
 | Phase | Step / agent | Implemented | Tested | Notes |
 |---|---|:--:|:--:|---|
-| Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18). |
+| Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18); reads existing instruction files first, reads real source to capture deep, enforceable coding + functional conventions, and resolves competing patterns interactively (D45). |
 | Onboarding (pre-flow) | Kickstart agent — `/aind:kickstart` | ✅ | ✅ | Greenfield twin of onboard (D31): guided conversation → drafts the same `.claude/` config when there's no code to scan; skills cover build/test/run **and** other dev workflows (deploy, migrate, seed, …); undecided items become TODOs, never fabricated rules. Live-validated (session run). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. **Dependency gate (D32):** declines a story whose linked ADO predecessors aren't implemented yet — orthogonal to the readiness score (a flawless story can score 100 and still be declined). |
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |

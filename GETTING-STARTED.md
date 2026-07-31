@@ -138,9 +138,13 @@ Confirm it loaded: type `/aind` — you should see `onboard`, `intake`, `plan`, 
 /aind:onboard
 ```
 
-It reads the codebase, discovers the rule areas that actually exist, and **drafts** into
-`.claude/`: per-domain `rules/*.md`, a wired `CLAUDE.md`, project skills for the build/test/run
-commands it finds, and a copy of the intake rubric. It finishes with a **preflight** checklist.
+It reads the codebase — including any existing instruction files (`.github/copilot-instructions.md`,
+`AGENTS.md`, cursor/windsurf rules, …) and a sample of real source — discovers the rule areas that
+actually exist (technical layers, cross-cutting concerns, and the functional/domain architecture),
+and **drafts** into `.claude/`: per-area `rules/*.md` written as enforceable conventions, a wired
+`CLAUDE.md`, project skills for the build/test/run commands it finds, and a copy of the intake
+rubric. If it spots competing conventions in the repo it asks you to pick one during the run. It
+finishes with a **preflight** checklist.
 
 **No ADO/GitHub auth needed for this step.** When it's done, **review and edit the drafts**
 (marked `AIND ONBOARDING DRAFT`), then commit the ones you want.

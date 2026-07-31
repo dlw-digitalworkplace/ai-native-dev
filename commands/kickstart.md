@@ -37,7 +37,11 @@ rule). A thin, honest draft beats a thick, fabricated one.
 Have a genuine conversation. Cover: what the project is and what it's **for**; the goals and the
 problems it solves; who the users are; the core **domain entities** and how they relate; the
 **invariants** every feature must respect (e.g. tenancy/ID scoping, money handling, an audit rule);
-and any **business constraints** (compliance, deadlines, budget, regulatory or contractual limits).
+the intended **core domain abstraction and its extension model** — the thing the system will be
+organised around and **how a new unit of the domain gets added** (a new connector / mini-app /
+plugin / command); and any **business constraints** (compliance, deadlines, budget, regulatory or
+contractual limits). The functional/domain rule is the most valuable and the most commonly skipped —
+make sure the conversation produces one (or a clear TODO if the domain isn't decided yet).
 
 ### 2. Elicit — architectural level *(seeds technical-layer + cross-cutting rules)*
 Cover the **context and components** (how the pieces fit — client/API/worker/infra, external
@@ -85,21 +89,31 @@ and note it.
 1. **`.claude/rules/<area>.md`** — one per **decided** area, kebab-case, following the three-lens
    shape in `${CLAUDE_PLUGIN_ROOT}/project-template/rules/_TEMPLATE.md` (technical layers present;
    cross-cutting concerns with a notable approach; functional/domain architecture). Write the
-   conventions the user actually decided; put every unsettled point under a **`TODO (undecided)`**
-   note rather than inventing a convention. Create a file only for an area with real content or real
-   open questions — no empty stubs for common categories.
-2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`. Keep the
-   **AIND operational rules** block verbatim, and keep the **AIND configuration** section as-is (it
-   documents the two-file model — shared `aind.settings.json` + gitignored `aind.env`). The decided
-   values go into `aind.settings.json` in step 6.4; don't duplicate them here. Replace the `@rules/*`
-   placeholders with one `@rules/<area>.md` line for **exactly** the files you created — no more, no fewer.
+   conventions the user actually decided **as directives** ("New code must …"), not hedged
+   observations — a decided convention is a rule the flow will enforce. Put every unsettled point
+   under a **`TODO (undecided)`** note rather than inventing a convention. When the user is torn
+   between competing options, capture it with the **Convention decision** block from `_TEMPLATE.md`
+   (chosen option as the rule, alternatives noted). Create a file only for an area with real content
+   or real open questions — no empty stubs for common categories.
+2. **`.claude/CLAUDE.md`** — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/CLAUDE.md`, which
+   **leads with project context + rule imports** and keeps AIND as a compact layer below. Fill the
+   project-context section from the conversation. Keep the **AIND operational rules** block verbatim
+   and the **AIND configuration** section as the template has it (don't re-inline worktree/telemetry
+   prose). The decided values go into `aind.settings.json` in step 6.4; don't duplicate them here.
+   Replace the `@rules/*` placeholders with one `@rules/<area>.md` line for **exactly** the files you
+   created — no more, no fewer.
 3. **`.claude/skills/<name>/SKILL.md`** — **placeholder stubs** for the intended dev workflows.
    Build / test / run-app / lint are the common core, but don't stop there — stub any scriptable,
    repeatable workflow the project intends (e.g. `deploy`, `migrate`, `seed`, `codegen` / `scaffold`,
    `format`, `start-deps`, `generate-client`, `e2e`). Since the toolchain likely doesn't exist yet,
-   write the *intended* command and mark it clearly, e.g. `TODO: verify once the toolchain exists`. Do
-   not write a confident command you haven't been told is real, and stub **only** the workflows the
-   user actually intends — don't emit a `deploy` skill just because deploy is common.
+   write the *intended* command and mark it clearly as unverified — in **both** the frontmatter
+   `description` (what an agent reads when selecting a skill) and the body, e.g.
+   `description: "(UNVERIFIED — toolchain not built yet) …"` alongside a body `TODO: verify once the
+   toolchain exists`. Every `SKILL.md` must start with a `name` (matching its directory) **and** a
+   `description` in the frontmatter (a missing `name` triggers a "Skill should provide a name"
+   warning); add `allowed-tools: Bash` for a command-running skill. Do not write a confident command
+   you haven't been told is real, and stub **only** the workflows the user actually intends — don't
+   emit a `deploy` skill just because deploy is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
    gathered the operational values in step 3 (code host, repo target, ADO org/project, integration
    branch); also ask whether to **enable worktrees** (default: no) and whether to **track per-phase
@@ -158,8 +172,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
 Prefix every generated markdown file with:
 ```
 <!-- AIND KICKSTART DRAFT — intended design captured in conversation, NOT yet validated against
-     code. Review and correct before relying on it; re-run /aind:onboard once code exists to
-     reconcile. Suggestions, not ground truth. -->
+     code. The rules below are written as requirements to enforce once kept; this DRAFT status means
+     YOU review and decide which to keep before relying on them. Re-run /aind:onboard once code
+     exists to reconcile. -->
 ```
 
 ## Notes
