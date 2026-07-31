@@ -67,8 +67,9 @@ front-matter block (`state`, `dependsOn`, `links`, telemetry) plus human-owned `
 `## Acceptance Criteria` / `## Comments` sections; AIND updates the metadata and appends comments but
 never edits your prose.
 
-**Optional features** (all off by default, all configured in `aind.settings.json` — see
-GETTING-STARTED and the sample settings file for details):
+**Optional features** (all off by default, all configured in `aind.settings.json` — see the AIND
+docs site at https://dlw-digitalworkplace.github.io/ai-native-dev/docs.html and the sample settings
+file for details):
 - **Worktrees** (`worktree.enabled: true`) — work several stories in parallel from one clone.
 - **Usage telemetry** (`telemetry.enabled: true`) — per-phase raw token/time recorded onto the work
   item (raw numbers only; pricing done offline).

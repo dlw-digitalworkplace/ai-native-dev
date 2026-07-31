@@ -9,6 +9,28 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.22.0] — 2026-07-31
+
+### Changed
+- **Documentation overhaul — a proper multi-page docs site + streamlined design docs** (D47). User-facing
+  usage docs move off the README and into the GitHub Pages site under `docs/`, now a three-page site
+  sharing `docs/assets/aind.css`: **`index.html`** (Home — the existing interactive flow diagram,
+  refreshed for the pluggable work-item tracker and given shared navigation), **`getting-started.html`**
+  (prerequisites, install, onboard vs kickstart, running the flow, troubleshooting — with a Claude
+  Code / GitHub Copilot CLI host chooser), and **`docs.html`** (a left-nav reference documenting every
+  command, sub-agent, and skill, plus all `aind.settings.json` / `aind.env` options). All three carry
+  a shared top nav (Home · Getting started · Docs).
+- **`README.md` trimmed to a lean landing page** — intro, "What it does", "Concepts", and a Docs
+  section linking to the hosted site; the repository-layout and implementation-status sections and
+  the "scope today" blockquote were removed.
+- **Design/decision docs consolidated under `design-log/`.** `design-doc.md` and `STATUS.md` now live
+  in `design-log/` (the implementation-status matrix moved from the README into `design-log/STATUS.md`).
+  `GETTING-STARTED.md` was removed (its content is now the site's Getting-started page). The stray
+  root `implementation-plan-ado-code-host.md` moved into `files/`.
+- **`CLAUDE.md`** gains a Documentation convention so the two doc surfaces (internal `design-log/` vs
+  the user-facing `docs/` site) stay in sync as features land; `.gitattributes` and the `deploy.sh`
+  header updated for the moves. No plugin behavior, flow, status model, or PR contract changed.
+
 ## [0.21.0] — 2026-07-31
 
 ### Added

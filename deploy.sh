@@ -2,7 +2,7 @@
 # deploy.sh — publish the AIND plugin to GitHub (no marketplace).
 #   1. builds a root-structured plugin zip from the committed HEAD (git archive),
 #   2. uploads it as a GitHub Release asset — stable URL: releases/latest/download/aind.zip,
-#   3. publishes the diagram (docs/index.html) as the GitHub Pages site (this branch, /docs).
+#   3. publishes the docs site (docs/ — Home diagram, getting-started, docs) as GitHub Pages (this branch, /docs).
 #
 # Load the plugin remotely afterwards (no local clone needed):
 #   claude --plugin-url https://github.com/<owner>/<repo>/releases/latest/download/aind.zip
