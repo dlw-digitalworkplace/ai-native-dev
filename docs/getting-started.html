@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIND · Getting started</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/aind.css">
+</head>
+<body class="doc-page host-claude">
+<div class="topnav">
+  <a class="brand" href="index.html"><span class="mark">AIND</span> <span class="full">AI-Native Dev</span></a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="getting-started.html" class="active">Getting started</a>
+    <a href="docs.html">Docs</a>
+  </nav>
+</div>
+
+<div class="page doc-wrap">
+  <span class="eyebrow">Setup guide</span>
+  <h1>Getting started</h1>
+  <p class="lede">Set up AIND on a project and run a story through the flow. The smart order is
+  <strong>onboard first</strong> — it only reads your code and writes draft config (no auth needed),
+  then tells you exactly what's left to wire up.</p>
+
+  <h3>Choose your agent host</h3>
+  <p>AIND runs on two agent hosts. Pick yours — the install step and a couple of Windows notes below
+  change with it; everything else is identical.</p>
+  <div class="hostchooser" role="tablist">
+    <button data-host="claude" class="active" onclick="setHost('claude')">Claude Code</button>
+    <button data-host="copilot" onclick="setHost('copilot')">GitHub Copilot CLI</button>
+  </div>
+
+  <div class="callout">
+    <span class="ic">i</span>
+    <span class="ct">AIND has three independent per-project choices: the <b>agent host</b> (above), the
+    <b>code host</b> where PRs live (GitHub or Azure DevOps Repos), and the <b>work-item tracker</b>
+    where stories live (Azure DevOps Boards or local files). They're orthogonal — the code-host and
+    tracker choices are set in config (next), not by the toggle above. See the
+    <a href="docs.html#config">Config reference</a> for every option.</span>
+  </div>
+
+  <hr>
+
+  <h2 id="prerequisites">Prerequisites</h2>
+  <p>Most of these are checked automatically by <code>/aind:onboard</code>'s preflight probe, which
+  reports what's missing — so you can run onboarding first and fix these afterward.</p>
+
+  <h4>Tools</h4>
+  <ul>
+    <li><code>az</code> (with the <code>azure-devops</code> extension), <code>git</code>,
+      <code>curl</code>, <code>jq</code>, <code>bash</code> — always.</li>
+    <li>Plus the code-host CLI: <code>gh</code> on the GitHub code host, or <code>az repos</code>
+      (the <code>azure-devops</code> extension) on the ADO code host.</li>
+  </ul>
+  <p class="muted">Install <code>jq</code>: <code>winget install jqlang.jq</code> (Windows) ·
+  <code>brew install jq</code> (macOS) · <code>apt install jq</code> (Linux).</p>
+
+  <h4>Code-host authentication</h4>
+  <div class="callout">
+    <span class="ic">GH</span>
+    <span class="ct"><b>GitHub code host:</b> <code>gh</code> authenticated as an account that can
+    access your repo — verify with <code>gh repo view &lt;owner&gt;/&lt;repo&gt;</code>
+    (<code>gh auth login</code> / <code>gh auth switch</code> if needed).</span>
+  </div>
+  <div class="callout">
+    <span class="ic">ADO</span>
+    <span class="ct"><b>ADO code host:</b> nothing extra — the ADO PAT below just needs <b>Code
+    (Read &amp; Write)</b> in addition to Work Items; the forge adapter reuses it for the ADO Repos
+    PR/comment APIs (no separate GitHub auth).</span>
+  </div>
+
+  <h4>Azure DevOps authentication (work items)</h4>
+  <p>A Personal Access Token with <strong>Work Items (Read &amp; Write)</strong> +
+  <strong>Code (Read &amp; Write)</strong>. It goes in <code>.claude/aind.env</code> as
+  <code>AZURE_DEVOPS_EXT_PAT</code> — the scripts read it from there. (Not needed if you use the
+  <strong>local-file</strong> work-item tracker <em>and</em> the GitHub code host.)</p>
+
+  <h4>Native work-item linking</h4>
+  <ul>
+    <li><b>GitHub code host:</b> connect the <strong>Azure Boards ↔ GitHub integration</strong> so a
+      PR mentioning <code>AB#&lt;id&gt;</code> links to the work item. Confirm with a test PR.</li>
+    <li><b>ADO code host:</b> nothing to set up — the PR links to the work item natively.</li>
+  </ul>
+
+  <h4>Comment-resolution merge gate</h4>
+  <p>On your integration branch, this is what makes the planner's assumption threads block the
+  plan-PR merge until you resolve them:</p>
+  <ul>
+    <li><b>GitHub:</b> enable branch protection <em>"require conversation resolution before
+      merging"</em>.</li>
+    <li><b>ADO:</b> add a branch policy that <em>requires all comments to be resolved</em> before
+      completion.</li>
+  </ul>
+
+  <h4>Test suite in CI (recommended once you have one)</h4>
+  <p>The per-story gates check tests <em>before</em> a code PR is opened — the coder builds and runs
+  the suite green, and the reviewer reads the tests for coverage and fidelity — but nothing re-runs
+  the suite on the <strong>merged</strong> integration branch. When you adopt CI, wire your project's
+  test/e2e skills into it and enable <em>"require status checks to pass"</em> on the integration
+  branch. Until then, running the suites between stories is a manual habit, not an enforced gate.</p>
+
+  <h4>Validate — run the preflight</h4>
+  <p>A read-only probe checks the tools, auth, config, and connectivity above and prints a
+  <code>PASS / WARN / FAIL / MANUAL</code> checklist. It never changes anything.</p>
+  <ul>
+    <li><b>In a session</b> (easiest): ask it to <em>"run the AIND preflight check"</em>. It also
+      runs automatically as the last step of <code>/aind:onboard</code>.</li>
+    <li><b>From a terminal</b>, run it from your project root (so it auto-loads
+      <code>.claude/aind.env</code>):
+      <pre><code>bash &lt;plugin-dir&gt;/scripts/aind-preflight.sh</code></pre></li>
+  </ul>
+  <p>Resolve every <code>[FAIL]</code> before running the flow. <code>[WARN]</code> is usually
+  config you haven't filled in yet; <code>[MANUAL]</code> items (the Boards↔GitHub integration and
+  the branch rule) can't be auto-verified — confirm those by hand.</p>
+
+  <div class="callout warn only-copilot">
+    <span class="ic">▲</span>
+    <span class="ct"><b>Windows + GitHub Copilot CLI:</b> Copilot's shell tool is PowerShell, but
+    AIND's mechanics are Bash scripts — so <b>Git's <code>bash</code> must be the one that resolves</b>
+    in the shell that launches <code>copilot</code>. Two traps: the Git installer only puts
+    <code>Git\cmd</code> (no <code>bash</code>) on PATH, and Windows ships a WSL
+    <code>bash.exe</code> in <code>System32</code> that <em>shadows</em> Git's bash. Because
+    <code>System32</code> is on the machine PATH, <em>appending</em> <code>Git\bin</code> isn't enough
+    — Git's bash must come <b>first</b>. Prepend it in your PowerShell profile, then open a
+    <b>new</b> terminal and verify:
+    <pre><code>$env:PATH = "C:\Program Files\Git\bin;" + $env:PATH   <span class="cmt"># in your $PROFILE</span>
+(Get-Command bash).Source   <span class="cmt"># must be Git's bash, NOT System32\bash.exe</span></code></pre>
+    Without this, Copilot may improvise the ADO/GitHub calls in PowerShell — bypassing comment
+    signing and the single-status rule.</span>
+  </div>
+
+  <hr>
+
+  <h2 id="install">1 · Load the plugin</h2>
+  <p>Run your agent host <strong>from the root of the project you're onboarding</strong> — the plugin
+  scaffolds into that project's <code>.claude/</code>.</p>
+
+  <div class="only-claude">
+    <p>Load it remotely (no local copy) or from a local clone:</p>
+    <pre><code><span class="cmt"># Remote — loads the published release for this session:</span>
+claude --plugin-url https://github.com/dlw-digitalworkplace/ai-native-dev/releases/latest/download/aind.zip
+
+<span class="cmt"># …or local, if you've cloned the plugin:</span>
+claude --plugin-dir &lt;plugin-dir&gt;   <span class="cmt"># the dir containing .claude-plugin/plugin.json</span></code></pre>
+  </div>
+
+  <div class="only-copilot">
+    <p>Install the plugin once (it persists across sessions), then run <code>copilot</code> from the
+    project root:</p>
+    <pre><code>copilot plugin install dlw-digitalworkplace/ai-native-dev   <span class="cmt"># from GitHub</span>
+<span class="cmt"># …or from a local clone (a local install is a snapshot — re-install after updates):</span>
+copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
+    <p>Make sure Git's <code>bash</code> wins on PATH first (see the Windows note above).</p>
+  </div>
+
+  <p>Confirm it loaded: type <code>/aind</code> — you should see the namespaced commands
+  (<code>/aind:onboard</code>, <code>/aind:intake</code>, …). Bare <code>/onboard</code> won't
+  resolve.</p>
+
+  <hr>
+
+  <h2 id="onboard">2 · Bootstrap the config</h2>
+  <p>Two entry points, depending on whether the project already has code:</p>
+
+  <h3><code>/aind:onboard</code> — existing codebase</h3>
+  <p>Reads the codebase — existing instruction files
+  (<code>.github/copilot-instructions.md</code>, <code>AGENTS.md</code>, cursor/windsurf rules, …)
+  and a sample of real source — discovers the rule areas that actually exist (technical layers,
+  cross-cutting concerns, functional/domain architecture), and <strong>drafts</strong> into
+  <code>.claude/</code>: per-area <code>rules/*.md</code>, a wired <code>CLAUDE.md</code>, project
+  skills for the build/test/run commands it finds, and a copy of the intake rubric. If it spots
+  competing conventions it asks you to pick one. It finishes with a preflight checklist.</p>
+  <p>It also <strong>creates and fills</strong> <code>.claude/aind.settings.json</code> and
+  <code>.claude/aind.env</code> from a few guided questions (tracker, ADO org/project, code host,
+  worktrees, telemetry) and appends the <code>.gitignore</code> lines. No ADO/GitHub auth is needed
+  for this step. When it's done, <strong>review and edit the drafts</strong> (marked
+  <code>AIND ONBOARDING DRAFT</code>) before committing.</p>
+
+  <h3><code>/aind:kickstart</code> — new / greenfield project</h3>
+  <p>Nothing to scan yet, so it <strong>elicits</strong> the project's goals, architecture, and
+  conventions through a guided conversation (point it at any design docs you have), then drafts the
+  same <code>.claude/</code> config — marking anything you haven't decided yet as a <code>TODO</code>
+  rather than guessing. Re-run <code>/aind:onboard</code> later, once real code exists, to reconcile
+  those drafts against the codebase.</p>
+
+  <h3>Fill in config</h3>
+  <p>Onboarding leaves just one manual step: <strong>paste your ADO PAT</strong>. Config lives in two
+  files under <code>.claude/</code>:</p>
+  <ul>
+    <li><code>.claude/aind.settings.json</code> — shared project config (tracker, ADO org/project,
+      code host, repo, integration branch, worktree/telemetry blocks). <strong>Checked in</strong>
+      so the whole team gets it.</li>
+    <li><code>.claude/aind.env</code> — secrets + per-user overrides. <strong>Gitignored.</strong>
+      Replace the <code>AZURE_DEVOPS_EXT_PAT="&lt;pat&gt;"</code> placeholder with a real PAT.</li>
+  </ul>
+  <p>The scripts <strong>auto-load both files</strong> (walk-up from the working directory), so you
+  don't <code>source</code> anything — just run the commands from inside the project. Re-run the
+  preflight to confirm everything is green. Every setting is documented in the
+  <a href="docs.html#config">Config reference</a>.</p>
+
+  <div class="callout tip">
+    <span class="ic">+</span>
+    <span class="ct"><b>Optional features</b>, all off by default and configured in
+    <code>aind.settings.json</code>: <a href="docs.html#cfg-worktree">git-worktree parallelism</a>
+    (drive several stories from one clone), <a href="docs.html#cfg-telemetry">usage telemetry</a>
+    (per-phase raw token + time onto the work item), and the
+    <a href="docs.html#cmd-map-states">native ADO State mirror</a>. See the Config reference for
+    each.</span>
+  </div>
+
+  <hr>
+
+  <h2 id="run">3 · Run the flow</h2>
+  <p>Create a story and set its status to <code>Ready for intake</code> — in Azure DevOps Boards, or
+  (on the file tracker) with <a href="docs.html#cmd-new-item"><code>/aind:new-item</code></a>. Then
+  drive it through the phases:</p>
+  <table>
+    <thead><tr><th>Command</th><th>Phase</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>/aind:intake &lt;id&gt;</code></td><td>0</td>
+        <td>Score the story; check its dependencies are implemented; post a signed verdict + score;
+          set status → <code>Intake approved</code> / <code>Intake declined</code>.</td></tr>
+      <tr><td><code>/aind:plan &lt;id&gt;</code></td><td>1</td>
+        <td>Write <code>plans/&lt;id&gt;/plan.md</code>; open the plan PR (<code>AB#</code>,
+          <code>AIND-LINKS</code>); post assumptions as resolvable threads; status →
+          <code>Plan ready for review</code>.</td></tr>
+      <tr><td><code>/aind:approve-plan &lt;id&gt;</code></td><td>2</td>
+        <td>After you approve <strong>and merge</strong> the plan PR: status →
+          <code>Ready for implementation</code>.</td></tr>
+      <tr><td><code>/aind:implement &lt;id&gt;</code></td><td>3</td>
+        <td>Build from the merged plan; open the code PR; drive the cold reviewer to a verdict.
+          Status stays <code>In implementation</code>.</td></tr>
+      <tr><td><code>/aind:complete &lt;id&gt;</code></td><td>close-out</td>
+        <td>After you merge the code PR: verify the merge, then set
+          <code>Implementation complete</code>.</td></tr>
+    </tbody>
+  </table>
+  <p>A declined story is edited and re-tagged <code>Ready for intake</code>, which re-runs intake.
+  Plan-review revisions happen in the PR and don't change the status. Each command is documented in
+  full — with arguments and examples — in the <a href="docs.html#commands">Commands reference</a>.</p>
+
+  <p><strong>End-to-end check:</strong> run <code>/aind:intake</code> on an under-designed story
+  (expect a decline with the failing criteria), fix it, re-run (expect approval + a single status).
+  Then <code>/aind:plan</code>, and confirm the plan PR carries the <code>AIND-LINKS</code> block, a
+  native <code>AB#</code> link, and one resolvable thread per assumption — and that branch protection
+  blocks the merge until threads resolve. Merge, then <code>/aind:approve-plan</code>. Finally run
+  <code>/aind:implement</code> and confirm it opens a code PR while the status stays
+  <code>In implementation</code>.</p>
+
+  <hr>
+
+  <h2 id="troubleshooting">Troubleshooting</h2>
+
+  <h4><code>/onboard</code> (or any command) doesn't appear</h4>
+  <p>Commands are namespaced — use <code>/aind:onboard</code>, not <code>/onboard</code>. Type
+  <code>/aind</code> to list them. Still nothing? (Local) confirm the plugin dir contains
+  <code>.claude-plugin/plugin.json</code>; (remote) confirm the zip URL returns HTTP 200; validate
+  with <code>claude plugin validate &lt;plugin-dir&gt;</code> (one warning about a root
+  <code>CLAUDE.md</code> is expected and harmless); launch with <code>--debug</code> for load
+  errors.</p>
+
+  <h4><code>aind-comment</code> / <code>aind-status</code> fail with <code>jq: command not found</code></h4>
+  <p>Install <code>jq</code> (see Prerequisites) — the runtime needs it to build JSON.</p>
+
+  <h4>ADO calls fail with auth errors</h4>
+  <p>Ensure <code>AZURE_DEVOPS_EXT_PAT</code> is set in <code>.claude/aind.env</code> (auto-loaded)
+  and the PAT has Work Items + Code read/write. Auto-load is skipped when <code>AIND_ADO_ORG</code>
+  is already set in your shell — if you exported stale values earlier, unset it or use a fresh
+  shell.</p>
+
+  <h4>Scripts fail with <code>$'\r': command not found</code></h4>
+  <p>The scripts must be LF, not CRLF. <code>.gitattributes</code> enforces <code>*.sh eol=lf</code>;
+  if you hit this, run <code>git add --renormalize . &amp;&amp; git checkout -- scripts hooks</code>.</p>
+
+  <div class="docfooter">
+    Next: the <a href="docs.html">reference docs</a> — every command, agent, skill, and config
+    option · or see the <a href="index.html">flow diagram</a>.
+  </div>
+</div>
+
+<script>
+  function setHost(host){
+    document.body.classList.remove('host-claude','host-copilot');
+    document.body.classList.add('host-'+host);
+    document.querySelectorAll('.hostchooser button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.host === host);
+    });
+  }
+</script>
+</body>
+</html>

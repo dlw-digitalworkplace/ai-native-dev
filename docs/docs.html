@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIND · Reference docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/aind.css">
+</head>
+<body class="doc-page">
+<div class="topnav">
+  <a class="brand" href="index.html"><span class="mark">AIND</span> <span class="full">AI-Native Dev</span></a>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="docs.html" class="active">Docs</a>
+  </nav>
+</div>
+
+<div class="docs-layout">
+  <!-- ============ LEFT NAV ============ -->
+  <aside class="docs-side" id="sidenav">
+    <div class="grouphead">Config</div>
+    <a href="#config">Overview</a>
+    <a href="#cfg-settings">aind.settings.json</a>
+    <a href="#cfg-worktree">worktree block</a>
+    <a href="#cfg-telemetry">telemetry block</a>
+    <a href="#cfg-env">aind.env</a>
+
+    <div class="grouphead">Commands</div>
+    <a href="#cmd-onboard">/aind:onboard</a>
+    <a href="#cmd-kickstart">/aind:kickstart</a>
+    <a href="#cmd-new-item">/aind:new-item</a>
+    <a href="#cmd-intake">/aind:intake</a>
+    <a href="#cmd-plan">/aind:plan</a>
+    <a href="#cmd-approve-plan">/aind:approve-plan</a>
+    <a href="#cmd-implement">/aind:implement</a>
+    <a href="#cmd-complete">/aind:complete</a>
+    <a href="#cmd-dream">/aind:dream</a>
+    <a href="#cmd-map-states">/aind:map-states</a>
+
+    <div class="grouphead">Agents</div>
+    <a href="#agent-reviewer">aind-reviewer</a>
+    <a href="#agent-dreamer">aind-dreamer</a>
+
+    <div class="grouphead">Skills</div>
+    <a href="#skill-workitem">aind-workitem</a>
+    <a href="#skill-status">aind-status</a>
+    <a href="#skill-comment">aind-comment</a>
+    <a href="#skill-plan-pr">aind-plan-pr</a>
+    <a href="#skill-preflight">aind-preflight</a>
+  </aside>
+
+  <!-- ============ CONTENT ============ -->
+  <main class="page docs-main">
+    <span class="eyebrow">Reference</span>
+    <h1>Reference docs</h1>
+    <p class="lede">Every command, agent, and skill AIND ships, plus all configuration options.
+    New here? Start with <a href="getting-started.html">Getting started</a> and the
+    <a href="index.html">flow diagram</a>.</p>
+
+    <!-- ==================== CONFIG ==================== -->
+    <h2 id="config">Config</h2>
+    <p>Per-project config is two files under <code>.claude/</code>, both auto-loaded by walking up
+    from the working directory (no <code>source</code> needed). <code>/aind:onboard</code> and
+    <code>/aind:kickstart</code> create and fill them.</p>
+    <ul>
+      <li><code>.claude/aind.settings.json</code> — shared settings, <strong>checked in</strong>.</li>
+      <li><code>.claude/aind.env</code> — secrets + per-user overrides, <strong>gitignored</strong>.</li>
+    </ul>
+    <p>Every setting maps to an <code>AIND_*</code> environment variable, which is the interface the
+    scripts read. Precedence: an already-set environment wins (so CI or a parent shell can override),
+    then <code>aind.env</code>, then <code>aind.settings.json</code> fills any still-unset var.</p>
+
+    <h3 id="cfg-settings">aind.settings.json</h3>
+    <table>
+      <thead><tr><th>Key</th><th>Env var</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>tracker</code></td><td><code>AIND_TRACKER</code></td>
+          <td>Work-item backend: <code>ado</code> (Azure DevOps Boards, default) or <code>file</code>
+            (a local markdown file per item).</td></tr>
+        <tr><td><code>trackerDir</code></td><td><code>AIND_TRACKER_DIR</code></td>
+          <td>File tracker only: where per-item markdown files live. May be outside the repo.
+            Defaults to <code>&lt;repo-root&gt;/.aind/items</code>.</td></tr>
+        <tr><td><code>ado.org</code></td><td><code>AIND_ADO_ORG</code></td>
+          <td>ADO organization URL, e.g. <code>https://dev.azure.com/&lt;org&gt;</code>.</td></tr>
+        <tr><td><code>ado.project</code></td><td><code>AIND_ADO_PROJECT</code></td>
+          <td>ADO project name.</td></tr>
+        <tr><td><code>ado.repo</code></td><td><code>AIND_ADO_REPO</code></td>
+          <td>ADO repo name — used only when <code>codeHost</code> is <code>ado</code>.</td></tr>
+        <tr><td><code>codeHost</code></td><td><code>AIND_CODE_HOST</code></td>
+          <td>Where code + PRs live: <code>github</code> (default) or <code>ado</code>. Selects the
+            forge adapter; the flow is otherwise identical.</td></tr>
+        <tr><td><code>github.repo</code></td><td><code>AIND_GH_REPO</code></td>
+          <td><code>owner/repo</code> — used only when <code>codeHost</code> is
+            <code>github</code>.</td></tr>
+        <tr><td><code>integrationBranch</code></td><td><code>AIND_INTEGRATION_BRANCH</code></td>
+          <td>The trunk branch PRs target (e.g. <code>main</code>).</td></tr>
+        <tr><td><code>planBranchPrefix</code></td><td><code>AIND_PLAN_BRANCH_PREFIX</code></td>
+          <td>Optional. Prefix for plan branches (default <code>aind/plan/</code>).</td></tr>
+        <tr><td><code>lessonsBranch</code></td><td><code>AIND_LESSONS_BRANCH</code></td>
+          <td>Optional. The orphan branch storing dreaming-phase lessons (default
+            <code>aind/lessons</code>). Never merges to trunk.</td></tr>
+        <tr><td><code>planning.mode</code></td><td><code>AIND_PLAN_MODE</code></td>
+          <td>Optional. Default mode for <code>/aind:plan</code>: <code>auto</code>,
+            <code>attended</code>, or <code>headless</code>.</td></tr>
+        <tr><td><code>stateMap</code></td><td><code>AIND_STATE_MAP</code></td>
+          <td>Optional, ADO tracker only. Maps each AIND status → a native ADO State so the board
+            mirrors the flow. Produced by <a href="#cmd-map-states"><code>/aind:map-states</code></a>;
+            empty = mirror off.</td></tr>
+        <tr><td><code>telemetry</code></td><td>—</td>
+          <td>Optional block — see <a href="#cfg-telemetry">below</a>.</td></tr>
+        <tr><td><code>worktree</code></td><td>—</td>
+          <td>Optional block — see <a href="#cfg-worktree">below</a>.</td></tr>
+      </tbody>
+    </table>
+    <p>A minimal GitHub + ADO-Boards project:</p>
+    <pre><code>{
+  "tracker": "ado",
+  "ado":  { "org": "https://dev.azure.com/&lt;org&gt;", "project": "&lt;project&gt;" },
+  "codeHost": "github",
+  "github": { "repo": "&lt;owner&gt;/&lt;repo&gt;" },
+  "integrationBranch": "main"
+}</code></pre>
+
+    <h3 id="cfg-worktree">worktree block (parallel work)</h3>
+    <p>Opt in to AIND-owned git worktrees so one clone can drive several stories at once — implement
+    one while planning the next. When on, <code>/aind:plan</code> and <code>/aind:implement</code>
+    each run in their own per-phase worktree and <code>/aind:approve-plan</code> /
+    <code>/aind:complete</code> retire it. Run every command from a terminal in the main checkout —
+    it stays on the integration branch and drives the worktree by path; parallelism is just opening a
+    second main-checkout terminal. Absent or <code>enabled:false</code> is a strict single-tree
+    no-op.</p>
+    <pre><code>"worktree": {
+  "enabled": true,                       <span class="cmt">// the on/off switch</span>
+  "worktreeRoot": ".claude/worktrees",   <span class="cmt">// where per-phase worktrees are created (gitignore it)</span>
+  "copyFiles": [                         <span class="cmt">// gitignored files a fresh worktree lacks</span>
+    ".claude/aind.env",
+    ".claude/settings.local.json",
+    ".env"
+  ],
+  "symlinkDirs": ["node_modules"]        <span class="cmt">// heavyweight dirs SHARED with the main checkout</span>
+}</code></pre>
+    <p><code>symlinkDirs</code> links each listed directory into the worktree — a junction on Windows
+    (no admin) or a symlink on Unix — so one install serves every worktree, and teardown removes only
+    the link. It's genuinely shared state (a dependency change means one re-install; a concurrent
+    install can disturb another build), so if you need true per-branch isolation, use
+    <a href="https://pnpm.io">pnpm</a> instead and leave <code>symlinkDirs</code> out. Parallel PRs
+    can collide, so the review loop handles merge conflicts automatically: the reviewer flags a PR
+    that no longer merges cleanly, and the coder rebases + resolves and hands back for a fresh
+    review.</p>
+
+    <h3 id="cfg-telemetry">telemetry block (usage tracking)</h3>
+    <p>Optionally record <strong>raw usage</strong> onto each story's work item: a per-model,
+    per-token-type breakdown plus wall-clock time. AIND stores <strong>raw numbers only — no cost, no
+    rate card</strong>; pricing is done offline against the stored data, so you can re-price history
+    anytime.</p>
+    <pre><code>"telemetry": {
+  "enabled": true,
+  "durationField": "Custom.AindDurationSec"   <span class="cmt">// optional numeric ADO field for elapsed seconds; omit to record only tokens</span>
+}</code></pre>
+    <p>Each of <code>/aind:intake</code>, <code>/aind:plan</code>, <code>/aind:approve-plan</code>,
+    <code>/aind:implement</code>, and <code>/aind:complete</code> then, at its end, attaches a JSON
+    record to the work item (the token breakdown — input / output / cache-write / cache-read, per
+    model) and adds its seconds to the numeric field if configured. Measurement reads the agent
+    host's on-disk session log, so it works on both hosts — Claude records the full per-model
+    breakdown; <strong>Copilot records output tokens only</strong> (its logs expose no per-message
+    model or input/cache). It's best-effort and fully inert until <code>enabled</code>; it never
+    blocks a phase. The token field needs no ADO field — only the optional time field is an ADO admin
+    step (the plugin can't create fields).</p>
+
+    <h3 id="cfg-env">aind.env</h3>
+    <p>Secrets and per-user overrides, gitignored. Two variables:</p>
+    <table>
+      <thead><tr><th>Variable</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>AZURE_DEVOPS_EXT_PAT</code></td>
+          <td>ADO Personal Access Token — scopes <strong>Work Items (r/w)</strong> +
+            <strong>Code (r/w)</strong>. Required when the tracker or code host is ADO. Read
+            automatically by <code>az</code> and reused for REST via <code>curl</code>. Never
+            commit it.</td></tr>
+        <tr><td><code>AIND_ACTOR</code></td>
+          <td>Optional. A human-readable actor for the comment signature line. Falls back to
+            <code>git config user.email</code>, then <code>$USER</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== COMMANDS ==================== -->
+    <h2 id="commands">Commands</h2>
+    <p>Human entry points, all namespaced <code>/aind:*</code>. Commands are thin: judgment and
+    orchestration only — the deterministic work-item / code-host mechanics live in scripts. The flow
+    is tracked by a single status per work item:
+    <code>Ready for intake</code> → <code>Intake approved</code> / <code>Intake declined</code> →
+    <code>Generating plan</code> → <code>Plan ready for review</code> →
+    <code>Ready for implementation</code> → <code>In implementation</code> →
+    <code>Implementation complete</code>, with <code>Needs attention</code> as the stuck state.</p>
+
+    <div class="refcard" id="cmd-onboard">
+      <div class="rc-head"><span class="rc-name">/aind:onboard</span></div>
+      <div class="rc-meta"><span class="pill">pre-flow</span><span class="pill">existing codebase</span><span class="pill">no args</span></div>
+      <p>The day-one bootstrap for an existing project. Reads existing instruction files and a sample
+      of real source, discovers the rule areas that exist (technical layers, cross-cutting concerns,
+      functional/domain architecture), and <strong>drafts</strong> <code>.claude/</code>:
+      per-area <code>rules/*.md</code>, a wired <code>CLAUDE.md</code>, project skills for the
+      build/test/run commands it finds, and a copy of the intake rubric. It creates and fills both
+      <a href="#config">config files</a> from guided questions, updates <code>.gitignore</code>, and
+      finishes with a preflight report. Everything it writes is a marked DRAFT — review before
+      committing.</p>
+      <pre><code>/aind:onboard        <span class="cmt"># run from the project root; no ADO/GitHub auth needed</span></code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-kickstart">
+      <div class="rc-head"><span class="rc-name">/aind:kickstart</span></div>
+      <div class="rc-meta"><span class="pill">pre-flow</span><span class="pill">greenfield</span><span class="pill">no args</span></div>
+      <p>The greenfield twin of onboard. With little or no code to scan, it <strong>elicits</strong>
+      the project's shape through a guided conversation (functional → architectural → operational,
+      plus any design docs), then drafts the same <code>.claude/</code> config. Its defining rule: it
+      never invents a convention to fill a gap — an undecided point becomes an explicit
+      <code>TODO</code>, not a rule. It proposes the whole <code>.claude/</code> tree for your
+      approval before writing. Re-run <code>/aind:onboard</code> once real code exists to reconcile
+      the drafts.</p>
+      <pre><code>/aind:kickstart      <span class="cmt"># run from the new project root</span></code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-new-item">
+      <div class="rc-head"><span class="rc-name">/aind:new-item</span></div>
+      <div class="rc-meta"><span class="pill">file tracker only</span><span class="pill">"[title]"</span></div>
+      <p>Creates a new work item in the <a href="#cfg-settings">local-file tracker</a> through a short
+      guided Q&amp;A. It assigns an id, scaffolds the markdown file (with status
+      <code>Ready for intake</code>), fills in the Title / Description / Acceptance criteria /
+      Dependencies you provide, and hands it back for review — it never invents requirements and never
+      starts the flow. On the ADO tracker it stops and points you to Azure DevOps Boards.</p>
+      <pre><code>/aind:new-item "Add CSV export to the reports page"</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-intake">
+      <div class="rc-head"><span class="rc-name">/aind:intake &lt;id&gt;</span></div>
+      <div class="rc-meta"><span class="pill">phase 0</span><span class="pill">warm</span><span class="pill">gate</span></div>
+      <p>The readiness gate. Scores the story against the project's rubric
+      (<code>.claude/intake-rubric.md</code>) — objective criteria are pass/fail, judgment criteria
+      are advisory — and records a signed verdict comment with a per-criterion table and a 0–100
+      readiness score. A separate <strong>dependency gate</strong> declines the story if a linked
+      predecessor isn't implemented yet, orthogonal to the score (a story can score 100 and still be
+      declined). It suggests fixes but never edits the story. Sets status to
+      <code>Intake approved</code> or <code>Intake declined</code>.</p>
+      <pre><code>/aind:intake 1234</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-plan">
+      <div class="rc-head"><span class="rc-name">/aind:plan &lt;id&gt; [attended|headless]</span></div>
+      <div class="rc-meta"><span class="pill">phase 1</span><span class="pill">warm</span><span class="pill">create + revise</span></div>
+      <p>Turns an approved story into an implementation plan at
+      <code>plans/&lt;id&gt;/plan.md</code>, delivered as its own PR (with <code>AB#</code> linking and
+      an <code>AIND-LINKS</code> block). The plan carries fixed sections — keep-it-simple / non-goals,
+      acceptance-criteria coverage, an ordered task breakdown that cites the <code>rules/*.md</code>
+      each task must obey, a test strategy, and a definition of done — and posts each assumption /
+      open question as a resolvable review thread. A re-run on a story that already has an open plan
+      PR enters <strong>revise mode</strong>: it folds the PR's feedback into the same PR (never opens
+      a second, never resolves threads — that's your merge gate). Sets status to
+      <code>Plan ready for review</code>.</p>
+      <p><strong>Run modes:</strong> <code>headless</code> never blocks (every genuine choice becomes
+      a thread); <code>attended</code> co-forms the plan live (a short spar over the key assumptions);
+      the plan artifact is identical either way. The argument wins over
+      <a href="#cfg-settings"><code>planning.mode</code></a>.</p>
+      <pre><code>/aind:plan 1234
+/aind:plan 1234 attended</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-approve-plan">
+      <div class="rc-head"><span class="rc-name">/aind:approve-plan &lt;id&gt;</span></div>
+      <div class="rc-meta"><span class="pill">phase 2 close-out</span><span class="pill">human-run</span></div>
+      <p>Run after you have approved <strong>and merged</strong> the plan PR. Approval is a human act;
+      this command only records the result: it confirms the plan PR is merged (refuses otherwise —
+      the branch's resolve-all-comments rule guarantees each assumption was addressed), sets status to
+      <code>Ready for implementation</code>, and cleans up the plan branch. Approving also ratifies
+      the planner's test strategy. If plan review surfaced a story-level problem, don't approve —
+      close the plan PR and re-tag the story <code>Ready for intake</code>.</p>
+      <pre><code>/aind:approve-plan 1234</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-implement">
+      <div class="rc-head"><span class="rc-name">/aind:implement &lt;id&gt;</span></div>
+      <div class="rc-meta"><span class="pill">phase 3</span><span class="pill">warm coder</span><span class="pill">create + revise</span></div>
+      <p>Builds the merged plan into a code PR, then drives an independent code review to a verdict.
+      It grounds from the merged plan, the cited rule files, project skills, and real code; implements
+      the task breakdown; authors the tests the plan's strategy called for; polishes in-context; and
+      gets the project build <strong>and</strong> its tests green before opening the PR (with
+      <code>AB#</code> linking + an <code>AIND-LINKS</code> block including the plan-PR URL). It then
+      spawns the cold <a href="#agent-reviewer">reviewer</a> for up to three passes, fixing or
+      rebutting each blocking finding. A re-run on a story with an open code PR enters
+      <strong>revise mode</strong>: it applies only your PR steering (a picked suggestion, a tiebreak
+      verdict, a touch-up), replies on threads, and re-reviews. Status stays
+      <code>In implementation</code> throughout; scope ends at reviewer approval or a human tiebreak —
+      it does not merge.</p>
+      <pre><code>/aind:implement 1234</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-complete">
+      <div class="rc-head"><span class="rc-name">/aind:complete &lt;id&gt; [pr-number]</span></div>
+      <div class="rc-meta"><span class="pill">close-out</span><span class="pill">human-run</span><span class="pill">terminal</span></div>
+      <p>Run after the code PR is reviewer-approved and <strong>merged</strong>. It verifies the PR is
+      merged (refuses otherwise — it never tags an unmerged PR), writes the terminal
+      <code>Implementation complete</code> status, posts a signed completion note (PR URL + merge
+      commit), and cleans up the merged branch — in that order, so a failed tag-write leaves the item
+      recoverable. It finds the PR by searching on the work-item id; pass an explicit
+      <code>[pr-number]</code> if a story has more than one matching PR. It does not merge; it records
+      the merge you already made.</p>
+      <pre><code>/aind:complete 1234
+/aind:complete 1234 57      <span class="cmt"># when a story has multiple matching PRs</span></code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-dream">
+      <div class="rc-head"><span class="rc-name">/aind:dream</span></div>
+      <div class="rc-meta"><span class="pill">dreaming phase</span><span class="pill">cross-story</span><span class="pill">no args</span></div>
+      <p>Orchestrates one improvement cycle. As agents run they emit lessons-learned to the
+      <code>aind/lessons</code> branch; <code>/aind:dream</code> gathers that exhaust, has a cold
+      <a href="#agent-dreamer">dreamer</a> cluster it into recurring patterns and judge each
+      (severity × recurrence × factualness), lets you <strong>curate</strong> the clusters
+      (gate&nbsp;1), then turns approved ones into <strong>one PR against the project's
+      <code>.claude</code> config</strong> (gate&nbsp;2) for you to accept or reject. The dreamer only
+      ever touches the config layer — rules, skills, the rubric, project agent prompts — never the
+      flow; structural findings become a parking-lot note, not a diff. Run it standalone from a clean
+      main checkout.</p>
+      <pre><code>/aind:dream</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-map-states">
+      <div class="rc-head"><span class="rc-name">/aind:map-states "[work-item-type]"</span></div>
+      <div class="rc-meta"><span class="pill">ADO tracker only</span><span class="pill">optional</span></div>
+      <p>Configures the native-State mirror so an ADO work item's built-in <strong>State</strong>
+      field follows the AIND phase — for board-readers (PMs, functionals) who don't open the repo. It
+      discovers your process's existing States and maps each AIND status onto one that already exists;
+      it <strong>adopts existing states, never creates or forces new ones</strong>. The result is
+      written as <a href="#cfg-settings"><code>stateMap</code></a> in
+      <code>aind.settings.json</code>. Re-runnable anytime your States change. On the file tracker
+      there's no separate native State, so it stops and says so.</p>
+      <pre><code>/aind:map-states "User Story"</code></pre>
+    </div>
+
+    <!-- ==================== AGENTS ==================== -->
+    <h2 id="agents">Agents (sub-agents)</h2>
+    <p>The flow's two <strong>cold</strong> roles — independent checks, each spawned as a separate
+    invocation re-grounded from artifacts only, so their judgment isn't contaminated by the work they
+    check. You don't invoke them directly; a command spawns them.</p>
+
+    <div class="refcard" id="agent-reviewer">
+      <div class="rc-head"><span class="rc-name">aind-reviewer</span></div>
+      <div class="rc-meta"><span class="pill">cold</span><span class="pill">read-only</span><span class="pill">spawned by /aind:implement</span></div>
+      <p>The independent reviewer of a code PR. <code>/aind:implement</code> spawns it (up to three
+      passes) with only a work-item id and PR number — never the coder's reasoning. It re-grounds from
+      the PR diff, the merged plan, and <strong>every</strong> project rule and skill, then challenges
+      the implementation: spec alignment, scope creep, data contracts, rule/skill compliance,
+      cross-cutting concerns, correctness/edge cases, and — because the coder authored its own tests —
+      test <strong>coverage and fidelity</strong>. It also reads whether the PR still merges cleanly
+      into the integration branch and flags a conflict.</p>
+      <p>Findings are classified <strong>CRITICAL</strong> / <strong>WARNING</strong> (both block) /
+      <strong>SUGGESTION</strong> (taste-level, non-blocking), each citing <code>file:line</code>. It
+      posts resolvable inline threads + a summary comment and returns a verdict —
+      <code>CLEAN</code>, <code>CHANGES_REQUESTED</code>, or <code>CANNOT-REVIEW</code>. Its
+      independence is structural: it can't edit, commit, push, or run the build/tests (a
+      won't-build / won't-pass is a <em>finding to report</em>, not something it runs). It never
+      authors fixes and never rubber-stamps.</p>
+    </div>
+
+    <div class="refcard" id="agent-dreamer">
+      <div class="rc-head"><span class="rc-name">aind-dreamer</span></div>
+      <div class="rc-meta"><span class="pill">cold</span><span class="pill">spawned by /aind:dream</span><span class="pill">analyze + author</span></div>
+      <p>The independent synthesiser for the dreaming phase. <code>/aind:dream</code> spawns it twice:
+      once in <strong>analyze</strong> mode — it re-grounds from the accumulated lessons plus the
+      current <code>.claude</code> config, clusters the lessons by underlying issue, judges each with a
+      severity / recurrence / factualness rubric plus a confidence label, and returns the clusters
+      (no edits); then, after you curate, in <strong>author</strong> mode — on a fresh branch it makes
+      the smallest <code>.claude</code> edit that resolves each approved cluster.</p>
+      <p>Its authority is hard-bounded to the config layer. Four things are always out of bounds (→ a
+      parking-lot note instead): the flow itself (status model, gates, AIND operational rules), its
+      own guardrails (settings + enforcement/signing hooks), secrets (<code>aind.env</code>), and
+      anything outside <code>.claude/</code> (product code). It tells a guardrail from an in-scope file
+      by purpose, not name.</p>
+    </div>
+
+    <!-- ==================== SKILLS ==================== -->
+    <h2 id="skills">Skills</h2>
+    <p>Deterministic, reusable wrappers over the scripts layer. Agents call these to perform
+    work-item and PR mechanics; they're tracker- and code-host-agnostic where relevant, and config is
+    auto-loaded from <code>.claude/</code>.</p>
+
+    <div class="refcard" id="skill-workitem">
+      <div class="rc-head"><span class="rc-name">aind-workitem</span></div>
+      <p>Fetches a work item as normalized JSON — <code>id</code>, <code>title</code>,
+      <code>description</code>, <code>acceptanceCriteria</code>, <code>state</code>,
+      <code>dependsOn</code>, <code>links</code>. Read-only; used by an agent to ground itself in a
+      story before scoring or planning it. Works with either the Azure DevOps Boards or the local-file
+      tracker.</p>
+    </div>
+
+    <div class="refcard" id="skill-status">
+      <div class="rc-head"><span class="rc-name">aind-status</span></div>
+      <p>Sets the AIND status on a work item — the one sanctioned way to transition a story's phase. A
+      work item carries exactly one status: on ADO a single <code>AIND status - &lt;state&gt;</code>
+      tag swapped atomically (and optionally mirrored to the native State), and in the file tracker
+      the <code>state:</code> front-matter field.</p>
+    </div>
+
+    <div class="refcard" id="skill-comment">
+      <div class="rc-head"><span class="rc-name">aind-comment</span></div>
+      <p>Posts a <strong>signed</strong> comment to a work item — reasoning, a verdict, advisory
+      notes, or a stuck-state trail. This is the only sanctioned comment path: the script always
+      appends the agent's signature so posts stay attributable under one shared identity (on ADO a
+      hook blocks any raw comment that bypasses it). It renders a limited markdown subset (headings,
+      lists, bold, code, pipe tables).</p>
+    </div>
+
+    <div class="refcard" id="skill-plan-pr">
+      <div class="rc-head"><span class="rc-name">aind-plan-pr</span></div>
+      <p>Opens the plan PR for a story and posts each assumption / open question as its own resolvable
+      review thread, then supports the revise loop (read feedback, reply, push). Used by
+      <a href="#cmd-plan"><code>/aind:plan</code></a>. The agent never resolves threads — that's the
+      human's merge gate.</p>
+    </div>
+
+    <div class="refcard" id="skill-preflight">
+      <div class="rc-head"><span class="rc-name">aind-preflight</span></div>
+      <p>Checks the local environment for the AIND prerequisites — required tools, auth,
+      <code>AIND_*</code> config, and best-effort connectivity — and prints a
+      <code>PASS/WARN/FAIL/MANUAL</code> checklist. Read-only; it reports, never gates (always exits
+      0). Two items are <code>MANUAL</code> (can't be auto-verified): the Azure Boards ↔ GitHub
+      integration and the branch's resolve-comments rule.</p>
+    </div>
+
+    <div class="docfooter">
+      See also: <a href="getting-started.html">Getting started</a> ·
+      <a href="index.html">the flow diagram</a>.
+    </div>
+  </main>
+</div>
+
+<script>
+  // scrollspy: highlight the left-nav link for the section in view
+  (function(){
+    var links = Array.prototype.slice.call(document.querySelectorAll('.docs-side a'));
+    var map = {};
+    links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var targets = links.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); }).filter(Boolean);
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          if(map[e.target.id]) map[e.target.id].classList.add('active');
+        }
+      });
+    }, {rootMargin:'-60px 0px -70% 0px', threshold:0});
+    targets.forEach(function(t){ obs.observe(t); });
+  })();
+</script>
+</body>
+</html>

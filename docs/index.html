@@ -7,50 +7,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/aind.css">
 <style>
-  :root{
-    --ground:#0f1620;
-    --surface:#161f2b;
-    --surface-2:#1d2836;
-    --line:#2b3a4d;
-    --line-soft:#223044;
-    --text:#dde6f0;
-    --text-dim:#8da3bd;
-    --text-faint:#5e718a;
-    --plan:#5b8def;
-    --build:#8ea8c9;
-    --cold:#3fb6c4;
-    --warm:#e0a458;
-    --gate:#d98555;
-    --human:#cf7d8e;
-    --terminal:#6fcf97;
-    --dream:#a98bd8;
-    --shadow:0 18px 50px -12px rgba(0,0,0,.6);
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    background:var(--ground);
-    color:var(--text);
-    font-family:'Inter',system-ui,sans-serif;
-    font-weight:450;
-    line-height:1.55;
-    -webkit-font-smoothing:antialiased;
-    overflow:hidden;
-  }
-  /* faint blueprint grid on the ground */
-  body::before{
-    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background-image:
-      linear-gradient(var(--line-soft) 1px,transparent 1px),
-      linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
-    background-size:46px 46px;
-    opacity:.20;
-    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 35% 30%,#000 30%,transparent 85%);
-            mask-image:radial-gradient(ellipse 90% 80% at 35% 30%,#000 30%,transparent 85%);
-  }
+  /* Page-specific: the interactive flow diagram. Shared theme (vars, base, nav,
+     blueprint grid) lives in assets/aind.css. */
+  body.flow-page{overflow:hidden;display:flex;flex-direction:column;height:100vh}
 
-  .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column}
+  .app{position:relative;z-index:1;flex:1;min-height:0;display:flex;flex-direction:column}
 
   /* ---- header ---- */
   header{
@@ -253,13 +216,21 @@
   }
 </style>
 </head>
-<body>
+<body class="flow-page">
+<div class="topnav">
+  <a class="brand" href="index.html"><span class="mark">AIND</span> <span class="full">AI-Native Dev</span></a>
+  <nav>
+    <a href="index.html" class="active">Home</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="docs.html">Docs</a>
+  </nav>
+</div>
 <div class="app">
   <header>
     <div class="titlewrap">
       <div class="eyebrow">AI-Native Dev Flow · Plan + Build + Dream</div>
       <h1>One story, <span class="dim">two phases, three gates</span> — plus a dreaming loop</h1>
-      <div class="sub">An agentic pipeline on Azure DevOps + Claude Code (or GitHub Copilot CLI), with pull requests on GitHub or Azure DevOps Repos, plus a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
+      <div class="sub">An agentic pipeline on Claude Code (or GitHub Copilot CLI), with work items on Azure DevOps Boards or local files and pull requests on GitHub or Azure DevOps Repos, plus a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
     </div>
     <div class="statuswrap">
       <div class="lbl">AIND status tag</div>
@@ -332,8 +303,8 @@ const NODES = {
     kind:'terminal', phase:'terminal', temp:'human', shape:'round',
     title:'Story created', role:'entry',
     status:'Ready for intake',
-    body:`<p>A <strong>user story</strong> is the unit of work, authored by a developer or tech lead in Azure DevOps. It carries a title, intent, and acceptance criteria.</p><p>The human submits it for scoring by setting <em>AIND status — Ready for intake</em>. This is the single entry point to the whole flow.</p>`,
-    decisions:[['D1','Intake runs first; the story gate is unskippable.']],
+    body:`<p>A <strong>user story</strong> is the unit of work, authored by a developer or tech lead. It carries a title, intent, and acceptance criteria, and lives in the project's <strong>work-item tracker</strong> — either Azure DevOps Boards or a local markdown file per item, a per-project choice that the rest of the flow is blind to.</p><p>The human submits it for scoring by setting its status to <em>Ready for intake</em>. This is the single entry point to the whole flow.</p>`,
+    decisions:[['D1','Intake runs first; the story gate is unskippable.'],['D46','Pluggable work-item tracker: ADO Boards or a local file.']],
     related:['intake']
   },
   intake:{

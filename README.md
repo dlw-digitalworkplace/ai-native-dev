@@ -1,26 +1,24 @@
 # AI-Native Dev (AIND)
 
-An AI-native development flow — a multi-agent pipeline that carries an Azure DevOps (ADO) user
-story from readiness check → implementation plan → build → review, plus a continuous-improvement
-loop — implemented as a reusable plugin that runs on **Claude Code** and **GitHub Copilot CLI**.
+An AI-native development flow — a multi-agent pipeline that carries a user story from readiness
+check → implementation plan → build → review, plus a continuous-improvement loop — packaged as a
+reusable plugin that runs on **Claude Code** and **GitHub Copilot CLI**.
 
-Two independent, per-project choices: the **agent host** (where agents run — Claude Code or Copilot
-CLI) and the **code host** (where the code + pull requests live — **GitHub or Azure DevOps Repos**,
-selected by `AIND_CODE_HOST`). Work items always live in Azure DevOps.
+AIND is built around three independent, per-project choices:
 
-This README covers **what it is** and **where it stands**. To set it up and use it, see
-**[GETTING-STARTED.md](GETTING-STARTED.md)**. The full design is in `design-doc.md` /
-`design-log/`, with the flow diagram in `docs/index.html`.
+- **Agent host** — where the agents run: **Claude Code** or **GitHub Copilot CLI**.
+- **Code host** — where the code and its pull requests live: **GitHub** or **Azure DevOps Repos**
+  (`AIND_CODE_HOST`).
+- **Work-item tracker** — where the stories live: **Azure DevOps Boards** or a **local markdown
+  file** per item (`AIND_TRACKER`).
 
-> **Scope today:** the **plan phase** (intake → planning → plan review) and the build phase —
-> **coding** (`/aind:implement`, which builds the code PR then drives an independent **code review**
-> to a verdict, and on a re-run **revises** the open PR from the human's steering) and **close-out**
-> (`/aind:complete`, which verifies the merged PR and writes the terminal status) — run locally via
-> **Claude Code or GitHub Copilot CLI**, by hand (v0 manual scope, D6). The **dreaming phase**
-> (`/aind:dream`) is now built and live-validated. The testing redesign (planner test strategy →
-> coder-authored tests → reviewer as the test-quality gate) is built and live-validated, completing
-> the build phase; unattended automation is designed but not built — see
-> [Implementation status](#implementation-status).
+The three are orthogonal — pick each independently. On top of the core flow, AIND adds opt-in
+**git-worktree parallelism** (drive several stories from one clone) and opt-in **usage telemetry**
+(per-phase raw token + time recorded onto the work item).
+
+📖 **[Getting started](https://dlw-digitalworkplace.github.io/ai-native-dev/getting-started.html)**
+· **[Reference docs](https://dlw-digitalworkplace.github.io/ai-native-dev/docs.html)**
+· **[Flow diagram](https://dlw-digitalworkplace.github.io/ai-native-dev/)**
 
 ## What it does
 
@@ -32,22 +30,20 @@ agents:
   scan, a companion **kickstart** step elicits the same config through a guided conversation.
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric — and declines it
   if a story it depends on isn't implemented yet (a dependency gate, orthogonal to the score); a
-  **planner** turns an approved story into an implementation plan delivered as a GitHub PR; a human
-  reviews and approves it.
-- **Build phase** *(coder + reviewer + revision loop + merge close-out built)*: a **coding agent**
-  (`/aind:implement`) builds an approved plan into a GitHub code PR, then a cold, independent
-  **reviewer** challenges it and the two iterate to a verdict; a human can **steer the coder from the
-  PR** on a re-run (apply a picked suggestion or a tiebreak verdict — revise mode); once a human
-  merges, **`/aind:complete`** verifies the merge and writes the terminal `Implementation complete`
-  status. **Testing** (D33): the planner sets a per-story test strategy, the coder authors the tests
-  in-context, and the cold reviewer is the independence gate on test quality — built and
-  live-validated.
-- **Dreaming phase** *(built)*: agents emit lessons-learned to a dedicated branch as they run; the
-  manual **`/aind:dream`** command has a cold "dreamer" cluster that exhaust into patterns, a human
-  curates the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
+  **planner** turns an approved story into an implementation plan delivered as a pull request; a
+  human reviews and approves it.
+- **Build phase:** a **coding agent** (`/aind:implement`) builds an approved plan into a code PR,
+  then a cold, independent **reviewer** challenges it and the two iterate to a verdict; a human can
+  **steer the coder from the PR** on a re-run. Once a human merges, **`/aind:complete`** verifies
+  the merge and writes the terminal `Implementation complete` status. The planner sets a per-story
+  test strategy, the coder authors the tests in-context, and the cold reviewer is the independence
+  gate on test quality.
+- **Dreaming phase:** agents emit lessons-learned to a dedicated branch as they run; the manual
+  **`/aind:dream`** command has a cold "dreamer" cluster the exhaust into patterns, a human curates
+  the clusters, and the approved ones land as one `.claude` config PR to accept or reject.
 
-State is tracked by a single `AIND status - <state>` tag on the ADO work item; the code-host PRs
-(GitHub or ADO Repos) own the fine-grained iteration.
+State is tracked by a single `AIND status - <state>` value on the work item (an ADO tag or a
+front-matter field, depending on the tracker); the code-host PRs own the fine-grained iteration.
 
 ## Concepts
 
@@ -63,64 +59,21 @@ State is tracked by a single `AIND status - <state>` tag on the ADO work item; t
   reviewer is what independently checks them.
 - **Config layer vs. the flow.** Agents may shape the `.claude` config; they never change the
   flow itself (the status model, the gates, the structural decisions).
-- **Deterministic mechanics are scripted.** Agents make judgments; all ADO/GitHub side-effects
-  (tag swaps, signed comments, PRs, links) go through bash scripts — enforced where it matters
-  (e.g. a hook requires every ADO comment to be signed by its agent). Comments on GitHub PRs —
-  review summaries, resolvable threads, and replies — are signed by the posting agent too, so a
-  reviewer finding and a coder rebuttal stay distinguishable under one shared GitHub identity.
-
-Rationale for every choice is in `design-log/` (decisions **D1–D36**).
-
-## Repository layout
-
-```
-.claude-plugin/plugin.json   Claude Code manifest (name: aind)
-.github/plugin/plugin.json   GitHub Copilot CLI manifest (same plugin; points to the Copilot hook)
-commands/                    onboard, kickstart, intake, plan, approve-plan, implement, complete, dream  (human entry points)
-skills/                      aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/                     Bash mechanics over az + gh + curl (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter
-hooks/                       Per-host PreToolUse hooks enforcing signed ADO comments (Claude + Copilot)
-rubric/intake-rubric.seed.md D11 readiness rubric core (projects copy & extend)
-agents/                      reviewer.md (cold code-PR reviewer), dreamer.md (cold lessons synthesiser)
-project-template/            What a project copies into its own .claude/
-deploy.sh                    Publish to GitHub (Release-asset zip + Pages diagram)
-design-doc.md, design-log/ The design and the decisions (D1–D36)
-GETTING-STARTED.md           Prerequisites, install, setup, usage
-```
-
-## Implementation status
-
-**Implemented:** ✅ done · 🟡 partial · ⬜ not started  
-**Tested:** ✅ live (against real ADO/GitHub) · 🟡 offline (syntax/logic/fixtures) · ⬜ not tested · — n/a
-
-| Phase | Step / agent | Implemented | Tested | Notes |
-|---|---|:--:|:--:|---|
-| Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18); reads existing instruction files first, reads real source to capture deep, enforceable coding + functional conventions, and resolves competing patterns interactively (D45). |
-| Onboarding (pre-flow) | Kickstart agent — `/aind:kickstart` | ✅ | ✅ | Greenfield twin of onboard (D31): guided conversation → drafts the same `.claude/` config when there's no code to scan; skills cover build/test/run **and** other dev workflows (deploy, migrate, seed, …); undecided items become TODOs, never fabricated rules. Live-validated (session run). |
-| Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. **Dependency gate (D32):** declines a story whose linked ADO predecessors aren't implemented yet — orthogonal to the readiness score (a flawless story can score 100 and still be declined). |
-| Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. |
-| Plan · 2 | Plan review (human) | — | — | Human step in GitHub; no code. |
-| Plan · 2 | Close-out — `/aind:approve-plan` | ✅ | ✅ | Live-validated: refuses while the plan PR is unmerged; once merged, sets `Ready for implementation` and runs plan-branch cleanup. |
-| Build | Testing — strategy + authorship + review (D33) | ✅ | ✅ | **Redesigned; supersedes D8/D9/D14/D15.** Planner sets a per-story test strategy (whether/altitude/must-cover list, gated on the project having a test practice); the coder authors the tests in-context; the cold reviewer is the independence gate (coverage + fidelity **blocking**, meaningfulness a suggestion). The cold test-writer + live/E2E agent are removed; live verification is an optional Definition-of-done line satisfied by a human PR signal. **Live-validated end-to-end:** planner strategy + must-cover list, coder-authored tests, reviewer coverage/fidelity gate. |
-| Build | Coding agent — `/aind:implement` | ✅ | ✅ | Live-validated end-to-end on a real story: precondition gate, grounding + existing-pattern reuse, pre-PR project build, deviation reporting, code PR with AIND-LINKS + AB# linking. Now also drives the review loop below (D24) and is **mode-aware** — a re-run revises the open PR (D28); scope ends at reviewer approval / human tiebreak. |
-| Build | Polish (warm) — in `/aind:implement` | ✅ | ✅ | Final in-context phase of the coder — style/self-consistency only, no structural change. |
-| Build | Objective gate — build + tests green (pre-PR) | ✅ | ✅ | The coder gets the project build **and** its authored tests green **before** opening the PR — that pre-PR check is the flow's objective gate; the cold reviewer is the judgment gate. Project CI on the PR is deliberately **out of scope** — orthogonal to AIND, which ships/requires no pipeline (D34). |
-| Build | Reviewer agent (cold) — in `/aind:implement` | ✅ | ✅ | Live-validated: spawned cold from the coder with only the work-item id + PR number; checks the diff against the plan **and** the full rule/skill set; CRITICAL+WARNING block, SUGGESTION doesn't; posts resolvable threads + a summary; ≤3 passes with warm-coder fixes; deadlock → human tiebreak, tag unchanged (D26). |
-| Build | Code-revision loop — `/aind:implement` revise mode | ✅ | ✅ | Re-run on a story with an open code PR enters revise mode: check out the PR branch, read the steering digest, apply **only** human-directed changes (a picked suggestion, a tiebreak verdict, a touch-up), reply on threads (never resolve), push to the same PR, re-review by default (D28). Live-validated on a real story: applied only the directed change, re-reviewed CLEAN, tag unmoved. |
-| Build | Merge-conflict detection + rebase resolution — review loop (D38) | ✅ | ✅ | Each reviewer pass reads the PR's mergeability against integration (forge-normalised `MERGEABLE/CONFLICTING/UNKNOWN`; async `UNKNOWN` polled then advisory) and flags a `CONFLICTING` PR as a CRITICAL `merge:integration` finding; the coder clears it via `aind-revise-code-pr.sh <id> rebase` + a force-with-lease-aware push. Detection is a PR read, so the reviewer stays cold/read-only. Live-validated end-to-end on a real conflicting PR (flag → rebase + force-with-lease → re-review CLEAN). |
-| Build | Merge + `Implementation complete` — `/aind:complete` | ✅ | ✅ | Live-validated on AB#19: resolves the code PR, verifies MERGED (refuses otherwise), writes the terminal tag, posts a signed note, and cleans up the merged branch — verify-then-tag, merge first (D13/D27). |
-| Dreaming | Lessons-learned emission — `aind-emit-lesson.sh` | ✅ | ✅ | Live-validated: each agent emits a signed record (severity enum + observation) to the `aind/lessons` orphan branch at session end, via worktree-safe git plumbing; human PR feedback becomes correction/suggestion lessons through the revise runs (D30). |
-| Dreaming | Dreamer agent (cold) — `/aind:dream` | ✅ | ✅ | Live-validated end-to-end: the cold dreamer clusters unprocessed lessons and judges them (severity × recurrence × factualness), a human curates the clusters (gate 1), and approved clusters land as one `.claude` PR (gate 2). Caught a seeded lint-skill defect **and** surfaced genuine project-rule gaps (e.g. backend input-file-type validation); scope stays within `.claude`, structural findings → parking-lot (D30). |
-| Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. Onboard detects the host from the git remote; kickstart asks. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
-| Cross-cutting | Parallel work — opt-in git worktrees | ✅ | ✅ | Per-item git worktrees (D37) let one clone drive multiple stories at once. Opt-in via `worktree.enabled: true` in the shared `.claude/aind.settings.json` (with `worktreeRoot` + a `copyFiles` list of gitignored files/folders seeded into each fresh tree); `/aind:plan`→`<id>-plan` and `/aind:implement`→`<id>-impl` create a per-phase worktree, `/aind:approve-plan` and `/aind:complete` retire it. Portable git plumbing (`scripts/aind-worktree.sh`); **strict single-tree no-op when disabled.** Drive-from-main session model; intake and dreaming stay single-tree by design. **Live-exercised** (parallel implement → merge → conflict-resolve → complete); offline smoke test 18/18. |
-| Cross-cutting | Front-end — share `node_modules` across worktrees | ✅ | ⏳ | Optional `worktree.symlinkDirs` list in `aind.settings.json` (D39) shares heavyweight gitignored dirs (chiefly `node_modules`) across worktrees instead of re-installing per tree — a directory **junction** on Windows (no admin) / symlink on Unix, linked in on `ensure` and **safely unlinked before teardown** (removes the link, never `rm -rf` through it). Shared state (documented trade-off: re-install on dep change; concurrent-install hazard) — **pnpm recommended** where per-branch isolation matters. Generic (also `.next/cache`, `.venv`, …); **no-op when absent/empty.** Offline-validated; live-validation pending. |
-| Cross-cutting | Usage telemetry — per-phase raw tokens + time to ADO | ✅ | 🟡 | Optional `telemetry` block in `.claude/aind.settings.json` (`enabled` + one numeric `durationField`). Each phase (`intake`/`plan`/`approve-plan`/`implement`/`complete`) brackets its work with `aind-usage.sh begin`/`report`: it measures a **per-model, per-token-type** breakdown + wall-clock over the phase's timestamp window from the host's on-disk session events. **Raw usage only — no cost, no rate card** (pricing is done offline). The token breakdown is written as an **append-only JSON attachment** on the work item (the trace); **time** accumulates into the numeric field. A host-aware collector (`scripts/aind-usage.sh`) covers **both** hosts — Claude (all token classes, per model, deduped by message id, reviewer subagent transcripts folded in) and Copilot (output tokens only, single bucket); time is exact on both. Best-effort — fully inert until opted in, never blocks a phase. Offline unit-tested on both backends (per-model breakdown, dedupe, subagent fold-in, timestamp window, graceful no-op) + live transcript discovery verified; **live-validated end-to-end** on a real ADO item — intake (single-tree) and implement (worktree mode), the latter surfacing + fixing a worktree transcript-discovery bug (identity keys off the main checkout, not `$PWD`). |
-| Cross-cutting | Config — one shared settings file + a secrets env file | ✅ | ✅ | Per-project config is split (D41): shared settings (ADO org/project, code host, repo, branches, and the worktree block) live in a **checked-in** `.claude/aind.settings.json`, while `.claude/aind.env` keeps only the PAT + optional `AIND_ACTOR` (gitignored). The `AIND_*` env vars stay the interface — only the loaders changed (source `aind.env`, then `jq`-map the JSON into any still-unset var; an already-set environment wins). `/aind:onboard` + `/aind:kickstart` now **create and fill** both files and update `.gitignore` from guided answers, instead of dropping `.sample` copies. **Live-validated end-to-end** (onboard wrote both files + the gitignore line, preflight green, the flow ran through). |
+- **Deterministic mechanics are scripted.** Agents make judgments; all work-item / code-host
+  side-effects (status swaps, signed comments, PRs, links) go through bash scripts — enforced where
+  it matters (e.g. a hook requires every ADO comment to be signed by its agent). Comments on code-host
+  PRs are signed by the posting agent too, so a reviewer finding and a coder rebuttal stay
+  distinguishable under one shared identity.
 
 ## Docs
 
-- **[GETTING-STARTED.md](GETTING-STARTED.md)** — prerequisites, install/load, project setup, and how to use.
-- **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log/`** — decisions D1–D41 with rationale.
+- **[Getting started](https://dlw-digitalworkplace.github.io/ai-native-dev/getting-started.html)** —
+  prerequisites, install/load, project setup, and how to run the flow.
+- **[Reference](https://dlw-digitalworkplace.github.io/ai-native-dev/docs.html)** — every command,
+  agent, and skill, plus all `aind.settings.json` / `aind.env` configuration options.
+- **[Flow diagram](https://dlw-digitalworkplace.github.io/ai-native-dev/)** — an interactive visual
+  of the whole pipeline.
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed in each released version.
-- **`docs/index.html`** — visual flow diagram (served via GitHub Pages once deployed).
+- **`design-log/`** — the design record for maintainers: **every design decision and its rationale**
+  lives here (the `D<N>-…` decision files), alongside `design-log/design-doc.md` (how the flow works)
+  and `design-log/STATUS.md` (current build/validation status).

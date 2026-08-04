@@ -9,9 +9,7 @@
 # Leading slash anchors to the repo root, so e.g. project-template/CLAUDE.md (a runtime file)
 # is NOT matched — only the root CLAUDE.md is.
 /CLAUDE.md          export-ignore
-/GETTING-STARTED.md export-ignore
-/design-doc.md      export-ignore
-/design-log/      export-ignore
+/design-log/        export-ignore
 /deploy.sh          export-ignore
 /plans/             export-ignore
 /docs/              export-ignore

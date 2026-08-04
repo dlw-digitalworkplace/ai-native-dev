@@ -17,22 +17,25 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 
 ## Design docs (read these first for the "why")
 
-- **`STATUS.md`** — **where things stand right now** (what's built/validated, what's next). This
-  file (`CLAUDE.md`) holds only **stable rules**; anything fluid lives in `STATUS.md`. **Rule:
-  for current status or next steps, read `STATUS.md` — do not add status prose here, and update
-  `STATUS.md` (not this file) as work lands.**
-- **`design-doc.md`** — how the flow works (actors, phases, status model, glossary).
-- **`design-log/`** — the decisions **D1–D42**, **one file per decision** (`D<N>-<slug>.md`) with an
+- **`design-log/STATUS.md`** — **where things stand right now** (what's built/validated, what's
+  next, plus the at-a-glance **implementation-status matrix**). This file (`CLAUDE.md`) holds only
+  **stable rules**; anything fluid lives in `design-log/STATUS.md`. **Rule: for current status or
+  next steps, read `design-log/STATUS.md` — do not add status prose here, and update
+  `design-log/STATUS.md` (not this file) as work lands.**
+- **`design-log/design-doc.md`** — how the flow works (actors, phases, status model, glossary).
+- **`design-log/`** — the decisions **D1–D46**, **one file per decision** (`D<N>-<slug>.md`) with an
   index at `design-log/README.md`. This is the source of truth for *why* things are the way they
   are. Key ones to know: D4 (single `AIND status` tag invariant),
   D5 (plan PR + resolvable assumption threads), D6 (manual/local v0 scope; automation descoped),
   D10 (separate plan PR, `/plans/<id>/plan.md`), D11 (two-layer hybrid rubric), D13 (merge-then-tag),
   D16 (dreaming phase), D17 (AIND-LINKS), D18 (onboarding agent). A new decision is a **new file**
-  (`D43-…`), never an edit to a shared log — so parallel feature PRs don't collide on it.
+  (`D47-…`), never an edit to a shared log — so parallel feature PRs don't collide on it.
 - **`docs/plans/`** — the planned-feature backlog, one subfolder per feature, each a standalone PR
   (`docs/plans/README.md` indexes them).
-- **`docs/index.html`** — visual diagram (published via GitHub Pages).
-- **`README.md`** / **`GETTING-STARTED.md`** — install + per-project setup walkthrough.
+- **`docs/` site** — the **user-facing docs**, published via GitHub Pages: `index.html` (the
+  interactive flow diagram / Home), `getting-started.html` (setup + first run), `docs.html`
+  (reference: commands, agents, skills, config), sharing `docs/assets/aind.css`.
+- **`README.md`** — the lean GitHub landing page (points at the `docs/` site).
 
 ## Repo layout
 
@@ -46,6 +49,8 @@ hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
 project-template/  CLAUDE.md, aind.settings.sample.json, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
+docs/       index.html + getting-started.html + docs.html + assets/aind.css   (the user-facing site, GitHub Pages)
+design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-works) + STATUS.md (current status)
 ```
 
 ## Current status (2026-07-28)
@@ -635,10 +640,26 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   **never** cite a decision ID (`D4`, `D19`, …) or the literal `design-log` in them (prose,
   frontmatter `description`, code comments, or user-facing strings alike). Keep the decision's
   *substance* (e.g. "exactly one AIND status tag per item"), drop the citation. Decision
-  references live **only** in the repo's own dev docs: `design-log/`, `design-doc.md`, and this
-  `CLAUDE.md`. Quick guard before publishing:
+  references live **only** in the repo's own dev docs: `design-log/` (including its `design-doc.md`
+  and `STATUS.md`) and this `CLAUDE.md`. **This bars them from the `docs/` site too** — the
+  user-facing pages explain *how*, never *why*, and carry no decision IDs (the one exception is the
+  Home flow diagram's existing per-node "governing decisions" panel). Quick guard before publishing:
   `grep -rnE 'design-log|\bD[0-9]+\b' commands skills agents scripts hooks rubric project-template`
   should return nothing.
+- **Documentation has two surfaces — keep the user-facing one current in the same PR.**
+  *Internal decision/design docs* (for maintainers): `design-log/` — the `D<N>` decision files,
+  `design-log/design-doc.md` (how the flow works), `design-log/STATUS.md` (fluid status + the
+  implementation-status matrix) — and this `CLAUDE.md`. *User-facing usage docs* (for consumers):
+  `README.md` (a lean landing page) + the `docs/` site (`index.html` = the Home flow diagram,
+  `getting-started.html`, `docs.html`, sharing `docs/assets/aind.css`). When a change is
+  user-visible, update the site in the **same** PR:
+  - a new/changed/removed **command, agent, or skill** → `docs/docs.html` (Commands / Agents / Skills);
+  - a new/changed **config key** → `docs/docs.html` Config **and** the
+    `project-template/aind.settings.sample.json` / `aind.env.sample`;
+  - changed **prerequisites / install / flow steps** → `docs/getting-started.html`;
+  - changed **phases, gates, or the status model** → the `docs/index.html` flow-diagram node data.
+  Keep `README.md` lean — no status/progress/repo-layout/implementation-status prose (that lives in
+  `design-log/STATUS.md`).
 - **Design log is one file per decision (`design-log/D<N>-<slug>.md`).** Adding a decision = adding a
   **new file** and one row to `design-log/README.md`'s index — never editing a shared monolith, so
   concurrent feature PRs don't conflict on it. New numbers (D43+) are assigned **in merge order**
@@ -655,8 +676,8 @@ agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons s
   (not direct exec) so the plugin runs even when a zip/clone drops the executable bit. Keep new
   calls in that form.
 - **Publishing (`deploy.sh`):** publishes to a public GitHub repo for remote loading — a
-  root-structured `aind.zip` from `HEAD` (`git archive`) as a **Release asset**, and the diagram
-  `docs/index.html` to **Pages** (served from `<branch>/docs`). Load with
+  root-structured `aind.zip` from `HEAD` (`git archive`) as a **Release asset**, and the `docs/`
+  site (Home diagram + getting-started + docs, served from `<branch>/docs`) to **Pages**. Load with
   `claude --plugin-url …/releases/latest/download/aind.zip`. The zip is a snapshot — re-deploy
   after changes; bump `plugin.json` `version` for a new release tag. `aind.zip` is gitignored.
 
