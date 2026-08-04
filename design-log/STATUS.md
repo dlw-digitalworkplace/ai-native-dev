@@ -4,8 +4,8 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-08-04)
 
-- **Pre-story research command — `/aind:research` (D48, 2026-08-04, offline-validated;
-  live-validation pending).** An optional, pre-flow thinking aid that researches technical approaches
+- **Pre-story research command — `/aind:research` (D48, 2026-08-04, live-validated
+  end-to-end).** An optional, pre-flow thinking aid that researches technical approaches
   **before a user story exists** and writes the findings as a markdown file for the human to review.
   Warm in-session slash command (it authors an artifact a human reviews — per D20). It **grounds in the
   codebase first** (read-only: rules/skills + real source + manifests/lockfiles for the pinned
@@ -382,7 +382,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Phase | Step / agent | Implemented | Tested | Notes |
 |---|---|:--:|:--:|---|
 | Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18); reads existing instruction files first, reads real source to capture deep, enforceable coding + functional conventions, and resolves competing patterns interactively (D45). |
-| Research (pre-flow, optional) | Research agent — `/aind:research` | ✅ | 🟡 | Pre-story approach research (D48): codebase-grounded + web-current, writes linked markdown findings (options, discarded paths, trade-offs, risks, recommendation) to a configurable `research.dir` (default `.aind/research`, gitignored). Warm command; asks clarifying questions; suggests, never creates the story. Purely additive — no status/gate/tracker/PR. Offline-validated; live-validation pending. |
+| Research (pre-flow, optional) | Research agent — `/aind:research` | ✅ | ✅ | Pre-story approach research (D48): codebase-grounded + web-current, writes linked markdown findings (options, discarded paths, trade-offs, risks, recommendation) to a configurable `research.dir` (default `.aind/research`, gitignored). Warm command; asks clarifying questions; suggests, never creates the story. Purely additive — no status/gate/tracker/PR. **Live-validated end-to-end.** |
 | Onboarding (pre-flow) | Kickstart agent — `/aind:kickstart` | ✅ | ✅ | Greenfield twin of onboard (D31): guided conversation → drafts the same `.claude/` config when there's no code to scan; skills cover build/test/run **and** other dev workflows (deploy, migrate, seed, …); undecided items become TODOs, never fabricated rules. Live-validated (session run). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. **Dependency gate (D32):** declines a story whose linked ADO predecessors aren't implemented yet — orthogonal to the readiness score (a flawless story can score 100 and still be declined). |
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. Attended/headless sparring mode (D44). |
