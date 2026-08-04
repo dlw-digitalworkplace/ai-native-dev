@@ -149,6 +149,8 @@ and note it.
    ```bash
    grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >> .gitignore
    grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
+   # only when the research dir is the in-repo default (not an external absolute path):
+   grep -qxF '.aind/research/' .gitignore 2>/dev/null || echo '.aind/research/' >> .gitignore
    # only if worktrees were enabled:
    grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
    # only for the file tracker with the in-repo default store (not an external path):

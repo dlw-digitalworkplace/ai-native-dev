@@ -2,8 +2,28 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `../CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `../docs/plans/` for the planned-feature backlog and the sibling `D<N>` decision files in this folder for the decision record. The **Implementation status** matrix at the bottom of this file is the at-a-glance companion to the per-decision bullets above._
 
-## Current status (2026-07-30)
+## Current status (2026-08-04)
 
+- **Pre-story research command — `/aind:research` (D48, 2026-08-04, offline-validated;
+  live-validation pending).** An optional, pre-flow thinking aid that researches technical approaches
+  **before a user story exists** and writes the findings as a markdown file for the human to review.
+  Warm in-session slash command (it authors an artifact a human reviews — per D20). It **grounds in the
+  codebase first** (read-only: rules/skills + real source + manifests/lockfiles for the pinned
+  toolchain) so the actual stack steers the research and rules options in/out, while the command stays
+  technology-agnostic (grounding discovered per run). Uses **web search** (`WebSearch`/`WebFetch` —
+  net-new plugin tools) for current versions/docs/alternatives, citing every source with the date
+  checked (marks currency claims unverified rather than inventing when web tools are absent). Documents
+  options, **discarded paths + why**, trade-offs, risks/unknowns, open questions, a recommendation, and
+  References; asks clarifying questions (`AskUserQuestion`, batched either/ors — the D44 pattern) for
+  ambiguities/contradictions before going deep. Output is markdown at a configurable
+  `research.dir` (`.claude/aind.settings.json` → `AIND_RESEARCH_DIR`, default `.aind/research`,
+  gitignored), one file per topic (`<date>-<slug>.md`), the dir resolved off the **main checkout**
+  (`git --git-common-dir`) so it is worktree-safe. New `commands/research.md` + thin
+  `scripts/aind-research.sh` (`dir`/`path` — the only deterministic mechanics). **Purely additive:**
+  no AIND status, no gate, no tracker/code-host/telemetry touch — it suggests; the human decides and
+  authors the story (`/aind:new-item` or the tracker). Same pre-flow slot as `/aind:onboard` /
+  `/aind:kickstart` (not a flow-diagram node). Config/packaging side of the D1–D15 line; the flow,
+  status model, gates, and PR contract are untouched.
 - **Pluggable work-item tracker — a local markdown-file backend (D46, 2026-07-30, offline-validated
   + live-validated end-to-end).** Where work items live is now a **third pluggable axis** (alongside the
   D22 agent host and D36 code host), selected per project by `AIND_TRACKER=ado|file` (default `ado`,
@@ -362,6 +382,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Phase | Step / agent | Implemented | Tested | Notes |
 |---|---|:--:|:--:|---|
 | Onboarding (pre-flow) | Onboarding agent — `/aind:onboard` | ✅ | ✅ | Three-lens, evidence-only rule discovery (D18); reads existing instruction files first, reads real source to capture deep, enforceable coding + functional conventions, and resolves competing patterns interactively (D45). |
+| Research (pre-flow, optional) | Research agent — `/aind:research` | ✅ | 🟡 | Pre-story approach research (D48): codebase-grounded + web-current, writes linked markdown findings (options, discarded paths, trade-offs, risks, recommendation) to a configurable `research.dir` (default `.aind/research`, gitignored). Warm command; asks clarifying questions; suggests, never creates the story. Purely additive — no status/gate/tracker/PR. Offline-validated; live-validation pending. |
 | Onboarding (pre-flow) | Kickstart agent — `/aind:kickstart` | ✅ | ✅ | Greenfield twin of onboard (D31): guided conversation → drafts the same `.claude/` config when there's no code to scan; skills cover build/test/run **and** other dev workflows (deploy, migrate, seed, …); undecided items become TODOs, never fabricated rules. Live-validated (session run). |
 | Plan · 0 | Intake agent — `/aind:intake` | ✅ | ✅ | Live-validated fail→fix→pass; signed verdict, scoring, table, tag swap. **Dependency gate (D32):** declines a story whose linked ADO predecessors aren't implemented yet — orthogonal to the readiness score (a flawless story can score 100 and still be declined). |
 | Plan · 1 | Planner agent — `/aind:plan` | ✅ | ✅ | Live-validated (plan.md, plan PR, AIND-LINKS, assumption threads). Enriched plan template (D23): keep-it-simple/non-goals, conditional data contracts, rule-citing task breakdown, considerations, sourced definition-of-done. Attended/headless sparring mode (D44). |

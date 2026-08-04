@@ -21,6 +21,9 @@
   "planning": {
     "mode": "auto"
   },
+  "research": {
+    "dir": ".aind/research"
+  },
   "worktree": {
     "enabled": false,
     "worktreeRoot": ".claude/worktrees",

@@ -28,6 +28,10 @@ agents:
 - **Onboarding** (one-time, pre-flow): reads an existing codebase and drafts the project's
   `.claude/` config (rules, skills, rubric copy). For a **new/greenfield** project with no code to
   scan, a companion **kickstart** step elicits the same config through a guided conversation.
+- **Research** (optional, pre-story): before a story is written, a **research** agent
+  (`/aind:research`) explores technical approaches for a topic — grounded in the codebase and current
+  via web search — and writes linked markdown findings (options, trade-offs, discarded paths, risks) to
+  inform the story.
 - **Plan phase:** an **intake** agent scores the story against a readiness rubric — and declines it
   if a story it depends on isn't implemented yet (a dependency gate, orthogonal to the score); a
   **planner** turns an approved story into an implementation plan delivered as a pull request; a
