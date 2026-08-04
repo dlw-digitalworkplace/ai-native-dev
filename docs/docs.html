@@ -32,6 +32,7 @@
     <div class="grouphead">Commands</div>
     <a href="#cmd-onboard">/aind:onboard</a>
     <a href="#cmd-kickstart">/aind:kickstart</a>
+    <a href="#cmd-research">/aind:research</a>
     <a href="#cmd-new-item">/aind:new-item</a>
     <a href="#cmd-intake">/aind:intake</a>
     <a href="#cmd-plan">/aind:plan</a>
@@ -106,6 +107,10 @@
         <tr><td><code>planning.mode</code></td><td><code>AIND_PLAN_MODE</code></td>
           <td>Optional. Default mode for <code>/aind:plan</code>: <code>auto</code>,
             <code>attended</code>, or <code>headless</code>.</td></tr>
+        <tr><td><code>research.dir</code></td><td><code>AIND_RESEARCH_DIR</code></td>
+          <td>Optional. Where <a href="#cmd-research"><code>/aind:research</code></a> writes its
+            markdown findings (default <code>.aind/research</code>, gitignored). May be an absolute
+            path outside the repo.</td></tr>
         <tr><td><code>stateMap</code></td><td><code>AIND_STATE_MAP</code></td>
           <td>Optional, ADO tracker only. Maps each AIND status → a native ADO State so the board
             mirrors the flow. Produced by <a href="#cmd-map-states"><code>/aind:map-states</code></a>;
@@ -222,6 +227,23 @@
       approval before writing. Re-run <code>/aind:onboard</code> once real code exists to reconcile
       the drafts.</p>
       <pre><code>/aind:kickstart      <span class="cmt"># run from the new project root</span></code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-research">
+      <div class="rc-head"><span class="rc-name">/aind:research "&lt;topic&gt;"</span></div>
+      <div class="rc-meta"><span class="pill">pre-story</span><span class="pill">warm</span><span class="pill">web search</span></div>
+      <p>An optional thinking aid <strong>before a story exists</strong>. It researches technical
+      approaches for a topic and writes the findings as a markdown file for you to review. It
+      <strong>grounds in your codebase first</strong> (rules, skills, real source, pinned toolchain) so
+      the actual stack steers the research, then uses <strong>web search</strong> to check current
+      package versions, official docs, and alternatives — citing every source. The findings document
+      the options explored, the paths discarded and <em>why</em>, trade-offs, risks, open questions, and
+      a recommendation; it asks clarifying questions when the topic is ambiguous or contradicts the
+      codebase. Output is markdown at <a href="#cfg-settings"><code>research.dir</code></a> (default
+      <code>.aind/research</code>, gitignored), one file per topic. It <strong>suggests</strong> — it
+      changes no status, opens no PR, and never creates the story; author that next with
+      <a href="#cmd-new-item">/aind:new-item</a> or in your tracker.</p>
+      <pre><code>/aind:research "options for background job scheduling"</code></pre>
     </div>
 
     <div class="refcard" id="cmd-new-item">

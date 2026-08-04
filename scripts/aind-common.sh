@@ -22,6 +22,9 @@
 #                                                             /aind:map-states, read by aind-status.sh)
 #                                 .planning.mode           -> AIND_PLAN_MODE (optional; auto|attended|
 #                                                             headless — the /aind:plan run mode default)
+#                                 .research.dir            -> AIND_RESEARCH_DIR (optional; where
+#                                                             /aind:research writes findings; default
+#                                                             <main-checkout>/.aind/research)
 #                               (token detail is stored as a work-item attachment, not a field.)
 #                               (the .worktree block is read by aind-worktree.sh, not exported here.)
 #   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
@@ -206,6 +209,9 @@ aind_autosource_env() {
           # stateMap is an object, not a scalar — surface it as a compact JSON string.
           aind_export_from_settings AIND_STATE_MAP                "$sf" '(.stateMap // empty) | tojson'
           aind_export_from_settings AIND_PLAN_MODE                "$sf" '.planning.mode'
+          # Pre-story research: where /aind:research writes its findings (default resolved by
+          # aind-research.sh when unset).
+          aind_export_from_settings AIND_RESEARCH_DIR             "$sf" '.research.dir'
         fi
       fi
       return 0

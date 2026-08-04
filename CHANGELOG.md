@@ -9,6 +9,22 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.23.0] — 2026-08-04
+
+### Added
+- **Pre-story research command `/aind:research "<topic>"`** (D48). An optional, pre-flow thinking aid
+  that researches technical approaches **before a user story exists** and writes the findings as a
+  markdown file for the human to review. It **grounds in the codebase first** (read-only — rules,
+  skills, real source, pinned toolchain) so the project's actual stack steers the research, while the
+  command stays technology-agnostic; uses **web search** (`WebSearch`/`WebFetch`) to act on current
+  package versions, docs, and alternatives, citing every source; documents options, **discarded paths
+  and why**, trade-offs, risks, and a recommendation; and asks clarifying questions (`AskUserQuestion`)
+  for ambiguities or contradictions before going deep. Output is markdown at a configurable location
+  (`research.dir` in `.claude/aind.settings.json`, default `.aind/research`, gitignored), one file per
+  topic, resolved via the new thin `scripts/aind-research.sh` (`dir` / `path`). Purely additive:
+  **no** status, gate, tracker, code-host, or telemetry involvement — it suggests, the human decides
+  and authors the story. Sits in the same pre-flow slot as `/aind:onboard` / `/aind:kickstart`.
+
 ## [0.22.0] — 2026-07-31
 
 ### Changed

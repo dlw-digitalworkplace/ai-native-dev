@@ -284,13 +284,15 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
 ```bash
 grep -qxF '.claude/aind.env' .gitignore 2>/dev/null || echo '.claude/aind.env' >> .gitignore
 grep -qxF '.aind/usage/' .gitignore 2>/dev/null || echo '.aind/usage/' >> .gitignore
+# only when the research dir is the in-repo default (not an external absolute path):
+grep -qxF '.aind/research/' .gitignore 2>/dev/null || echo '.aind/research/' >> .gitignore
 # only if worktrees were enabled:
 grep -qxF '.claude/worktrees/' .gitignore 2>/dev/null || echo '.claude/worktrees/' >> .gitignore
 # only for the file tracker AND only when the item store is the in-repo default (not an external path):
 grep -qxF '.aind/items/' .gitignore 2>/dev/null || echo '.aind/items/' >> .gitignore
 ```
-(`.aind/usage/` holds transient per-phase telemetry markers — always gitignored, harmless when the
-feature is off.)
+(`.aind/usage/` holds transient per-phase telemetry markers and `.aind/research/` holds local
+pre-story research findings — both always gitignored, harmless when unused.)
 
 ### 6.5 Offer the native-State mirror (optional — ADO tracker only)
 **Skip this step entirely when the tracker is `file`** — the file backend stores the AIND state
