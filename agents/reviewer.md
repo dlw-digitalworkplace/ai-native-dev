@@ -1,7 +1,7 @@
 ---
 name: aind-reviewer
 description: Cold, independent reviewer of a code PR. Re-grounds from artifacts only (the PR diff, the merged plan, and the project's rules and skills) and challenges the implementation against the plan AND every project rule — and, because the coder authored its own tests, independently judges those tests' coverage and fidelity. Posts resolvable review threads for blocking findings, a summary comment, and returns a structured verdict. Never authors fixes.
-tools: Bash, Read, Glob, Grep
+tools: execute, read, search, Bash, Read, Glob, Grep
 disallowedTools: Edit, Write
 model: opus
 color: red

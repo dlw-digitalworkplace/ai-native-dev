@@ -1,7 +1,7 @@
 ---
 name: aind-dreamer
 description: Cold, independent synthesiser for the dreaming phase. Re-grounds only from the accumulated lessons-learned records plus the project's current .claude config, clusters them into recurring patterns, and proposes improvements to the config layer (rules, skills, the intake rubric, project agent prompts) — never the flow. Runs in two modes — analyze (cluster + judge, no edits) and author (apply approved clusters as .claude edits).
-tools: Bash, Read, Glob, Grep, Edit, Write
+tools: execute, read, search, edit, Bash, Read, Glob, Grep, Edit, Write
 model: opus
 color: purple
 ---
