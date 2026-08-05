@@ -9,6 +9,24 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.24.1] — 2026-08-05
+
+### Fixed
+- **Command arguments now reach the command on GitHub Copilot CLI, not just Claude Code** (D50,
+  sibling of D49; live-validated on both hosts). After D49 fixed script *resolution* on Copilot,
+  `/aind:implement 1` still failed there — the work item never arrived (`aind-revise-code-pr.sh ""
+  status`; body rendered `Work item: ****`). Commands identified the work item with the positional
+  macro `$1`, which **only Claude Code substitutes**; Copilot CLI substitutes only `$ARGUMENTS` (the
+  raw text after the command name), so every argument-taking command was broken on Copilot. All
+  commands now use **`$ARGUMENTS`**: a verbatim swap for single-argument commands (`intake`,
+  `approve-plan`, `implement`, `map-states`; `research`/`new-item` already used it — value-identical
+  on Claude), and, for the two-positional commands (`plan <id> [attended|headless]`,
+  `complete <id> [pr-number]`), **in-shell token extraction** from the single `$ARGUMENTS` string
+  (`${A%% *}` = work-item id, second token = pr/mode) so both the one- and two-argument cases work
+  on both hosts with no Claude regression. The D49 permission-allowlist prefix
+  (`bash -c 'R="$1"; shift;*`) is preserved. `/aind:env-probe` gains an argument-substitution test
+  (`[6]`) as the permanent dual-host validator for this axis.
+
 ## [0.24.0] — 2026-08-05
 
 ### Fixed

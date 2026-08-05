@@ -6,11 +6,11 @@ allowed-tools: Bash
 
 # /complete — build phase close-out
 
-Human-run helper for after the code PR for story `$1` has been **reviewer-approved and merged** in
-GitHub. Merging is a human act — the human is the final authority on what lands; this command only
+Human-run helper for after the code PR for story `$ARGUMENTS` has been **reviewer-approved and merged**
+in GitHub. Merging is a human act — the human is the final authority on what lands; this command only
 **confirms** the merge and records the resulting terminal status. It does **not** merge anything.
 
-Work item: **$1**
+Work item: **$ARGUMENTS** (the first token is the work-item id; an optional second token is a PR number).
 
 ## Procedure
 
@@ -28,16 +28,16 @@ All the steps below then run from the main checkout.
 **Then stamp the phase start (telemetry).** Best-effort usage telemetry — records nothing unless the
 project opted in, and never blocks close-out:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$1" completer
+bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" begin "${A%% *}" completer' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
 ```
 
 1. **Verify the code PR is merged.** Resolve the story's code PR and confirm it is `MERGED`:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-complete.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" verify "$1" $2
+   bash -c 'R="$1"; shift; A="$1"; shift; P="${A#* }"; [ "$P" = "$A" ] && P=""; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-complete.sh" verify "${A%% *}" $P' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
-   (The optional `$2` is a PR number — pass it when the story has more than one matching PR, or when
-   the search can't find it.) On success this prints one line: `<pr-number> <pr-url> <head-ref>
-   <merge-commit-sha>` — keep these for steps 2–4.
+   (An optional **second argument** is a PR number — pass it when the story has more than one matching
+   PR, or when the search can't find it.) On success this prints one line: `<pr-number> <pr-url>
+   <head-ref> <merge-commit-sha>` — keep these for steps 2–4.
 
    **If it refuses — STOP.** The command only writes the terminal tag *after* a confirmed merge, so a
    completed tag can never sit on an unmerged PR. Do **not** run the remaining steps. Relay its
@@ -46,7 +46,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
 2. **Write the terminal status.** Reached only because step 1 confirmed the merge (merge first, then
    tag):
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Implementation complete"
+   bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "${A%% *}" "Implementation complete"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
    If this fails, stop and report it: the item stays `In implementation` and is safely re-runnable —
    never leave it falsely complete.
@@ -55,7 +55,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    heredoc — one command, no `cat |` pipe — and substitute the real PR URL and merge commit from
    step 1):
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" coder <<'EOF'
+   bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "${A%% *}" coder' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" <<'EOF'
    ## Implementation complete
    Code PR <pr-url> has been merged; this story is now **Implementation complete**.
    Merge commit: <merge-commit-sha>.
@@ -71,7 +71,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    current (fast-forward only — a diverged branch is left for a manual pull). Pass the PR number from
    step 1:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-complete.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" cleanup "$1" <pr-number>
+   bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-complete.sh" cleanup "${A%% *}" <pr-number>' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
    **In worktree mode** this step also retires the item's implement worktree before deleting the
    branch and fast-forwarding the main checkout. Because the first step above returned this session
@@ -84,7 +84,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    silent no-op when the project hasn't opted in.
    Never fails close-out:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" completer
+   bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" report "${A%% *}" completer' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
 
 ## Report

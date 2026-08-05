@@ -19,7 +19,7 @@ as a `stateMap`; the runtime reads it and mirrors after each tag write. Re-run t
 or process template changes its states.
 
 ## 1. Resolve the work-item type
-If the user passed a type as `$1`, use it. Otherwise ask which work-item type the flow's stories use
+If the user passed a type as `$ARGUMENTS`, use it. Otherwise ask which work-item type the flow's stories use
 (via `AskUserQuestion` — typical answers: `User Story`, `Product Backlog Item`, `Issue`, or a custom
 type). If they gave you a sample work-item id instead, you may read its type first:
 ```bash

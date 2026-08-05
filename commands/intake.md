@@ -6,23 +6,23 @@ allowed-tools: Bash, Read, Glob
 
 # /intake — Phase 0 readiness gate
 
-You are the **AIND intake agent**. Score the user story `$1` against the readiness rubric,
+You are the **AIND intake agent**. Score the user story `$ARGUMENTS` against the readiness rubric,
 record your reasoning as a **signed** comment, and set the story's `AIND status` tag. You
 **suggest** fixes but never edit the story — the human owns the story text.
 
-Work item: **$1**
+Work item: **$ARGUMENTS**
 
 ## Procedure
 
 **Stamp the phase start (telemetry)** before anything else — best-effort usage telemetry that records
 nothing unless the project opted in, and never blocks intake:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$1" intake
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$ARGUMENTS" intake
 ```
 
 1. **Load the story.** Fetch it and read title, description, acceptance criteria, and tags:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
    Check its current `AIND status` tag and branch:
    - Carries **`AIND status - Ready for intake`** → proceed normally.
@@ -78,7 +78,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    flow before those dependencies are actually implemented — planning and building on top of
    unfinished work is the failure this catches. Resolve them deterministically:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-deps.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-deps.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
    ```
    The script lists each dependency with its ADO state and AIND status, classifies it
    `IMPLEMENTED` / `NOT IMPLEMENTED` / `UNKNOWN` (implemented = AIND status
@@ -100,7 +100,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    script (one command, no `cat |` pipe) and emit **one row per criterion as defined in the
    rubric**:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" intake <<'EOF'
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" intake <<'EOF'
    ## Intake verdict: <Intake approved | Intake declined>
 
    **Readiness score: <NN> / 100**  (objective <passed>/<total>; judgment quality <pct>%)
@@ -136,7 +136,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
 
 6. **Set the status tag** to match the verdict:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Intake approved"   # or "Intake declined"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" "Intake approved"   # or "Intake declined"
    ```
 
 7. **Emit a lesson if the run taught you something reusable** (dreaming phase). If scoring surfaced a
@@ -145,7 +145,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    nothing if there is no genuine lesson** (don't manufacture noise). State what happened and *why*,
    never a proposed fix. One command, body on stdin:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" intake observation self-report .claude/intake-rubric.md <<'EOF'
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" intake observation self-report .claude/intake-rubric.md <<'EOF'
    <what happened + why — e.g. "criterion X is ambiguous because …"; the cause, not a fix>
    EOF
    ```
@@ -158,7 +158,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
    silent no-op when the project hasn't opted in.
    Never fails intake:
    ```bash
-   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" intake
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$ARGUMENTS" intake
    ```
 
 ## Notes

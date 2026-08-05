@@ -60,6 +60,7 @@ Each decision is its own file in this directory; a new decision = a new `D<N>-<s
 | D47 | Documentation restructure — a user-facing multi-page `docs/` site vs. an internal decision log (docs/packaging side of the D1–D15 line; relates to D22, D36, D41, D42, D46) | [D47](D47-docs-restructure.md) | Active | 2026-07-31 |
 | D48 | Pre-story research command `/aind:research` — an optional, codebase-grounded, web-current approach-research aid before intake (config/packaging side of the D1–D15 line; relates to D18, D31, D46) | [D48](D48-pre-story-research.md) | Active | 2026-08-04 |
 | D49 | Portable plugin-root resolution across agent hosts — a self-locating `bash -c` resolver replacing the Claude-only `${CLAUDE_PLUGIN_ROOT}` invocation, so scripts run on Copilot CLI too (script-invocation mechanics on the D22 agent-host axis; hooks unchanged) | [D49](D49-portable-plugin-root.md) | Active | 2026-08-05 |
+| D50 | Portable command arguments across agent hosts — commands use `$ARGUMENTS` (filled by both hosts) instead of the Claude-only positional `$1`/`$2`, deriving id/pr/mode tokens in-shell for the two-positional commands, so argument-taking commands work on Copilot CLI too (sibling of D49 on the D22 agent-host axis) | [D50](D50-portable-command-arguments.md) | Active | 2026-08-05 |
 
 ---
 
