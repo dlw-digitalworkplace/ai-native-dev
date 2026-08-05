@@ -1,5 +1,6 @@
 ---
 description: Diagnostic — how this host resolves the plugin root, and whether the portable resolver works (dual-host).
+argument-hint: "[probe-arg]"
 allowed-tools: Bash
 ---
 
@@ -53,6 +54,13 @@ failure on Copilot):
 bash -c 'f="$1/scripts/aind-common.sh"; [ -f "$f" ] && echo "[5] current-form OK: $f" || echo "[5] current-form FAIL: [$1]"' _ "${CLAUDE_PLUGIN_ROOT}"
 ```
 
+**[6] Argument substitution — which macro does this host fill?** Run this command **with an
+argument**, e.g. `/aind:env-probe probe-arg`. The command passes the `$ARGUMENTS` macro as bash `$1`
+and the positional `$1` macro as bash `$2`, then echoes both:
+```
+bash -c 'echo "[6] ARGUMENTS=[$1] DOLLAR1=[$2]"' _ "$ARGUMENTS" "$1"
+```
+
 ## How to read it
 
 | Result | Claude Code (healthy) | Copilot CLI (healthy) |
@@ -62,8 +70,13 @@ bash -c 'f="$1/scripts/aind-common.sh"; [ -f "$f" ] && echo "[5] current-form OK
 | **[3] nested-macro** | a real path *or* `[]` — tells us whether the macro survives nesting | `[]` |
 | **[4] RESOLVER** | `OK` with a valid root | `OK` (via self-location) |
 | **[5] current-form** | `OK` | `FAIL` — the reason the flow breaks on Copilot today |
+| **[6] arg-macros** | `ARGUMENTS=[probe-arg] DOLLAR1=[probe-arg]` — both filled | `ARGUMENTS=[probe-arg] DOLLAR1=[]` — only `$ARGUMENTS` |
 
-**[4] is the pass/fail gate:** if it reports `OK` on *both* hosts, the portable resolver is the fix
-to roll out across the commands. If [4] fails on a host, capture the raw output — the combination of
-[2]/[3]/[5] on that host tells us which assumption broke (macro no longer substituted, install path
-moved, etc.).
+**[4] is the plugin-root pass/fail gate:** if it reports `OK` on *both* hosts, the portable resolver
+is the fix to roll out across the commands. If [4] fails on a host, capture the raw output — the
+combination of [2]/[3]/[5] on that host tells us which assumption broke (macro no longer substituted,
+install path moved, etc.).
+
+**[6] is the argument pass/fail gate:** it is why commands identify the work item with `$ARGUMENTS`
+(filled by both hosts), never the positional `$1`/`$2` (Claude-only). If a host ever shows
+`ARGUMENTS=[]`, argument passing on that host has changed — the commands would need re-checking.

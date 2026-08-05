@@ -522,6 +522,21 @@ design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-w
   *inside* it, never after the closing quote — a bare `>/dev/null` outside is mis-parsed by PowerShell
   as `Out-File C:\dev\null`). Verify a host with **`/aind:env-probe`** (its test `[4]` *is* the
   shipping preamble). *(The prior note "works under Copilot" was hook-only and wrongly generalised.)*
+- **Command arguments use `$ARGUMENTS`, NOT positional `$1`/`$2` (D50, sibling of D49).** The
+  positional macro `$1` is **Claude-only** — Copilot CLI substitutes only `$ARGUMENTS` (the raw text
+  after the command name), so a command that keyed the work item off `$1` arrived empty on Copilot
+  (observed: `/aind:implement 1` ran `aind-revise-code-pr.sh "" status`, body rendered `Work item:
+  ****`). Every command now identifies its argument via **`$ARGUMENTS`**. For single-argument
+  commands it's a verbatim swap (`$ARGUMENTS` ≡ `$1` on Claude → no regression). For the two
+  two-positional commands (`/aind:plan <id> [attended|headless]`, `/aind:complete <id> [pr-number]`)
+  a naïve swap would break the 2-arg case on *both* hosts, so they derive tokens **in-shell** from
+  the single `$ARGUMENTS` string (which carries all args identically on both hosts): the resolver
+  adds `A="$1"; shift;` after the D49 `R="$1"; shift;` prefix (allowlist prefix preserved) and uses
+  `${A%% *}` for the id, the second token for pr/mode, with a `<id>` prose placeholder defined once
+  at the top. **Do not reintroduce `$1`/`$2` as the argument carrier.** The load-bearing distinction:
+  inside the resolver `R="$1"`/`A="$1"` are bash's *own* positionals (never touch them); only the
+  *macro* `$1` outside the single-quoted `bash -c` was the Claude-ism. `/aind:env-probe` test `[6]`
+  is the dual-host validator for this axis (mirrors `[4]` for plugin-root).
 - **The *right* `bash` must WIN on PATH (Windows) — non-negotiable.** Copilot's shell tool is
   **PowerShell**; if Git's `bash` doesn't resolve, the model either **reimplements the scripts in
   PowerShell** (silently breaking the single-`AIND status` tag invariant + comment signing — observed:

@@ -364,13 +364,15 @@
 
     <div class="refcard" id="cmd-env-probe">
       <div class="rc-head"><span class="rc-name">/aind:env-probe</span></div>
-      <div class="rc-meta"><span class="pill">diagnostic</span><span class="pill">dual-host</span><span class="pill">no args</span></div>
+      <div class="rc-meta"><span class="pill">diagnostic</span><span class="pill">dual-host</span><span class="pill">optional arg</span></div>
       <p>A keep-around troubleshooting command. Claude Code and GitHub Copilot CLI locate the plugin's
-      scripts by different mechanisms, and those mechanisms can change between CLI versions. Run this
-      on a host — after a CLI upgrade, or if the flow stops finding scripts — to report, from inside a
-      running command, how that host resolves the plugin root and whether the portable resolver
-      works. It only measures; it changes nothing.</p>
-      <pre><code>/aind:env-probe</code></pre>
+      scripts — and substitute command arguments — by different mechanisms, and those mechanisms can
+      change between CLI versions. Run this on a host — after a CLI upgrade, or if the flow stops
+      finding scripts or receiving arguments — to report, from inside a running command, how that host
+      resolves the plugin root, whether the portable resolver works, and which argument macro the host
+      fills. It only measures; it changes nothing. Pass any word as an argument to exercise the
+      argument-substitution test.</p>
+      <pre><code>/aind:env-probe probe-arg</code></pre>
     </div>
 
     <!-- ==================== AGENTS ==================== -->

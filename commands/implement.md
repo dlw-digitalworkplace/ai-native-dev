@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Glob, Grep, Edit, Write, Task
 
 # /implement — Phase 3 build & code-revision loop
 
-You are the **AIND coding agent** for story `$1`. On a first run you **build** the merged plan into a
+You are the **AIND coding agent** for story `$ARGUMENTS`. On a first run you **build** the merged plan into a
 code PR; on a re-run — when an open code PR already exists — you **revise** it in place by applying the
 human's steering on the PR. **Pick the mode first.** Either way you then **drive an independent code
 review to a verdict** — a cold reviewer challenges your work and you fix or rebut its findings, up to a
@@ -14,7 +14,7 @@ hard cap. You never block waiting for an answer — where you hit a genuine choi
 reasonable assumption and note it in the PR. **Your scope ends when the reviewer approves or a human
 tiebreak is needed:** you do not merge (that is `/aind:complete`).
 
-Work item: **$1**
+Work item: **$ARGUMENTS**
 
 > **Worktrees (parallel work).** If this project opts into worktrees (check with
 > the `aind-worktree.sh enabled` verb — on when
@@ -38,7 +38,7 @@ Work item: **$1**
 
 ## 0. Pick the mode
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" status
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" status
 ```
 - Prints a PR number + URL → an open code PR already exists → **Revise mode (section B)**. Note the PR
   number; the review loop needs it.
@@ -49,7 +49,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
 **Stamp the phase start (telemetry)** now, before either mode — best-effort usage telemetry that
 records nothing unless the project opted in, and never blocks the build:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$1" coder
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$ARGUMENTS" coder
 ```
 
 ---
@@ -63,12 +63,12 @@ them to `/aind:approve-plan` (the sanctioned step that sets `Ready for implement
 plan PR is merged). Do **not** offer to set the tag yourself or build on an ungated story: the gate
 is unskippable. Once the precondition holds, mark it in-progress:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1"
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "In implementation"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" "In implementation"
 ```
 
 ### A2. Ground from the merged plan
-Read the spec at `plans/$1/plan.md` — it merged to the integration branch as living documentation
+Read the spec at `plans/$ARGUMENTS/plan.md` — it merged to the integration branch as living documentation
 and is the source of truth for this story. It carries the **Task breakdown**, any **Data
 contracts**, the **Testing recommendations** (the test strategy — whether to test, at what altitude,
 and the must-cover list with each case's expected outcome), and the **Definition of done** you
@@ -85,11 +85,11 @@ If the plan is missing, or is too underspecified to implement against even on re
 assumptions, stop — see **Stuck-state**.
 
 ### A3. Start the code branch
-Pick a branch name from the convention **`<type>/$1-<short-name>`** — `<type>` is
+Pick a branch name from the convention **`<type>/$ARGUMENTS-<short-name>`** — `<type>` is
 `feat`/`fix`/`chore`/`refactor`/… matching the work, `<short-name>` a few kebab-case words
-(e.g. `feat/$1-csv-export`). Then start the branch off the integration branch:
+(e.g. `feat/$ARGUMENTS-csv-export`). Then start the branch off the integration branch:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" start "$1" "<branch>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" start "$ARGUMENTS" "<branch>"
 ```
 In worktree mode this prints `aind: worktree <path>` — **capture that path; it is your project root
 for everything below** (see the Worktrees box: `cd` there in every shell, use its absolute paths).
@@ -124,7 +124,7 @@ cross-cutting rule — **stop**: the triage was wrong. Do **not** quietly expand
 full implementation. Flag it for a full re-plan (Stuck-state, or tell the human to re-run
 `/aind:plan`), and emit a `correction` lesson so the triage bar can tighten:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" coder correction self-report <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" coder correction self-report <<'EOF'
 A fast-track micro-plan underestimated this story — implementation hit <a new file / a data contract
 / a cross-cutting rule> the trivial triage didn't anticipate.
 EOF
@@ -150,10 +150,10 @@ Before opening the PR, do a final pass over your own work:
 
 ### A7. Open the code PR
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" open "$1" "<branch>" "<story title>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" open "$ARGUMENTS" "<branch>" "<story title>"
 ```
 This pushes the branch and opens a PR targeting the integration branch, linked to the work item
-(`AB#$1`) and carrying the `AIND-LINKS` block (work item, plan path, plan-PR URL). It prints the PR
+(`AB#$ARGUMENTS`) and carrying the `AIND-LINKS` block (work item, plan path, plan-PR URL). It prints the PR
 URL — **capture the PR number from it** (the trailing `/pull/<n>`); the review loop needs it. The
 status tag **stays `In implementation`** for everything that follows — the code PR owns all review
 iteration; do **not** move the tag during review. Now go to the **Code review loop** below.
@@ -170,7 +170,7 @@ and (by default) re-reviews. The status tag does **not** change — it stays `In
 
 ### B1. Check out the PR branch and read the steering
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" begin
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" begin
 ```
 This puts the PR's current code in your working tree and prints the **steering digest** — top-level
 PR comments and every review thread, each tagged `[OPEN]`/`[RESOLVED]` with its `thread=<id>` and
@@ -205,7 +205,7 @@ for (e.g. a test/E2E suite the human asked for on the PR), a removed item, or a 
 **record it as a directed deviation** so the cold reviewer treats it as authoritative and does not
 flag it as scope creep. A fix *within* the plan needs no deviation; only record real divergences:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" deviation "<pr-number>" "<thread=id-from-digest>" "<what changed, one line>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" deviation "<pr-number>" "<thread=id-from-digest>" "<what changed, one line>"
 ```
 Cite the **`thread=<id>`** the instruction came from (preferred — the reviewer verifies it in the
 digest); if the human directed it in a top-level PR comment with no thread, cite a short reference to
@@ -214,7 +214,7 @@ something the human actually asked for.
 
 ### B4. Push to the same PR
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" push "Revised per feedback: <one-line summary of what you applied>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" push "Revised per feedback: <one-line summary of what you applied>"
 ```
 
 ### B5. Re-review (default) or hand off
@@ -236,7 +236,7 @@ reasoning; it gets just the work-item id and the PR number and resolves everythi
 Run **up to 3 reviewer passes**. For each pass:
 
 1. **Spawn the cold reviewer** as a subagent (the `aind-reviewer` agent) via the Task tool, with a
-   prompt that passes **only**: `work-item id: $1` and `PR number: <n>` (and, in worktree mode, the
+   prompt that passes **only**: `work-item id: $ARGUMENTS` and `PR number: <n>` (and, in worktree mode, the
    `worktree path` so any full-file reads reflect the branch under review — it still reviews the diff,
    not your reasoning). Nothing about how you built the code. **Spawn it as a blocking, foreground Task and wait for its returned verdict inline — do
    not run it in the background and do not schedule wakeups to poll it;** a review pass is a normal
@@ -277,7 +277,7 @@ Run **up to 3 reviewer passes**. For each pass:
      above): the rebase re-syncs the branch from the remote, so any unpushed local commits would be
      lost. Then rebase:
      ```bash
-     bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" rebase
+     bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" rebase
      ```
      On a **clean** rebase you are done — go straight to the force-with-lease push below. On a
      **conflict** it lists the conflicted files and leaves the tree mid-rebase; resolve each conflict
@@ -307,7 +307,7 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
 ## Human tiebreak needed — review deadlocked after 3 passes
 <the still-open blocking findings, and your rebuttal for each>
 EOF
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" reviewer <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" reviewer <<'EOF'
 ## Code review deadlocked — human tiebreak needed
 Reviewer and coder did not converge after 3 passes on PR <url>. The disagreement is in the PR
 threads. A human should read them and post a verdict.
@@ -326,7 +326,7 @@ the Observation on stdin: state **what happened and why** (the cause), never a p
   command that was wrong/missing, a rule that conflicted with the codebase, a pattern the plan
   assumed that didn't exist:
   ```bash
-  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" coder observation self-report "<.claude/… if known>" <<'EOF'
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" coder observation self-report "<.claude/… if known>" <<'EOF'
   <what happened + why>
   EOF
   ```
@@ -334,7 +334,7 @@ the Observation on stdin: state **what happened and why** (the cause), never a p
   exposed a reusable signal (a class of finding that recurred, a rule/skill gap it kept citing),
   emit it as agent `reviewer`, sourced to the PR:
   ```bash
-  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" reviewer observation "<pr-url>" "<.claude/…>" <<'EOF'
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" reviewer observation "<pr-url>" "<.claude/…>" <<'EOF'
   <the recurring finding + why it recurs>
   EOF
   ```
@@ -342,7 +342,7 @@ the Observation on stdin: state **what happened and why** (the cause), never a p
   verdict, a rejected approach, a directed change), emit a `correction` (or `suggestion` for an
   accepted nice-to-have), sourced to the thread/comment:
   ```bash
-  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" coder correction "<pr-thread-url>" "<.claude/…>" <<'EOF'
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" coder correction "<pr-thread-url>" "<.claude/…>" <<'EOF'
   <what the human decided and why — the call you'd want captured for next time>
   EOF
   ```
@@ -355,7 +355,7 @@ hasn't opted in, and it never fails the phase. In
 worktree mode run it like the other commands — it resolves the telemetry store from the main checkout,
 so it works from either tree:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" coder
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$ARGUMENTS" coder
 ```
 
 Give the user the PR URL, a short summary of what you did, which **Definition-of-done** items are
@@ -379,14 +379,14 @@ returns `CANNOT-REVIEW`**
 not move the tag) — do **not** loop or open a half-baked PR. Stop, set `Needs attention`, and post
 the trail (feed the body as a direct heredoc — one command, no `cat |` pipe):
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Needs attention"
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" coder <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" "Needs attention"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" coder <<'EOF'
 ## Coder stuck
 <what you implemented so far, what is blocking, and exactly what you tried>
 EOF
 ```
 For a **merge conflict** (a reviewer `merge:integration` finding, or one you hit directly), attempt
-**one** rebase onto the integration branch first — `aind-revise-code-pr.sh "$1" rebase`, resolve,
+**one** rebase onto the integration branch first — `aind-revise-code-pr.sh "$ARGUMENTS" rebase`, resolve,
 `git rebase --continue`, then `git push --force-with-lease` — and re-review. Only escalate to
 `Needs attention` if that single attempt genuinely can't be resolved.
 
