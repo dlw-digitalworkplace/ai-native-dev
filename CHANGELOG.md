@@ -9,6 +9,22 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.24.2] — 2026-08-05
+
+### Fixed
+- **Cold subagents (reviewer, dreamer) now get a working shell on GitHub Copilot CLI** (D51, sibling
+  of D49/D50). On Copilot, `/aind:implement` ran to the review phase and the cold reviewer returned
+  `CANNOT-REVIEW` — *"no Bash/command-execution tool is available in this session"* — so it couldn't
+  run `aind-review-pr.sh` to ground the PR, post threads, or leave a verdict (the coder then
+  correctly fell to `Needs attention`). Cause: the subagent's `tools:` named the shell as `Bash`, a
+  Claude tool name; Copilot's shell alias is `execute`, and Copilot **strictly enforces a subagent's
+  `tools:` allowlist** (unlike a top-level command's, which is why only subagents broke). Both
+  `agents/reviewer.md` and `agents/dreamer.md` now declare `tools:` as a **cross-host union** —
+  `execute, read, search[, edit]` (Copilot) + `Bash, Read, Glob, Grep[, Edit, Write]` (Claude);
+  unrecognised names are ignored on each host. The reviewer stays cold (no edit tool on either host).
+  Not caused by D50 — that argument fix worked; this is an independent dual-host gap on the D22
+  agent-host axis.
+
 ## [0.24.1] — 2026-08-05
 
 ### Fixed
