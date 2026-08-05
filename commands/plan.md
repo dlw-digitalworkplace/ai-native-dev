@@ -18,7 +18,7 @@ Work item: **$1**
 
 ## 0. Pick the mode
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" status
 ```
 - Prints a PR number + URL → an open plan PR already exists → **Revise mode (section B)**.
 - Says "no open plan PR" (exits 9) → **Create mode (section A)**.
@@ -26,13 +26,13 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" status
 **Stamp the phase start (telemetry)** now, before either mode — best-effort usage telemetry that
 records nothing unless the project opted in, and never blocks planning:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$1" planner
 ```
 
 ---
 
 > **Worktrees (parallel work).** If this project opts into worktrees (check with
-> `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled` — on when
+> the `aind-worktree.sh enabled` verb — on when
 > `.claude/aind.settings.json` sets `worktree.enabled: true`), the plan phase runs in its own
 > git worktree so other items can proceed in parallel. You author *into* the worktree by absolute
 > path (no need to `cd` the session for authoring); if you do run shell commands in the worktree,
@@ -40,7 +40,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
 > tears the worktree down. Create/resolve the worktree up front and use its path wherever this
 > command says `plans/$1/plan.md`:
 > ```bash
-> WT="$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" ensure-plan "$1")"   # create mode
+> WT="$(bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-worktree.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" ensure-plan "$1")"   # create mode
 > # revise mode: `begin` (B1) checks the worktree out and prints its path instead
 > ```
 > Then author to **`$WT/plans/$1/plan.md`**. The PR/thread scripts operate in that worktree
@@ -53,15 +53,15 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
 1. **Precondition + transition.** Load the story and confirm it carries
    `AIND status - Intake approved`. If not, stop and tell the user. Then mark it in-progress:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-workitem.sh" "$1"
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Generating plan"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Generating plan"
    ```
 
 1.5. **Run mode — and, when attended, triage & steer.** Decide *how* to run before drafting.
    Resolve the mode in this order: an explicit **`$2`** (`attended` / `headless`) wins; otherwise the
    project default —
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-planmode.sh"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-planmode.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
    ```
    — which prints `attended`, `headless`, or `auto`. On **`auto`**, decide per run: **attended** if
    you have the `AskUserQuestion` tool and this is not a headless `claude -p` run; otherwise
@@ -204,9 +204,9 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
 
 5. **Open the plan PR** and post the threads (use the `aind-plan-pr` skill):
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-plan-pr.sh" "$1" "<story title>"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "<story title>"
    # note the PR number it prints, then for each assumption:
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<assumption + question>"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-thread.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<assumption + question>"
    ```
    After an **attended spar** (step 4.5) only the items still under *Assumptions & open questions*
    remain to thread — the resolved ones are already plan decisions. In **headless** mode, every item
@@ -214,7 +214,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
 
 6. **Transition to review:**
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Plan ready for review"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Plan ready for review"
    ```
 
 7. **Emit a lesson if the run taught you something reusable** (dreaming phase). If planning surfaced a
@@ -223,7 +223,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
    synthesise it. **Emit nothing if there is no genuine lesson.** State what happened and *why*, never
    a proposed fix. One command, body on stdin:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" planner observation self-report "<.claude/rules/… if known>" <<'EOF'
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" planner observation self-report "<.claude/rules/… if known>" <<'EOF'
    <what happened + why — the cause, not a fix>
    EOF
    ```
@@ -235,7 +235,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" planner
    silent no-op when the project hasn't opted in.
    Never fails planning:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" planner
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" planner
    ```
 
 ---
@@ -248,7 +248,7 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
 
 1. **Check out the plan branch and read all feedback:**
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" begin
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" begin
    ```
    This puts the current plan at `plans/$1/plan.md` in your working tree and prints every PR
    comment and review thread — each tagged `[OPEN]`/`[RESOLVED]` with its `thread=<id>` and
@@ -270,25 +270,25 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    - If your revision **addressed** the point, post an *addressed* note so the human can resolve
      it with one click:
      ```bash
-     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" reply "<thread-id>" "Addressed: <what you changed>. Please resolve if this looks right."
+     bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" reply "<thread-id>" "Addressed: <what you changed>. Please resolve if this looks right."
      ```
    - If the feedback is **unclear**, post a follow-up question instead and leave that point of the
      plan unchanged until it's answered:
      ```bash
-     bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" reply "<thread-id>" "<your clarifying question>"
+     bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" reply "<thread-id>" "<your clarifying question>"
      ```
    Skip threads already marked `[RESOLVED]`.
 
 4. **Post only genuinely new assumptions** as their own resolvable threads (skip if your revision
    raised none):
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<new assumption + question>"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-thread.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<pr-number>" "plans/$1/plan.md" "<line>" planner "<new assumption + question>"
    ```
 
 5. **Commit + push to the same PR**, summarizing what changed (posted as a PR comment so reviewers
    see what you addressed):
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" push "Revised per review: <one-line summary of the changes>"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" push "Revised per review: <one-line summary of the changes>"
    ```
 
 6. **Emit lessons for the human feedback you acted on** (dreaming phase). This is high-value signal —
@@ -297,7 +297,7 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    `correction` sourced to that thread; for an accepted nice-to-have, emit a `suggestion`. Skip
    points that were mere clarifications. One command each, body on stdin:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-emit-lesson.sh" "$1" planner correction "<pr-thread-url>" "<.claude/rules/… if known>" <<'EOF'
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-emit-lesson.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" planner correction "<pr-thread-url>" "<.claude/rules/… if known>" <<'EOF'
    <the decision the reviewer made and why — what you'd want captured for next time>
    EOF
    ```
@@ -311,7 +311,7 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    silent no-op when the project hasn't opted in.
    Never fails planning:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" planner
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" planner
    ```
 
 ---
@@ -322,8 +322,8 @@ against even with reasonable assumptions), **do not** emit a bad plan or open a 
 questions. Stop, set `Needs attention`, and post the trail of what you tried (feed the body as a
 direct heredoc — one command, no `cat |` pipe):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Needs attention"
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "$1" planner <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Needs attention"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" planner <<'EOF'
 ## Planner stuck
 <what you attempted, and exactly what is blocking a viable plan>
 EOF

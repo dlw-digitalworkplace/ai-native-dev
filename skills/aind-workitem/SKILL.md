@@ -9,7 +9,7 @@ allowed-tools: Bash
 Run the helper to fetch the work item as **normalized JSON**, then read the fields you need:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-workitem.sh" "<work-item-id>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<work-item-id>"
 ```
 
 Output keys (the same shape regardless of tracker):

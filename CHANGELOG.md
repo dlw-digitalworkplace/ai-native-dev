@@ -9,6 +9,24 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.24.0] — 2026-08-05
+
+### Fixed
+- **Plugin scripts now resolve on GitHub Copilot CLI, not just Claude Code** (D49). Every command /
+  skill / agent invoked scripts as `bash "${CLAUDE_PLUGIN_ROOT}/scripts/…"`. `${CLAUDE_PLUGIN_ROOT}`
+  is a Claude command-string macro — Copilot's shell performs no such substitution and exposes no
+  plugin-root variable, so the path collapsed to `/scripts/…` and the agent silently reimplemented
+  phases by hand (observed: a plan phase that skipped the PR, threads, and tagging). All ~105 call
+  sites now use a **portable, self-locating resolver**: it takes `${CLAUDE_PLUGIN_ROOT}` as a
+  positional arg (filled on Claude, empty on Copilot), falls back to `AIND_PLUGIN_ROOT`, then
+  locates the install directory. Hooks are unchanged (the hook env injects the variable on both
+  hosts). One constant preamble keeps allowlisting to a single permission rule.
+
+### Added
+- **`/aind:env-probe`** — a keep-around dual-host diagnostic that reports, from inside a running
+  command, how the current host resolves the plugin root and whether the portable resolver works.
+  Re-run it on each host after a Claude/Copilot CLI upgrade.
+
 ## [0.23.0] — 2026-08-04
 
 ### Added

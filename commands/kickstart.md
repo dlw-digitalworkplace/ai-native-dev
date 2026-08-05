@@ -140,7 +140,7 @@ and note it.
      `ado` tracker leave `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real
      secret); the `file` tracker needs no work-item PAT. **Gitignored.**
    - **File tracker only** — seed the item store so `new` works: run
-     `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require` (creates the dir) and copy
+     `bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" require` (creates the dir) and copy
      `${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md` into it as `_TEMPLATE.md` for reference.
      Point the human at **`/aind:new-item`** (guided draft-for-review) — or `aind-tracker.sh new
      "<title>"` for the bare scaffold — to create the first stories.
@@ -161,7 +161,7 @@ and note it.
 Run the preflight probe and relay its checklist (many items will be `[FAIL]`/`[MANUAL]` on a new
 project — that's expected, they're the setup runway):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-preflight.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
 ```
 
 ### 8. Summarize to the user

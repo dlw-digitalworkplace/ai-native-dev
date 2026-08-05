@@ -14,7 +14,7 @@ never start the flow yourself. Suggest, don't assert: the human owns the story t
 ## 1. Guard — file tracker only
 This command only applies when work items are stored as files. Check the backend:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" kind
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" kind
 ```
 If the output is **not** `file`, stop and tell the user: with the **ADO tracker** stories are created
 in Azure DevOps Boards (the UI / their normal backlog tooling), then run `/aind:intake <id>` against
@@ -37,7 +37,7 @@ give you; a thin-but-honest first draft they refine beats a padded one.
 
 ## 3. Create the file (script assigns the id)
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" new "<title>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" new "<title>"
 ```
 It prints `<id> <path>` and scaffolds the file from the template with `state: Ready for intake` and
 the `id`/`title` filled. Capture both values.

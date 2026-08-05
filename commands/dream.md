@@ -15,7 +15,7 @@ config without a human merging the PR**.
 
 ## 0. Gather the exhaust
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" digest
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" digest
 ```
 - Prints the unprocessed lessons (`.aind/lessons/new/*.md`). Keep the output — the dreamer needs it.
 - Exits 9 ("nothing to dream on") → **stop** and tell the user there are no unprocessed lessons yet.
@@ -46,7 +46,7 @@ If **no cluster** is approved for a change, skip §3–§4 (no config PR); still
 ## 3. Author the approved changes on a dream branch
 Only if at least one cluster was approved for a change:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" start "aind/dream/$(date -u +%Y%m%d-%H%M)"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" start "aind/dream/$(date -u +%Y%m%d-%H%M)"
 ```
 This branches off the integration branch (refuses on a dirty tree — relay that if so). Then spawn the
 **`aind-dreamer`** agent again (blocking Task) with `MODE: author` and the **approved (adjusted)
@@ -60,7 +60,7 @@ git commit -m "dream: apply approved lessons-learned improvements"
 ## 4. Open the config PR (Gate 2)
 Feed the summary as a direct heredoc (one command, no `cat |` pipe):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" open-pr "<dream-branch>" "Dreaming: <short theme>" <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" open-pr "<dream-branch>" "Dreaming: <short theme>" <<'EOF'
 ## Proposed improvements
 | Change | Files | From lessons | Confidence |
 |---|---|---|---|
@@ -76,7 +76,7 @@ and prints the PR URL. This PR is Gate 2 — the human accepts/adjusts/rejects e
 ## 5. Record any parking-lot notes
 For each flow-level concern the user kept in §2, record it durably (one command each; body on stdin):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" note <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" note <<'EOF'
 <the structural concern, and which lessons raised it>
 EOF
 ```
@@ -87,8 +87,8 @@ lessons behind approved-change clusters and behind kept parking-lot items; **rej
 behind rejected clusters. Lesson ids are the `lessons:` values from the dreamer's clusters (the
 filename stems). Leave everything else in `new/`.
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" consume archive <lesson-id> [<lesson-id> …]
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-dream.sh" consume reject  <lesson-id> [<lesson-id> …]
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" consume archive <lesson-id> [<lesson-id> …]
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-dream.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" consume reject  <lesson-id> [<lesson-id> …]
 ```
 
 ## 7. Report

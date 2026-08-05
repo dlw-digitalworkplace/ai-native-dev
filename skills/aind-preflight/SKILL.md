@@ -10,7 +10,7 @@ Run the prerequisite probe. It is read-only and always exits 0 — it reports st
 not gate:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-preflight.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
 ```
 
 It checks: required tools (`az`, `gh`, `git`, `curl`, `jq`, the azure-devops extension),

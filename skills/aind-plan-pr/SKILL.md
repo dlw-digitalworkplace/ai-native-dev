@@ -14,14 +14,14 @@ merge. Use these scripts in order — write `plans/<id>/plan.md` first.
 linking + the `AIND-LINKS` block). Capture the printed PR URL/number:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-open-plan-pr.sh" "<work-item-id>" "<story title>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<work-item-id>" "<story title>"
 ```
 
 **2. Post each assumption / open question as its own resolvable thread**, anchored to its
 line in the plan diff (so "require conversation resolution before merging" gates each one):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-thread.sh" "<pr-number>" "plans/<id>/plan.md" "<line>" planner "<assumption + the question to resolve>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-thread.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<pr-number>" "plans/<id>/plan.md" "<line>" planner "<assumption + the question to resolve>"
 ```
 
 Anchor each thread to the line in the **Assumptions & open questions** section where you
@@ -31,12 +31,12 @@ wrote that item, so the thread and the document entry line up.
 refuses to run again — iterate the same PR with `aind-revise-plan-pr.sh` instead:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "<id>" status                       # is there an open plan PR?
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "<id>" begin                        # checkout branch + print feedback (each thread=<id>)
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<id>" status                       # is there an open plan PR?
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<id>" begin                        # checkout branch + print feedback (each thread=<id>)
 # …edit plans/<id>/plan.md to address the [OPEN] items…
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "<id>" reply "<thread-id>" "Addressed: …"   # or a clarifying question if unclear
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "<id>" push "Revised per review: <summary>"
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "<id>" cleanup                       # after merge (run by /aind:approve-plan): delete the plan branch
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<id>" reply "<thread-id>" "Addressed: …"   # or a clarifying question if unclear
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<id>" push "Revised per review: <summary>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<id>" cleanup                       # after merge (run by /aind:approve-plan): delete the plan branch
 ```
 
 `begin` lists every PR comment and review thread (`[OPEN]`/`[RESOLVED]`, with `thread=<id>` and

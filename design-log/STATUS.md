@@ -2,8 +2,29 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `../CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `../docs/plans/` for the planned-feature backlog and the sibling `D<N>` decision files in this folder for the decision record. The **Implementation status** matrix at the bottom of this file is the at-a-glance companion to the per-decision bullets above._
 
-## Current status (2026-08-04)
+## Current status (2026-08-05)
 
+- **Portable plugin-root resolution across agent hosts (D49, 2026-08-05, live-validated on both
+  hosts via `/aind:env-probe`; end-to-end flow re-validation on Copilot pending).** The whole script
+  layer hung on `${CLAUDE_PLUGIN_ROOT}`, which is a **Claude command-string macro**, not an env var —
+  Copilot's PowerShell shell performs no such substitution and exposes no plugin-root variable, so
+  every `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` collapsed to `bash "/scripts/x.sh"` and the agent
+  silently reimplemented phases by hand (a real Copilot session hand-wrote `plan.md` and skipped the
+  PR, assumption threads, and tagging). Diagnosed empirically with a new keep-around dual-host
+  diagnostic **`/aind:env-probe`** (measures env-var vs macro vs self-location; its test `[4]` *is*
+  the shipping preamble). Fix: all ~105 command/skill/agent call sites now use a **portable
+  self-locating resolver** — `bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}";
+  … glob the install dir …; "$R/scripts/aind-<name>.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" <args>` — which
+  takes the macro as a positional arg (filled on Claude, empty on Copilot → self-locates
+  `~/.copilot/installed-plugins/*/*ai-native-dev` or `~/.claude/plugins/*/*ai-native-dev`; `$HOME`
+  derived from `USERPROFILE` to dodge the MSYS mapped-drive trap). The **preamble is byte-identical
+  everywhere**, so allowlisting stays a single scoped rule (`Bash(bash -c 'R="$1"; shift;*)`);
+  heredocs attach to the outer `bash -c`; redirects go *inside* it (a bare `>/dev/null` outside is
+  mis-parsed by PowerShell as `Out-File C:\dev\null`). **Hooks are unchanged** — the hook env injects
+  `$CLAUDE_PLUGIN_ROOT` on both hosts (comment-signing enforcement already relies on it). This is the
+  D22 agent-host axis (orthogonal to D36 code host / D46 tracker); the flow, status model, gates, and
+  PR contract are untouched. **Next: re-run a full Copilot phase end-to-end to confirm the flow now
+  drives the scripts instead of PowerShell.**
 - **Pre-story research command — `/aind:research` (D48, 2026-08-04, live-validated
   end-to-end).** An optional, pre-flow thinking aid that researches technical approaches
   **before a user story exists** and writes the findings as a markdown file for the human to review.
@@ -405,4 +426,6 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Cross-cutting | Front-end — share `node_modules` across worktrees | ✅ | 🟡 | Optional `worktree.symlinkDirs` list in `aind.settings.json` (D39) shares heavyweight gitignored dirs (chiefly `node_modules`) across worktrees instead of re-installing per tree — a directory **junction** on Windows (no admin) / symlink on Unix, linked in on `ensure` and **safely unlinked before teardown**. Shared state (documented trade-off) — **pnpm recommended** where per-branch isolation matters. **No-op when absent/empty.** Offline-validated; live-validation pending. |
 | Cross-cutting | Usage telemetry — per-phase raw tokens + time | ✅ | ✅ | Optional `telemetry` block in `.claude/aind.settings.json` (`enabled` + one numeric `durationField`). Each phase brackets its work with `aind-usage.sh begin`/`report`: a **per-model, per-token-type** breakdown + wall-clock over the phase's timestamp window from the host's on-disk session events. **Raw usage only — no cost** (pricing offline). Token breakdown → an append-only JSON attachment on the work item; time → the numeric field. Host-aware collector covers Claude (full breakdown) and Copilot (output tokens only). Best-effort; inert until opted in (D42). Live-validated end-to-end. |
 | Cross-cutting | Config — one shared settings file + a secrets env file | ✅ | ✅ | Per-project config is split (D41): shared settings (ADO org/project, tracker, code host, repo, branches, and the worktree/telemetry blocks) live in a **checked-in** `.claude/aind.settings.json`, while `.claude/aind.env` keeps only the PAT + optional `AIND_ACTOR` (gitignored). The `AIND_*` env vars stay the interface. `/aind:onboard` + `/aind:kickstart` **create and fill** both files and update `.gitignore`. **Live-validated end-to-end.** |
-| Cross-cutting | Dual agent host — Claude Code **and** GitHub Copilot CLI | ✅ | 🟡 | One behavior layer (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks absorb the only incompatibility (D22). Copilot needs Git's `bash` to win on PATH (Windows). Claude side live-validated; Copilot intake E2E being confirmed. |
+| Cross-cutting | Dual agent host — Claude Code **and** GitHub Copilot CLI | ✅ | 🟡 | One behavior layer (commands/skills/scripts); a second manifest (`.github/plugin/plugin.json`) + per-tool hooks absorb the only incompatibility (D22). Two Copilot prerequisites now handled: Git's `bash` must win on PATH (Windows), and script paths resolve via the **D49 portable self-locating resolver** (Copilot's shell doesn't substitute `${CLAUDE_PLUGIN_ROOT}` or expose a plugin-root var). `/aind:env-probe` validates both per host. Claude side live-validated; **Copilot full-flow E2E re-validation pending** after D49. |
+| Cross-cutting | Plugin-root resolution — portable across hosts | ✅ | ✅ | All script call sites use a self-locating `bash -c` resolver (D49): `${CLAUDE_PLUGIN_ROOT}` as a positional arg (Claude macro; empty on Copilot) → `AIND_PLUGIN_ROOT` → glob the install dir. Byte-identical preamble → one allowlist rule; hooks unchanged. **Both hosts validated via `/aind:env-probe` test [4].** |
+| Cross-cutting | `/aind:env-probe` — dual-host resolution diagnostic | ✅ | ✅ | Keep-around command (D49) that reports, from inside a running command, how a host resolves the plugin root (env-var vs macro vs self-location) and whether the portable resolver passes. Re-run after any Claude/Copilot CLI upgrade. Validated on both hosts. |

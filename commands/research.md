@@ -30,8 +30,8 @@ Topic: **$ARGUMENTS**
    directory (default `.aind/research`, overridable via `research.dir` in `.claude/aind.settings.json`).
    Resolve the directory and the file path — do not hardcode either:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-research.sh" dir
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-research.sh" path "$ARGUMENTS"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-research.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" dir
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-research.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" path "$ARGUMENTS"
    ```
    The `path` verb prints `<dir>/<YYYY-MM-DD>-<slug>.md` — use it verbatim as the file to write. The
    scripts read config from `.claude/aind.settings.json` / `.claude/aind.env` automatically; you do

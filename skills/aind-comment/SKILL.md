@@ -22,7 +22,7 @@ Feed multi-line markdown via a **direct heredoc** (not a `cat | bash` pipeline â
 harness re-prompt for permission on the `cat` half):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "<work-item-id>" "<agent-name>" <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<work-item-id>" "<agent-name>" <<'EOF'
 ## Verdict: Intake declined
 
 **Objective results**
@@ -35,7 +35,7 @@ EOF
 Or pass a short message as the third argument:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-comment.sh" "<work-item-id>" "<agent-name>" "short note"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-comment.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "<work-item-id>" "<agent-name>" "short note"
 ```
 
 `<agent-name>` is the lowercase role: `intake`, `planner`, `coder`, `reviewer`, â€¦. Config (tracker
