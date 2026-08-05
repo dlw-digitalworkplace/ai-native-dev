@@ -41,6 +41,7 @@
     <a href="#cmd-complete">/aind:complete</a>
     <a href="#cmd-dream">/aind:dream</a>
     <a href="#cmd-map-states">/aind:map-states</a>
+    <a href="#cmd-env-probe">/aind:env-probe</a>
 
     <div class="grouphead">Agents</div>
     <a href="#agent-reviewer">aind-reviewer</a>
@@ -359,6 +360,17 @@
       <code>aind.settings.json</code>. Re-runnable anytime your States change. On the file tracker
       there's no separate native State, so it stops and says so.</p>
       <pre><code>/aind:map-states "User Story"</code></pre>
+    </div>
+
+    <div class="refcard" id="cmd-env-probe">
+      <div class="rc-head"><span class="rc-name">/aind:env-probe</span></div>
+      <div class="rc-meta"><span class="pill">diagnostic</span><span class="pill">dual-host</span><span class="pill">no args</span></div>
+      <p>A keep-around troubleshooting command. Claude Code and GitHub Copilot CLI locate the plugin's
+      scripts by different mechanisms, and those mechanisms can change between CLI versions. Run this
+      on a host — after a CLI upgrade, or if the flow stops finding scripts — to report, from inside a
+      running command, how that host resolves the plugin root and whether the portable resolver
+      works. It only measures; it changes nothing.</p>
+      <pre><code>/aind:env-probe</code></pre>
     </div>
 
     <!-- ==================== AGENTS ==================== -->

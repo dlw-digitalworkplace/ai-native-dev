@@ -28,7 +28,7 @@ yourself.
 
 All GitHub/ADO mechanics go through the plugin scripts (invoked as a single command each) so your
 fresh session is not re-prompted per call:
-`bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" <phase> <pr-number> [args]`.
+`bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" <phase> <pr-number> [args]`.
 Read files with `Read`/`Grep`/`Glob` — do not `cat` them through Bash. **Your Bash access is for
 the plugin scripts only** — you review by reading the diff, not by running the project's
 build/lint/test/run commands (see Constraints §7).
@@ -37,7 +37,7 @@ build/lint/test/run commands (see Constraints §7).
 
 1. **Fetch the PR in one call:**
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" fetch <pr-number>
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" fetch <pr-number>
    ```
    This prints the PR title, body, the parsed `AIND-LINKS` block, a **`MERGEABILITY`** line, and the
    full diff. **`MERGEABILITY`** tells you whether the PR still merges cleanly into the integration
@@ -45,7 +45,7 @@ build/lint/test/run commands (see Constraints §7).
    `MERGEABILITY: UNKNOWN`, the host is still recomputing it — settle it with one polling read before
    you decide:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" mergeability <pr-number>
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" mergeability <pr-number>
    ```
    This is a **read** of a PR property — you never run `git merge`/`git rebase` (see Constraints §7);
    resolving a conflict is the coder's job, your job is to flag it.
@@ -65,7 +65,7 @@ build/lint/test/run commands (see Constraints §7).
 6. **If review threads already exist on this PR** (you are a re-pass), read the prior findings and
    the coder's replies/rebuttals:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" digest <pr-number>
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" digest <pr-number>
    ```
    Each thread is tagged `[OPEN]`/`[RESOLVED]` with its `thread=<id>` and `file:line`; top-level PR
    comments are listed too.
@@ -167,7 +167,7 @@ Rules for classifying:
 - **Each CRITICAL and WARNING** → a resolvable inline thread anchored to its line (body = severity +
   the defect + the cited source + the concrete fix):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" thread <pr-number> <path> <line> reviewer "<CRITICAL|WARNING>: <defect> (source: <...>) — <fix>"
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" thread <pr-number> <path> <line> reviewer "<CRITICAL|WARNING>: <defect> (source: <...>) — <fix>"
   ```
 - **A `CONFLICTING` mergeability finding** has no line to anchor a thread to → state it in the
   **summary** instead (e.g. "CRITICAL — this PR does not merge cleanly into the integration branch;
@@ -176,13 +176,13 @@ Rules for classifying:
 - **On a re-pass:** for each prior `[OPEN]` thread the coder has genuinely addressed, resolve it;
   keep the rest open (optionally reply a note on why it still stands):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" resolve <pr-number> <thread-id>
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" reply   <pr-number> <thread-id> reviewer "<still open because …>"
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" resolve <pr-number> <thread-id>
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" reply   <pr-number> <thread-id> reviewer "<still open because …>"
   ```
 - **Post the summary** (overall verdict in prose + the full SUGGESTION list — suggestions live here,
   never as blocking threads):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-review-pr.sh" summary <pr-number> reviewer <<'EOF'
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-review-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" summary <pr-number> reviewer <<'EOF'
   ## AIND review — pass <n>: <CLEAN | changes requested>
   <one-paragraph assessment>
 

@@ -28,7 +28,7 @@ az boards work-item show --id <sample-id> --org "$AIND_ADO_ORG" --query 'fields.
 
 ## 2. Get the proposed mapping
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" propose "<work-item-type>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-states.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" propose "<work-item-type>"
 ```
 Each line is TSV: `<aind-status>  <category>  <resolved-state>  <count>  <candidate1|candidate2|…>`.
 The script fixes each AIND status to a universal **category** (`Proposed`/`InProgress`/`Resolved`/
@@ -47,7 +47,7 @@ Only prompt for the genuinely ambiguous rows. Batch the questions where you can.
 Assemble the accepted rows into one JSON object `{"<aind-status>":"<state>", …}` (omit any left
 unmapped) and write it:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" write <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-states.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" write <<'EOF'
 {"Generating plan":"Active","In implementation":"Active","Implementation complete":"Closed"}
 EOF
 ```

@@ -273,11 +273,11 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
   can see the fixed structure. Only add the gitignore line when the store is the in-repo default (an
   external path is never touched by gitignore logic):
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" require   # resolves + creates the item dir
+  bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" require   # resolves + creates the item dir
   cp "${CLAUDE_PLUGIN_ROOT}/project-template/item-template.md" "<item-dir>/_TEMPLATE.md"  # reference copy
   ```
   Tell the human to create the first story with **`/aind:new-item`** (a guided draft-for-review; or
-  `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-tracker.sh" new "<title>"` for the bare scaffold) and then
+  `bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" new "<title>"` for the bare scaffold) and then
   edit its Description / Acceptance Criteria; the AIND phases drive its `state` automatically.
 
 **Update `.gitignore`** idempotently (append only if the line is absent):
@@ -303,13 +303,13 @@ AIND status onto the native State field?" (a good default for board-reading team
 the same mapping `/aind:map-states` performs — **adopt the project's existing states, never force new
 ones.** Ask for (or reuse) the story **work-item type**, then:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" propose "<story work-item type>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-states.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" propose "<story work-item type>"
 ```
 Each line is `status ⇥ category ⇥ resolved-state ⇥ count ⇥ candidates`. Auto-accept every row whose
 `count` is 1; for `count` 0 or >1, ask the human which state to use (or leave that status unmapped).
 Then write the resolved map:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-states.sh" write <<'EOF'
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-states.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" write <<'EOF'
 { "<aind-status>": "<state>", "…": "…" }
 EOF
 ```
@@ -319,7 +319,7 @@ If **no** (or you skip it), leave `stateMap` as `{}` — no mirror, behaviour un
 ### 7. Report prerequisites
 Run the preflight probe and relay its checklist:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-preflight.sh"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-preflight.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
 ```
 (On **GitHub Copilot CLI / Windows**, if this fails with "bash not found", Git's `bash` isn't first
 on PATH — invoke the script via the Git bash binary and surface the PATH fix as a prerequisite.

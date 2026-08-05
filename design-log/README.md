@@ -59,6 +59,7 @@ Each decision is its own file in this directory; a new decision = a new `D<N>-<s
 | D46 | Pluggable work-item tracker — a local markdown-file backend as an alternative to ADO Boards (config/packaging side of the D1–D15 line; relates to D3, D4, D17, D36, D41, D42) | [D46](D46-pluggable-work-item-tracker.md) | Active | 2026-07-30 |
 | D47 | Documentation restructure — a user-facing multi-page `docs/` site vs. an internal decision log (docs/packaging side of the D1–D15 line; relates to D22, D36, D41, D42, D46) | [D47](D47-docs-restructure.md) | Active | 2026-07-31 |
 | D48 | Pre-story research command `/aind:research` — an optional, codebase-grounded, web-current approach-research aid before intake (config/packaging side of the D1–D15 line; relates to D18, D31, D46) | [D48](D48-pre-story-research.md) | Active | 2026-08-04 |
+| D49 | Portable plugin-root resolution across agent hosts — a self-locating `bash -c` resolver replacing the Claude-only `${CLAUDE_PLUGIN_ROOT}` invocation, so scripts run on Copilot CLI too (script-invocation mechanics on the D22 agent-host axis; hooks unchanged) | [D49](D49-portable-plugin-root.md) | Active | 2026-08-05 |
 
 ---
 

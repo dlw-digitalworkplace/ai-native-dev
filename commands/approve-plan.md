@@ -19,14 +19,14 @@ main checkout: a session cannot remove its own worktree, and the branch cleanup 
 fast-forward must act on the main tree. If worktrees are enabled, `cd` there before anything else (a
 no-op when they're off):
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" enabled >/dev/null 2>&1 \
-  && cd "$(bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" main-root)"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-worktree.sh" "$@" >/dev/null 2>&1' _ "${CLAUDE_PLUGIN_ROOT}" enabled \
+  && cd "$(bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-worktree.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" main-root)"
 ```
 
 **Then stamp the phase start (telemetry).** Best-effort usage telemetry — records nothing unless the
 project opted in, and never blocks close-out:
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" approver
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" begin "$1" approver
 ```
 
 1. **Confirm the plan PR is merged.** The plan PR's branch protection requires every
@@ -36,7 +36,7 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" approver
 
 2. **Set the status:**
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-status.sh" "$1" "Ready for implementation"
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" "Ready for implementation"
    ```
 
 3. **Clean up the plan branch.** The plan now lives on the integration branch as permanent
@@ -44,20 +44,20 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" begin "$1" approver
    present). The script **re-confirms the PR is MERGED first**, so an unmerged plan is never
    dropped, and it's a no-op if your repo already auto-deletes merged branches:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-revise-plan-pr.sh" "$1" cleanup
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$1" cleanup
    ```
    Run this **after** the tag write (above) — branch hygiene last, so a cleanup hiccup never
    affects the committed status. **In worktree mode** this step also retires the plan worktree and
    fast-forwards the main checkout to include the merged plan. Because the first step above returned
    this session to the main checkout, the worktree removes cleanly. If it *still* warns that the
    worktree couldn't be removed (e.g. another shell is sitting inside it), run
-   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-worktree.sh" prune` from the main checkout as a fallback.
+   `bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-worktree.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" prune` from the main checkout as a fallback.
 
 4. **Record consumption (telemetry).** Best-effort — records this phase's token breakdown (a per-model
    JSON attachment on the work item) and its wall-clock time (to the configured duration field); a
    silent no-op when the project hasn't opted in. Never fails close-out:
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/scripts/aind-usage.sh" report "$1" approver
+   bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" report "$1" approver
    ```
 
 This completes the plan phase; the build phase (out of scope for this iteration) begins from

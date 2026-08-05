@@ -505,8 +505,23 @@ design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-w
 - **Manifest split:** Copilot reads `.github/plugin/plugin.json` (preferred over `.claude-plugin/`);
   Claude reads `.claude-plugin/plugin.json`. Each points its own `hooks` field at its own hook file.
   **Keep the two manifests' non-hook fields in sync** when you edit one.
-- **`${CLAUDE_PLUGIN_ROOT}` works under Copilot** — it's injected into the hook env alongside
-  `PLUGIN_ROOT`/`COPILOT_PLUGIN_ROOT`; no token rename needed. (Stale docs claimed otherwise — wrong.)
+- **`${CLAUDE_PLUGIN_ROOT}` works only in the *hook* env under Copilot — NOT in the command→shell
+  path (D49).** In **hooks** (`hooks.copilot.json`) Copilot injects it alongside
+  `PLUGIN_ROOT`/`COPILOT_PLUGIN_ROOT` — those references are fine, leave them. But it is **not** an
+  environment variable at all: on Claude it's a **command-string macro** the Bash tool substitutes
+  into the command text (a bare `$CLAUDE_PLUGIN_ROOT` inside bash reads empty even mid-command; the
+  braced `${CLAUDE_PLUGIN_ROOT}` is what gets replaced); on Copilot the **shell tool is PowerShell**,
+  which does **no** such substitution and exposes **no** plugin-root variable (only
+  `COPILOT_AGENT_SESSION_ID`/`COPILOT_CLI`/`COPILOT_CLI_BINARY_VERSION`/`COPILOT_LOADER_PID`). So a
+  raw `bash "${CLAUDE_PLUGIN_ROOT}/scripts/x.sh"` collapses to `bash "/scripts/x.sh"` on Copilot and
+  the agent silently hand-reimplements the phase. **All command/skill/agent script calls therefore
+  use the D49 portable resolver** — `bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}";
+  … self-locate …; "$R/scripts/aind-<name>.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" <args>` — which takes
+  the macro as a positional arg (filled on Claude, empty on Copilot → self-locates the install dir).
+  The preamble is **byte-identical everywhere** (heredocs attach to the outer `bash -c`; redirects go
+  *inside* it, never after the closing quote — a bare `>/dev/null` outside is mis-parsed by PowerShell
+  as `Out-File C:\dev\null`). Verify a host with **`/aind:env-probe`** (its test `[4]` *is* the
+  shipping preamble). *(The prior note "works under Copilot" was hook-only and wrongly generalised.)*
 - **The *right* `bash` must WIN on PATH (Windows) — non-negotiable.** Copilot's shell tool is
   **PowerShell**; if Git's `bash` doesn't resolve, the model either **reimplements the scripts in
   PowerShell** (silently breaking the single-`AIND status` tag invariant + comment signing — observed:
@@ -530,16 +545,18 @@ design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-w
 
 **Permissions / allowlisting (avoid prompt spam).**
 - **Invoke every script as a single command — never a pipeline.** Feed multi-line input to
-  `aind-comment.sh` with a **direct heredoc** — `bash "…/aind-comment.sh" <id> <agent> <<'EOF'` —
-  **not** `cat <<'EOF' | bash "…/aind-comment.sh" …`. A pipeline makes the harness check *each side*
-  separately, so the `cat` half can't be covered by the script allow-rule and the call re-prompts
-  forever. A single `bash "${CLAUDE_PLUGIN_ROOT}/scripts/…"` command is matched by one rule.
+  `aind-comment.sh` with a **direct heredoc** attached to the resolver's outer `bash -c` (the inner
+  script inherits fd 0) — **not** `cat <<'EOF' | bash …`. A pipeline makes the harness check *each
+  side* separately, so the `cat` half can't be covered by the script allow-rule and the call
+  re-prompts forever. The single D49 `bash -c '…'` resolver command is matched by one rule.
 - **Permissions come from the project Claude runs in, not the plugin.** A consuming project (or this
   repo, when testing here) silences the prompts by adding to its **own** `.claude/settings.local.json`:
-  `"Bash(bash \"${CLAUDE_PLUGIN_ROOT}/scripts/*)"` — one rule covers all scripts. The literal
-  `${CLAUDE_PLUGIN_ROOT}` is matched *pre-expansion*, so the rule is machine-independent. The plugin
-  cannot ship allow-rules into a consumer's settings; document the rule (or have `/aind:onboard`
-  write it) instead.
+  `"Bash(bash -c 'R=\"$1\"; shift;*)"` — one rule covers **all** script calls, because every D49
+  resolver call shares that byte-identical preamble prefix (this is *why* the preamble must stay
+  identical everywhere — see the dual-host note above; it is a scoped prefix match, not a blanket
+  `bash -c` allow). The rule is matched *pre-expansion* and is machine-independent. The plugin cannot
+  ship allow-rules into a consumer's settings; document the rule (or have `/aind:onboard` write it)
+  instead.
 
 **Rubric guard (no silent fallback).**
 - `/aind:intake` runs `aind-rubric-check.sh .claude/intake-rubric.md` first and **stops without
