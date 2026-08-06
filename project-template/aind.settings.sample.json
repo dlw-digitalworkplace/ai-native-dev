@@ -4,7 +4,8 @@
   "ado": {
     "org": "https://dev.azure.com/<your-ado-org>",
     "project": "<your-ado-project>",
-    "repo": "<your-ado-repo>"
+    "repo": "<your-ado-repo>",
+    "workItemType": "User Story"
   },
   "codeHost": "github",
   "github": {

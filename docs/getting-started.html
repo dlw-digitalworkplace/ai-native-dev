@@ -223,8 +223,9 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
   <a href="docs.html#cmd-onboard"><code>/aind:onboard</code></a> — it changes no status and opens no
   PR.</p>
   <p>Create a story and set its status to <code>Ready for intake</code> — in Azure DevOps Boards, or
-  (on the file tracker) with <a href="docs.html#cmd-new-item"><code>/aind:new-item</code></a>. Then
-  drive it through the phases:</p>
+  with <a href="docs.html#cmd-new-item"><code>/aind:new-item</code></a> (which works on both trackers:
+  it scaffolds the file on the file tracker, or creates the story directly in Boards on the ADO
+  tracker). Then drive it through the phases:</p>
   <table>
     <thead><tr><th>Command</th><th>Phase</th><th>Effect</th></tr></thead>
     <tbody>

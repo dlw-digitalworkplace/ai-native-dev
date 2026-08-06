@@ -92,6 +92,10 @@
           <td>ADO project name.</td></tr>
         <tr><td><code>ado.repo</code></td><td><code>AIND_ADO_REPO</code></td>
           <td>ADO repo name — used only when <code>codeHost</code> is <code>ado</code>.</td></tr>
+        <tr><td><code>ado.workItemType</code></td><td><code>AIND_ADO_WORKITEM_TYPE</code></td>
+          <td>ADO tracker only, optional: the work-item type <code>/aind:new-item</code> creates new
+            stories as (e.g. <code>User Story</code>, <code>Product Backlog Item</code>,
+            <code>Issue</code>). Defaults to <code>User Story</code>.</td></tr>
         <tr><td><code>codeHost</code></td><td><code>AIND_CODE_HOST</code></td>
           <td>Where code + PRs live: <code>github</code> (default) or <code>ado</code>. Selects the
             forge adapter; the flow is otherwise identical.</td></tr>
@@ -249,12 +253,14 @@
 
     <div class="refcard" id="cmd-new-item">
       <div class="rc-head"><span class="rc-name">/aind:new-item</span></div>
-      <div class="rc-meta"><span class="pill">file tracker only</span><span class="pill">"[title]"</span></div>
-      <p>Creates a new work item in the <a href="#cfg-settings">local-file tracker</a> through a short
-      guided Q&amp;A. It assigns an id, scaffolds the markdown file (with status
-      <code>Ready for intake</code>), fills in the Title / Description / Acceptance criteria /
+      <div class="rc-meta"><span class="pill">both trackers</span><span class="pill">"[title]"</span></div>
+      <p>Creates a new work item through a short guided Q&amp;A. It assigns an id, records the status
+      <code>Ready for intake</code>, fills in the Title / Description / Acceptance criteria /
       Dependencies you provide, and hands it back for review — it never invents requirements and never
-      starts the flow. On the ADO tracker it stops and points you to Azure DevOps Boards.</p>
+      starts the flow. On the <a href="#cfg-settings">local-file tracker</a> it scaffolds the markdown
+      file; on the ADO tracker it creates the story directly in Azure DevOps Boards (as the configured
+      <code>workItemType</code>, default <em>User Story</em>) and hands back its URL to review in the
+      web UI.</p>
       <pre><code>/aind:new-item "Add CSV export to the reports page"</code></pre>
     </div>
 

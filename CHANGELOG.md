@@ -9,6 +9,22 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.25.0] — 2026-08-06
+
+### Added
+- **`/aind:new-item` can now create work items directly in Azure DevOps Boards** (D52, completes
+  D46). Previously the command was file-tracker only — on the ADO tracker it stopped and pointed you
+  to the Boards web UI. Now it works on **both** trackers: after the same guided Q&A, the file backend
+  scaffolds a markdown item and the ADO backend posts a populated story (title, description,
+  acceptance criteria, and any dependencies as predecessor links) with the initial
+  `AIND status - Ready for intake` tag, then hands back the story's URL for review. Description and
+  acceptance criteria are fed on stdin in one heredoc split by a `---AIND-AC---` marker line, so story
+  prose is carried verbatim. Creation still ends at a draft awaiting the human — it never starts the
+  flow.
+- **`ado.workItemType` setting** (`AIND_ADO_WORKITEM_TYPE`, optional, default `User Story`) — the
+  work-item type new ADO stories are created as, for process templates that use
+  `Product Backlog Item`, `Issue`, etc.
+
 ## [0.24.2] — 2026-08-05
 
 ### Fixed

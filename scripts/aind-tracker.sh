@@ -314,8 +314,68 @@ _ado_link_pr() { return 0; }
 
 _ado_url() { echo "$(aind_org)/${AIND_ADO_PROJECT}/_workitems/edit/$1"; }
 
+# Create a new work item in Azure DevOps Boards. Mirrors the file backend's `new`, so /new-item works
+# on either tracker. Args: "<title>" [--deps "<id>,<id>"]; the description + acceptance criteria come
+# on STDIN, separated by a line reading exactly `---AIND-AC---` (description before it, acceptance
+# criteria after) — one heredoc feeds both fields, no escaping. (`--desc <file>` / `--ac <file>` are
+# also accepted, mainly for scripting/tests.) Description/acceptance markdown is converted to ADO's
+# HTML rich-text; deps become Dependency-Reverse (predecessor) links. Creates the item, then sets the
+# single `AIND status - Ready for intake` tag (reusing _ado_set_state so the one-tag invariant +
+# native-State mirror hold). Echoes "<id> <url>".
 _ado_new() {
-  aind_die "creating work items is not supported for the ADO tracker — create the story in Azure DevOps (Boards), then run the AIND phases against its id."
+  local title="$1"; shift || true
+  local descfile="" acfile="" deps=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --desc) descfile="${2:-}"; shift 2 ;;
+      --ac)   acfile="${2:-}";   shift 2 ;;
+      --deps) deps="${2:-}";     shift 2 ;;
+      *)      shift ;;
+    esac
+  done
+  [[ -n "$title" ]] || aind_die "usage: aind-tracker.sh new \"<title>\" [--deps \"<id>,<id>\"]  (description + acceptance criteria on stdin, separated by a line \"---AIND-AC---\")"
+
+  # Resolve the description + acceptance-criteria markdown: explicit files win; otherwise read stdin
+  # and split it on the `---AIND-AC---` marker line (description before, acceptance after).
+  local desc_md="" ac_md=""
+  if [[ -n "$descfile" || -n "$acfile" ]]; then
+    [[ -n "$descfile" && -f "$descfile" ]] && desc_md="$(cat "$descfile")"
+    [[ -n "$acfile"   && -f "$acfile"   ]] && ac_md="$(cat "$acfile")"
+  elif [[ ! -t 0 ]]; then
+    local raw marker='---AIND-AC---'
+    raw="$(cat)"
+    if printf '%s\n' "$raw" | grep -qxF -- "$marker"; then
+      desc_md="$(printf '%s\n' "$raw" | sed "/^${marker}$/,\$d")"
+      ac_md="$(printf '%s\n' "$raw" | sed "1,/^${marker}$/d")"
+    else
+      desc_md="$raw"
+    fi
+  fi
+
+  local org proj type enc url desc_html="" ac_html="" depurls body tmp resp newid
+  org="$(aind_org)"; proj="$AIND_ADO_PROJECT"; type="${AIND_ADO_WORKITEM_TYPE:-User Story}"
+  [[ -n "$desc_md" ]] && desc_html="$(printf '%s' "$desc_md" | _ado_md_to_html)"
+  [[ -n "$ac_md"   ]] && ac_html="$(printf '%s' "$ac_md" | _ado_md_to_html)"
+  # Predecessor links: this item depends on each dep -> a Dependency-Reverse relation to its REST URL.
+  depurls="$(jq -n --arg d "$deps" --arg org "$org" '
+    [ ($d | split(",")[]? | gsub("^\\s+|\\s+$"; "")) | select(length > 0) | ($org + "/_apis/wit/workItems/" + .) ]')"
+  # Build the JSON-Patch. The `/fields/...` and `/relations/-` paths are built INSIDE jq (never as a
+  # shell arg) so MSYS can't rewrite a leading slash to a Windows path (same trap as _ado_attach).
+  body="$(jq -n --arg title "$title" --arg desc "$desc_html" --arg ac "$ac_html" --argjson depurls "$depurls" '
+    [ {op:"add", path:"/fields/System.Title", value:$title} ]
+    + (if $desc != "" then [ {op:"add", path:"/fields/System.Description", value:$desc} ] else [] end)
+    + (if $ac   != "" then [ {op:"add", path:"/fields/Microsoft.VSTS.Common.AcceptanceCriteria", value:$ac} ] else [] end)
+    + [ $depurls[] | {op:"add", path:"/relations/-", value:{rel:"System.LinkTypes.Dependency-Reverse", url:.}} ]')"
+  enc="$(jq -rn --arg s "$type" '$s|@uri')"
+  # The create endpoint requires the type prefixed with a literal `$` (e.g. .../workitems/$User%20Story).
+  url="${org}/${proj}/_apis/wit/workitems/\$${enc}?api-version=7.1"
+  tmp="$(mktemp)"; printf '%s' "$body" > "$tmp"
+  resp="$(_ado_api POST "$url" 'application/json-patch+json' "$tmp")"; rm -f "$tmp"
+  newid="$(printf '%s' "$resp" | jq -r '.id // empty' | tr -d '\r')"
+  [[ -n "$newid" ]] || aind_die "ADO work-item creation returned no id (unexpected response)"
+  # Set the initial AIND status tag (and mirror the native State when a stateMap is configured).
+  _ado_set_state "$newid" "Ready for intake" >/dev/null
+  echo "$newid $(_ado_url "$newid")"
 }
 
 # ================================================================================================
