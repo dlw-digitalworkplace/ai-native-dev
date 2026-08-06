@@ -10,6 +10,9 @@
 #                                 .ado.org            -> AIND_ADO_ORG            (ADO org URL)
 #                                 .ado.project        -> AIND_ADO_PROJECT        (ADO project name)
 #                                 .ado.repo           -> AIND_ADO_REPO           (ADO repo; ado host)
+#                                 .ado.workItemType   -> AIND_ADO_WORKITEM_TYPE   (optional; type new
+#                                                             stories are created as, default
+#                                                             "User Story"; ADO tracker /new-item)
 #                                 .codeHost           -> AIND_CODE_HOST          (github | ado)
 #                                 .github.repo        -> AIND_GH_REPO            (owner/repo; gh host)
 #                                 .integrationBranch  -> AIND_INTEGRATION_BRANCH (trunk the PR targets)
@@ -195,6 +198,7 @@ aind_autosource_env() {
           aind_export_from_settings AIND_ADO_ORG            "$sf" '.ado.org'
           aind_export_from_settings AIND_ADO_PROJECT        "$sf" '.ado.project'
           aind_export_from_settings AIND_ADO_REPO           "$sf" '.ado.repo'
+          aind_export_from_settings AIND_ADO_WORKITEM_TYPE  "$sf" '.ado.workItemType'
           # Work-item tracker: which backend holds work items, and — for the file backend —
           # where the per-item markdown files live (absolute; may be outside the repo).
           aind_export_from_settings AIND_TRACKER            "$sf" '.tracker'

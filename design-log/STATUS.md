@@ -2,8 +2,28 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `../CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `../docs/plans/` for the planned-feature backlog and the sibling `D<N>` decision files in this folder for the decision record. The **Implementation status** matrix at the bottom of this file is the at-a-glance companion to the per-decision bullets above._
 
-## Current status (2026-08-05)
+## Current status (2026-08-06)
 
+- **Create work items in Azure DevOps from `/aind:new-item` (D52, 2026-08-06, script path
+  live-validated on a real Scrum project; full command run pending).** Reverses D46's stub, which declined ADO creation and told the human to
+  author the story in the Boards UI first. `_ado_new` (in `aind-tracker.sh`) now takes
+  `"<title>" [--deps "<id>,<id>"]` and reads the **description + acceptance criteria on stdin**, split
+  on a line reading exactly `---AIND-AC---`, so `/aind:new-item` feeds both rich-text fields in **one
+  heredoc** on the D49 resolver (no prose escaping, single allowlisted `bash -c`). It builds a
+  JSON-Patch (Title/Description/AcceptanceCriteria + a `Dependency-Reverse` relation per dep), POSTs it
+  via `_ado_api` to `…/_apis/wit/workitems/$<type>`, then reuses **`_ado_set_state <id> "Ready for
+  intake"`** so the single-tag invariant (D3/D4) + native-State mirror (D43) come for free; echoes
+  `<id> <url>` (the file backend's `<id> <path>` twin). The `/fields/…` and `/relations/-` paths are
+  built **inside jq** (MSYS leading-slash trap). New optional **`.ado.workItemType`** →
+  `AIND_ADO_WORKITEM_TYPE` (default `User Story`) picks the created type — **load-bearing:** the default
+  only exists in the **Agile** process, so a **Scrum** project (`Product Backlog Item`) or **Basic**
+  (`Issue`) must set this or the create 404s with ADO `VS402323`. `/aind:new-item` loses its
+  file-only guard — it detects the backend and branches (file path unchanged → scaffold+edit+path; ADO
+  path → create the populated story, hand back the ADO URL for review in the web UI), and now
+  **surfaces a create failure verbatim** (pointing at `ado.workItemType`) instead of falling back to a
+  manual-entry draft. Config side of the D1–D15 line; the flow, status model, gates, and PR contract
+  are untouched. **Script path live-validated on a real Scrum project (PBI created with correct
+  fields/tag). Next: a full `/aind:new-item` → `/aind:intake` run through the command.**
 - **Portable plugin-root resolution across agent hosts (D49, 2026-08-05, live-validated on both
   hosts via `/aind:env-probe`; end-to-end flow re-validation on Copilot pending).** The whole script
   layer hung on `${CLAUDE_PLUGIN_ROOT}`, which is a **Claude command-string macro**, not an env var —
@@ -420,6 +440,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Dreaming | Lessons-learned emission — `aind-emit-lesson.sh` | ✅ | ✅ | Live-validated: each agent emits a signed record (severity enum + observation) to the `aind/lessons` orphan branch at session end, via worktree-safe git plumbing; human PR feedback becomes correction/suggestion lessons through the revise runs (D30). |
 | Dreaming | Dreamer agent (cold) — `/aind:dream` | ✅ | ✅ | Live-validated end-to-end: the cold dreamer clusters unprocessed lessons and judges them (severity × recurrence × factualness), a human curates the clusters (gate 1), and approved clusters land as one `.claude` PR (gate 2). Scope stays within `.claude`; structural findings → parking-lot (D30). |
 | Cross-cutting | Work-item tracker — ADO Boards **or** local file | ✅ | ✅ | Pluggable work-item tracker (D46): `AIND_TRACKER=ado\|file` selects where stories live. `aind-tracker.sh` dispatches every work-item operation to Azure DevOps Boards or a local markdown-file-per-item store; commands, agents, and skills are unchanged. A third axis, distinct from the agent host and the code host. Offline- + live-validated end-to-end. |
+| Cross-cutting | Create a work item — `/aind:new-item` (both trackers) | ✅ | 🟡 | Guided-Q&A story creation on **either** backend (D52 completes D46): the file backend scaffolds a markdown item; the ADO backend posts a populated Boards story (title/description/acceptance/predecessor deps + `Ready for intake` tag) via `_ado_new`, honoring the optional `.ado.workItemType` (default `User Story`), and hands back the ADO URL. Suggests, never starts the flow. Offline-validated; ADO-create live-validation pending. |
 | Cross-cutting | Native ADO State mirror — `/aind:map-states` | ✅ | ✅ | Optional (ADO tracker only): maps each AIND status onto an existing native ADO State so the board reflects the flow (D43). Adopts existing states — never creates or forces new ones; stored as `stateMap` in `aind.settings.json`. |
 | Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
 | Cross-cutting | Parallel work — opt-in git worktrees | ✅ | ✅ | Per-item git worktrees (D37) let one clone drive multiple stories at once. Opt-in via `worktree.enabled: true` in the shared `.claude/aind.settings.json`; `/aind:plan`→`<id>-plan` and `/aind:implement`→`<id>-impl` create a per-phase worktree, `/aind:approve-plan` and `/aind:complete` retire it. Portable git plumbing (`scripts/aind-worktree.sh`); **strict single-tree no-op when disabled.** Drive-from-main session model (D40); intake and dreaming stay single-tree by design. **Live-exercised** (parallel implement → merge → conflict-resolve → complete). |
