@@ -233,14 +233,18 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
 - **Integration branch** from the repo's default branch.
 
 **Ask** (via `AskUserQuestion`) for what you can't detect:
-- The **work-item tracker** — where stories live (suggest, don't assert):
+- The **work-item tracker** — where stories live (suggest, don't assert). This is a **closed choice of
+  exactly two options** — present only these; **do not offer any other tracker** (in particular there
+  is **no GitHub Issues / GitHub PRs work-item backend** — a GitHub project still stores stories in
+  `file` or `ado`, never in GitHub Issues). The tracker is a **separate axis from the code host**:
+  choosing GitHub as the code host does **not** add a "GitHub Issues" tracker choice.
   - **`ado`** — Azure DevOps Boards work items (the default). Choose this when the project has an ADO
     backlog you can reach. Default-highlight it when the code host is ADO.
   - **`file`** — a local **markdown file per work item** (no external tracker). Choose this when there
-    is **no backlog / no ADO access** (e.g. code-only access via a PAT). Default-highlight it when the
-    code host is not ADO. Then ask for the **item-store directory**, defaulting to `.aind/items` inside
-    the repo; make clear **any absolute path is accepted, including outside the repo** (a synced
-    folder, a home dir) for the code-only case.
+    is **no backlog / no ADO access** (e.g. code-only access via a PAT, or a GitHub-hosted project
+    with no ADO Boards). Default-highlight it when the code host is not ADO. Then ask for the
+    **item-store directory**, defaulting to `.aind/items` inside the repo; make clear **any absolute
+    path is accepted, including outside the repo** (a synced folder, a home dir) for the code-only case.
 - If tracker = `ado`: the **ADO org URL** and **project**, if not derivable.
 - Confirm the **code host** when the remote was ambiguous.
 - Whether to **enable worktrees** for parallel work (default: no).

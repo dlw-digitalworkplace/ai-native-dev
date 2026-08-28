@@ -9,6 +9,18 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.25.2] — 2026-08-28
+
+### Fixed
+- **Onboarding no longer offers an unsupported "GitHub Issues / PRs" work-item tracker.** When
+  `/aind:kickstart` (and `/aind:onboard`) asked where stories should live, the agent could invent a
+  "GitHub Issues / PRs" option — conflating the *code-host* axis (GitHub vs Azure DevOps Repos) with
+  the *work-item tracker* axis — then fall back to the `file` backend, contradicting the choice the
+  user made. AIND supports exactly two trackers, `ado` (Azure DevOps Boards) and `file` (local
+  markdown files); there is no GitHub Issues backend. Both commands now present the tracker as a
+  **closed two-option choice** and state explicitly that the tracker is independent of the code host,
+  so a GitHub-hosted project is offered only `ado`/`file` (and `file` is the natural pick).
+
 ## [0.25.1] — 2026-08-06
 
 ### Fixed

@@ -53,13 +53,17 @@ the project will handle it in a specific or non-standard way a planner must resp
 
 ### 3. Elicit — operational level *(seeds CLAUDE.md config + skills)*
 Cover: the **repo / branch strategy** (integration branch name, branch naming); the **work-item
-tracker** — where stories live: **`ado`** (Azure DevOps Boards; then get the org + project) or
-**`file`** (a local markdown file per work item; then get the item-store directory, default
-`.aind/items`, any absolute path allowed). Suggest, don't assert — a greenfield project with no ADO
-backlog is a natural `file` case; leave the choice visible rather than guessing. Then the **code
-host** — where the code + pull requests will live, **GitHub** or **Azure DevOps Repos** — and the
-matching repo target (the GitHub `<owner>/<repo>` or the ADO repo name), which may not exist yet
-(that's fine, note it as a prerequisite); and the
+tracker** — where stories live. This is a **closed choice of exactly two**: **`ado`** (Azure DevOps
+Boards; then get the org + project) or **`file`** (a local markdown file per work item; then get the
+item-store directory, default `.aind/items`, any absolute path allowed). **Do not offer any other
+tracker option** — there is **no GitHub Issues / GitHub PRs work-item backend**; if the project uses
+GitHub, stories still live in `file` (or `ado`), never in GitHub Issues. The tracker is a **separate
+axis from the code host** (below): choosing GitHub as the code host does **not** add a "GitHub Issues"
+tracker choice. Suggest, don't assert — a greenfield project with no ADO backlog is a natural `file`
+case; leave the choice visible rather than guessing. Then the **code host** — where the code + pull
+requests will live, **GitHub** or **Azure DevOps Repos** — and the matching repo target (the GitHub
+`<owner>/<repo>` or the ADO repo name), which may not exist yet (that's fine, note it as a
+prerequisite); and the
 **intended dev workflows** and CI/CD plans. Build / test / run tooling is the common core,
 but ask about any other scriptable, repeatable workflow the project will have — deploy, DB
 migrations, dev/test data seeding, codegen/scaffolding, formatting, starting local dependencies
