@@ -149,8 +149,13 @@ _ado_set_state() {
     rm -f "$tmp"
   }
   _ado_set_tags() {
-    current="$(_ado_read_tags "$id")"; desired="$(_ado_build_desired "$current")"
-    op="replace"
+    local wi has_tags
+    wi="$(az boards work-item show --id "$id" --org "$org" --output json)" \
+      || aind_die "could not read tags for work item $id from ADO"
+    current="$(printf '%s' "$wi" | jq -r '.fields["System.Tags"] // ""')"
+    has_tags="$(printf '%s' "$wi" | jq -r '.fields | has("System.Tags")')"
+    desired="$(_ado_build_desired "$current")"
+    if [[ "$has_tags" == "true" ]]; then op="replace"; else op="add"; fi
     _ado_patch_tags "$op" "$desired"
   }
   _ado_verify() {
