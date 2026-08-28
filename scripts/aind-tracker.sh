@@ -150,7 +150,7 @@ _ado_set_state() {
   }
   _ado_set_tags() {
     current="$(_ado_read_tags "$id")"; desired="$(_ado_build_desired "$current")"
-    if [[ -n "$current" ]]; then op="replace"; else op="add"; fi
+    op="replace"
     _ado_patch_tags "$op" "$desired"
   }
   _ado_verify() {
