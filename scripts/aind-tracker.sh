@@ -73,10 +73,14 @@ _ado_api() {
   printf '%s' "$out"
 }
 
-# Normalize a string for AIND-status detection: strip CR, lowercase, collapse whitespace, trim.
+# Normalize a string for AIND-status detection: strip CR, lowercase, fold en/em dashes to a plain
+# hyphen (a tag hand-edited in the ADO UI or pasted from rendered text can carry "–"/"—" instead of
+# "-", which would otherwise dodge the AIND-status matcher and leave a stray tag behind), collapse
+# whitespace, trim. Dash folding is byte-level under LC_ALL=C so it is portable on Windows/MSYS.
 _trk_norm() {
   printf '%s' "$1" | tr -d '\r' | tr '[:upper:]' '[:lower:]' \
-    | sed -e 's/[[:space:]]\{1,\}/ /g' -e 's/^ //' -e 's/ $//'
+    | LC_ALL=C sed -e 's/\xe2\x80\x93/-/g' -e 's/\xe2\x80\x94/-/g' \
+                   -e 's/[[:space:]]\{1,\}/ /g' -e 's/^ //' -e 's/ $//'
 }
 
 # Extract the AIND status value ("Intake approved", …) from a ';'-separated ADO tags string; empty
@@ -88,9 +92,13 @@ _ado_tag_value() {
   read -ra parts <<< "$current"
   for raw in "${parts[@]}"; do
     clean="$(printf '%s' "$raw" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    # Match any tag in the reserved "AIND status" namespace, tolerant of the dash character and the
+    # spacing around it (see _trk_norm). Strip the "AIND status[-] " prefix — dashes folded first,
+    # the separating hyphen optional — to recover the bare state value.
     case "$(_trk_norm "$clean")" in
-      "aind status -"*)
-        printf '%s' "$clean" | sed -E 's/^[Aa][Ii][Nn][Dd][[:space:]]+[Ss]tatus[[:space:]]*-[[:space:]]*//'
+      "aind status"*)
+        printf '%s' "$clean" | LC_ALL=C sed -E -e 's/\xe2\x80\x93/-/g' -e 's/\xe2\x80\x94/-/g' \
+          -e 's/^[Aa][Ii][Nn][Dd][[:space:]]+[Ss]tatus[[:space:]]*-?[[:space:]]*//'
         return 0 ;;
     esac
   done
@@ -134,7 +142,8 @@ _ado_set_state() {
         clean="$(printf '%s' "$raw" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
         [[ -z "$clean" ]] && continue
         norm="$(_trk_norm "$clean")"
-        case "$norm" in "aind status -"*) continue ;; *) kept+=("$clean") ;; esac
+        # Drop every existing AIND-status tag (dash/spacing-tolerant match) so only $target remains.
+        case "$norm" in "aind status"*) continue ;; *) kept+=("$clean") ;; esac
       done
     fi
     kept+=("$target")
@@ -149,8 +158,20 @@ _ado_set_state() {
     rm -f "$tmp"
   }
   _ado_set_tags() {
-    current="$(_ado_read_tags "$id")"; desired="$(_ado_build_desired "$current")"
-    if [[ -n "$current" ]]; then op="replace"; else op="add"; fi
+    # Read the current tags AUTHORITATIVELY: a swallowed read that wrongly comes back empty would
+    # pick op=add below, and a JSON-Patch `add` on System.Tags MERGES into the existing tags on some
+    # builds -> the very duplicate this function exists to prevent. So fetch the full item (fail loud
+    # on error) and take the tag string + field-presence straight from it. Choose add vs replace by
+    # whether the field EXISTS (JSON-Patch `replace` needs the path present), not by the string being
+    # non-empty. jq output is CRLF-stripped (Windows jq emits \r, which would make has_tags != "true"
+    # and silently fall through to the merging `add`).
+    local wi has_tags
+    wi="$(az boards work-item show --id "$id" --org "$org" --output json)" \
+      || aind_die "could not read tags for work item $id from ADO (check the id, org, and PAT)"
+    current="$(printf '%s' "$wi" | jq -r '.fields["System.Tags"] // ""' | tr -d '\r')"
+    has_tags="$(printf '%s' "$wi" | jq -r '.fields | has("System.Tags")' | tr -d '\r')"
+    desired="$(_ado_build_desired "$current")"
+    if [[ "$has_tags" == "true" ]]; then op="replace"; else op="add"; fi
     _ado_patch_tags "$op" "$desired"
   }
   _ado_verify() {
@@ -158,7 +179,8 @@ _ado_set_state() {
     AIND_COUNT=0; AIND_HAS_TARGET=0; [[ -z "$cur" ]] && return
     local IFS=';'; read -ra parts <<< "$cur"
     for raw in "${parts[@]}"; do norm="$(_trk_norm "$raw")"
-      case "$norm" in "aind status -"*) AIND_COUNT=$((AIND_COUNT+1)); [[ "$norm" == "$tnorm" ]] && AIND_HAS_TARGET=1 ;; esac
+      # Count every AIND-status tag (dash/spacing-tolerant) so a stray-format duplicate is detected.
+      case "$norm" in "aind status"*) AIND_COUNT=$((AIND_COUNT+1)); [[ "$norm" == "$tnorm" ]] && AIND_HAS_TARGET=1 ;; esac
     done
   }
 

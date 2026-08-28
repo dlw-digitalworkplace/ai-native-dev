@@ -9,6 +9,30 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.25.1] — 2026-08-06
+
+### Fixed
+- **A status transition no longer leaves two `AIND status` tags on an ADO work item** (D53). When an
+  item was intake-**declined** and then **approved** on a re-run, both tags could remain, violating
+  the one-status-tag invariant — silently, with no warning. Hardened on both sides of the tag enforcer
+  in `aind-tracker.sh` (`_ado_set_state`):
+  - **Match/detection:** the enforcer stripped and re-verified AIND-status tags by matching the exact
+    punctuation `AIND status - ` (a plain hyphen with spaces), so a stray-format tag — carrying an
+    en-dash `–`/em-dash `—` (from a hand-edit in the ADO web UI, pasted text, or an older build) or
+    altered spacing — was neither removed nor counted, and the auto-correct safety net never fired.
+    The matcher now recognises the reserved `AIND status` prefix tolerant of the dash character and
+    surrounding whitespace (dash folding is byte-level under `LC_ALL=C` for Windows/MSYS portability),
+    across the strip, verify, and value-read paths.
+  - **Write/op-selection:** `_ado_set_tags` now reads the current tags authoritatively (a full
+    `az … --output json` that fails loud, not a `--query -o tsv` read that swallowed errors and could
+    return empty) and chooses the JSON-Patch op by whether the `System.Tags` field **exists**, not by
+    the tag string being non-empty. A read that wrongly came back empty had selected `add`, and an
+    `add` on `System.Tags` merges into the existing tags on some builds — creating the duplicate. Both
+    jq reads are CRLF-stripped so Windows jq's `\r` can't defeat the field-existence check.
+
+  Together, exactly one status tag survives any transition, regardless of how a stray tag arose or
+  what format it is in.
+
 ## [0.25.0] — 2026-08-06
 
 ### Added
