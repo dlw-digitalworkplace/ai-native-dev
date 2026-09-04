@@ -123,30 +123,70 @@ cmd_begin() {
 # this repo); each *_metrics fn echoes a JSON models map { "<model>": {input,output,cacheWrite,cacheRead} }.
 # ------------------------------------------------------------------------------------------------
 
+# How Claude names a project's transcript directory: it takes the session's launch cwd and replaces
+# EVERY character outside [a-zA-Z0-9] with a single '-' — one dash PER CHARACTER (runs are NOT
+# collapsed) and letter case is preserved. So `C:\repos\AI.Thing` becomes `C--repos-AI-Thing`: the
+# drive colon and each separator each contribute their own dash, and a DOT or a SPACE inside a repo
+# name is flattened exactly like a separator. That last part is easy to miss and was a real bug — a
+# repo called `AI.TranslatorAgent` lives under `…-AI-TranslatorAgent`, with no dot to be found — so
+# keep this class exhaustive (negated alnum), never an enumerated list of separators.
+# Two inputs it can't reproduce, both covered by the cwd scan in _claude_file: a slug over
+# _CLAUDE_SLUG_MAX chars, which the host truncates and suffixes with a hash of its own; and non-ASCII,
+# where the host counts UTF-16 units while sed here substitutes per byte.
+_CLAUDE_SLUG_MAX=200
+_claude_slug() { printf '%s' "$1" | sed -e 's#[^a-zA-Z0-9]#-#g'; }
+
+# How deep to scan a transcript for its `cwd`. The first few records of a session carry no cwd (the
+# opening line is a `mode` record), so the first one that does sits a little way in — measured at
+# lines 3-13 across a live ~/.claude/projects, hence this ceiling for headroom. It must stay BOUNDED:
+# the scan runs once per candidate session file and transcript lines are individually large.
+_CLAUDE_CWD_SCAN_LINES=40
+
 # Claude: prefer the slug dir (fast); fall back to matching each session's recorded .cwd to this repo
 # (robust if the slug transform ever drifts). Among matches, newest mtime = the live session.
 # Identity is the MAIN checkout, NOT $PWD: Claude keys the transcript folder to the session's LAUNCH
 # cwd (always the main checkout under drive-from-main), but in worktree mode the session may have cd'd
 # into a worktree by the time `report` runs — so slugging $PWD would look under a nonexistent
 # worktree slug and miss. `_main_root` (git-common-dir → main) is the launch identity from anywhere.
+# Sets USAGE_CLAUDE_BASE/USAGE_CLAUDE_SLUG on every call (even a failing one) so a miss can be
+# reported with the path it actually looked under, rather than blamed on the host.
 _claude_file() {
-  local base slug dir f root mroot
+  local base slug dir f root mroot cand
   base="${CLAUDE_CONFIG_DIR:+$CLAUDE_CONFIG_DIR}"; base="${base:-$(_home)/.claude}/projects"
+  USAGE_CLAUDE_BASE="$base"; USAGE_CLAUDE_SLUG=""
   [[ -d "$base" ]] || return 1
   mroot="$(_main_root)"
+  # Slug the NATIVE path: the host records a Windows-style cwd, which is what cygpath -w yields. On a
+  # POSIX host cygpath is absent and the root is already native (a leading '/' simply becomes '-').
   slug="$(cygpath -w "$mroot" 2>/dev/null || printf '%s' "$mroot")"
-  slug="$(printf '%s' "$slug" | sed -e 's#[:\\/]#-#g')"
+  slug="$(_claude_slug "$slug")"
+  USAGE_CLAUDE_SLUG="$slug"
   dir="$base/$slug"
   if [[ -d "$dir" ]]; then
     f="$(ls -t "$dir"/*.jsonl 2>/dev/null | head -1)"
     [[ -n "$f" ]] && { USAGE_FILE="$f"; return 0; }
   fi
-  # Fallback: scan all sessions, match recorded cwd to the main checkout, keep the newest.
+  # An over-long slug is truncated by the host and given a hash suffix we can't recompute, so match on
+  # the surviving prefix instead. Newest mtime wins, as above.
+  if (( ${#slug} > _CLAUDE_SLUG_MAX )); then
+    local pbest="" pbestt=0 pt
+    for cand in "$base/${slug:0:$_CLAUDE_SLUG_MAX}"-*/; do
+      [[ -d "$cand" ]] || continue
+      f="$(ls -t "${cand%/}"/*.jsonl 2>/dev/null | head -1)"
+      [[ -n "$f" ]] || continue
+      pt="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
+      if (( pt > pbestt )); then pbestt="$pt"; pbest="$f"; fi
+    done
+    [[ -n "$pbest" ]] && { USAGE_FILE="$pbest"; return 0; }
+  fi
+  # Fallback: scan all sessions, match recorded cwd to the main checkout, keep the newest. This is the
+  # slug-independent safety net, so it must not assume WHERE in the file the cwd sits — read the first
+  # _CLAUDE_CWD_SCAN_LINES records and take the first that carries one (line 1 never does).
   root="$(_canon "$mroot")"
   local best="" bestt=0 c t
   for f in "$base"/*/*.jsonl; do
     [[ -f "$f" ]] || continue
-    c="$(head -n1 "$f" | jq -r '.cwd // empty' 2>/dev/null)"
+    c="$(head -n "$_CLAUDE_CWD_SCAN_LINES" "$f" 2>/dev/null | jq -r 'select(.cwd) | .cwd' 2>/dev/null | head -1)"
     [[ -n "$c" && "$(_canon "$c")" == "$root" ]] || continue
     t="$(stat -c %Y "$f" 2>/dev/null || echo 0)"
     if (( t > bestt )); then bestt="$t"; best="$f"; fi
@@ -241,6 +281,24 @@ _copilot_metrics() {
   ' "$f" 2>/dev/null || echo '{}'
 }
 
+# One line explaining a failed resolution. The old text blamed the host unconditionally ("host may not
+# expose usage"), which sent a real investigation down the wrong path when the fault was our own slug
+# transform — so only float that hypothesis when neither host has a session store at all; otherwise
+# name the checkout and the exact directory we looked under, which is what makes a miss diagnosable.
+_usage_diag() {
+  local cbase pbase
+  cbase="${USAGE_CLAUDE_BASE:-}"; [[ -n "$cbase" ]] || { cbase="${CLAUDE_CONFIG_DIR:+$CLAUDE_CONFIG_DIR}"; cbase="${cbase:-$(_home)/.claude}/projects"; }
+  pbase="$(_home)/.copilot/session-state"
+  if [[ ! -d "$cbase" && ! -d "$pbase" ]]; then
+    printf 'no agent-host session store at %s or %s (host may not expose usage)' "$cbase" "$pbase"
+  elif [[ -n "${USAGE_CLAUDE_SLUG:-}" ]]; then
+    printf 'no session file matched checkout %s — looked under %s/%s and scanned session cwds there' \
+      "$(_main_root)" "$cbase" "$USAGE_CLAUDE_SLUG"
+  else
+    printf 'no session file matched checkout %s — looked under %s' "$(_main_root)" "$pbase"
+  fi
+}
+
 # Detect the host and compute the per-model breakdown for the window. Sets USAGE_HOST, USAGE_MODELS
 # (JSON models map), USAGE_FILE. Honours AIND_AGENT_HOST; else picks whichever host has a session file
 # for this repo (newest mtime wins when both exist — the host actually running now wrote most recently).
@@ -248,6 +306,7 @@ aind_collect_usage() {
   local lo="$1" hi="$2" forced cf="" pf=""
   forced="$(printf '%s' "${AIND_AGENT_HOST:-}" | tr '[:upper:]' '[:lower:]' | tr -d '\r')"
   USAGE_HOST=""; USAGE_MODELS='{}'; USAGE_FILE=""; USAGE_ANCHOR=""
+  USAGE_CLAUDE_BASE=""; USAGE_CLAUDE_SLUG=""   # so a miss is reported against THIS call's lookup
   case "$forced" in
     claude)  _claude_file  && { USAGE_HOST=claude;  USAGE_MODELS="$(_claude_models   "$USAGE_FILE" "$lo" "$hi")"; return 0; }; return 1 ;;
     copilot) _copilot_file && { USAGE_HOST=copilot; USAGE_MODELS="$(_copilot_metrics "$USAGE_FILE" "$lo" "$hi")"; return 0; }; return 1 ;;
@@ -303,7 +362,7 @@ cmd_report() {
   rm -f "$marker"   # consume it now: `begin` re-creates it next run, so a stale marker can't widen a later window
 
   if ! aind_collect_usage "$lo" "$hi"; then
-    aind_warn "no session events file found for this repo (host may not expose usage) — telemetry skipped for AB#${id} ${agent}"
+    aind_warn "$(_usage_diag) — telemetry skipped for AB#${id} ${agent}"
     return 0
   fi
 

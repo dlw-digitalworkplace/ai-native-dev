@@ -9,6 +9,36 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.25.3] — 2026-09-04
+
+### Fixed
+- **Per-phase usage telemetry no longer skips silently in a repo whose path contains a dot or a
+  space** (D54, fixes D42). Every phase in a project called `AI.TranslatorAgent` ended with
+  `no session events file found for this repo (host may not expose usage) — telemetry skipped`,
+  even with `telemetry.enabled: true` — so no token-breakdown attachment and no duration
+  accumulation were ever written for that repo. The host *was* exposing usage; `aind-usage.sh`
+  simply could not find the file. Two independent bugs in `_claude_file`, each sufficient on its
+  own, the second being the fallback that should have absorbed the first:
+  - **The transcript-directory slug under-replaced.** It mapped only `:`, `\` and `/` to `-`, but
+    the agent host flattens **every** character outside `[a-zA-Z0-9]` to a single `-` (one per
+    character — runs are not collapsed, case is preserved). So `…\AI.TranslatorAgent` was looked
+    for under a name keeping its dot, which does not exist, and the fast path was skipped. The
+    transform now uses the negated-alphanumeric class — deliberately not an enumerated list of
+    separators, since a repo with a **space** in its name was equally broken. An over-long slug
+    (the host truncates at 200 chars and appends its own hash) is matched on its prefix.
+  - **The slug-independent `cwd` fallback only read line 1.** A session's opening record is a
+    `mode` record with no `cwd`; the first record carrying one sits a few lines in. The fallback
+    now scans a bounded window of records and takes the first `cwd` it finds, so it stays cheap
+    across many session files while actually working.
+- **The "telemetry skipped" warning is diagnosable instead of misleading.** It asserted
+  `host may not expose usage`, pointing at the host for what was a bug in our own resolver. That
+  hypothesis is now stated only when neither agent host has a session store at all; otherwise the
+  warning names the checkout and the exact directory searched. Still one line.
+
+  Resolution only: the telemetry data model (per-model map shape, attachment format, duration-field
+  accumulation, phase mapping) and the Copilot resolver are untouched, and telemetry remains
+  strictly best-effort — it still warns and never fails a phase.
+
 ## [0.25.2] — 2026-08-28
 
 ### Fixed
