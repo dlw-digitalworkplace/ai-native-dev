@@ -602,10 +602,34 @@ design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-w
 - **The only place token counts exist is the agent host's on-disk per-session events file** — the
   bash scripts never see the model's tokens. Locations are undocumented internals, so `aind_collect_usage`
   isolates all path derivation in two backends: Claude `~/.claude/projects/<slug>/<session>.jsonl`
-  (slug = the **main-checkout** path with `:` `\` `/` → `-`; falls back to matching each session's
-  recorded `.cwd` to the main checkout if the slug transform drifts) + its `<session>/subagents/*.jsonl`;
+  (slug = the **main-checkout** path with **every** non-`[a-zA-Z0-9]` char → one `-`; falls back to
+  matching each session's recorded `.cwd` to the main checkout if the slug transform drifts) + its
+  `<session>/subagents/*.jsonl`;
   Copilot `~/.copilot/session-state/<session>/events.jsonl` (matched via `workspace.yaml`
   `git_root`/`cwd`). Resolve `$HOME` from **`USERPROFILE`** (MSYS `$HOME` can be a mapped drive).
+- **The slug class is EXHAUSTIVE — negated alphanumeric, never a list of separators (D54, bit us).**
+  The host's own rule is `path.replace(/[^a-zA-Z0-9]/g,"-")`: **one `-` per character**, runs are
+  **not** collapsed (`C:\` → `C--`), case is preserved, and a **dot or space inside the repo name is
+  flattened exactly like a separator** — so `AI.TranslatorAgent` lives under `…-AI-TranslatorAgent`
+  and `AI Sales Agents` under `…-AI-Sales-Agents`. An earlier class of just `:` `\` `/` therefore
+  resolved **nothing** for those repos, and telemetry was skipped for every phase in them, silently
+  (best-effort warns and returns 0). Don't "fix" this by adding the one character you just hit.
+  A slug over **200 chars** is truncated by the host and given a hash suffix we can't recompute →
+  matched on its 200-char **prefix**, with the `cwd` scan behind that.
+- **The `cwd` fallback must scan a BOUNDED WINDOW of records, not line 1 (D54, bit us).** A session's
+  opening record is a `mode` record with **no `cwd`**; the first record carrying one sits a few lines
+  in (measured at lines 3–13 across 47 live transcripts), so a `head -n1 | jq '.cwd'` fallback matched
+  nothing, always — which is why the slug bug above had no safety net. It reads the first
+  `_CLAUDE_CWD_SCAN_LINES` (40) records instead. Keep it bounded: it runs per candidate session file
+  and transcript lines are individually large. This scan is also the only net under non-ASCII paths
+  (the host counts UTF-16 units, `sed` here substitutes per byte) and under the hashed long slug.
+- **A telemetry miss must name where it looked, not blame the host (D54).** The old warning asserted
+  "host may not expose usage" and sent a real investigation after the host instead of our resolver.
+  That hypothesis is now printed **only** when neither host has a session store at all; otherwise the
+  warning names the checkout + the searched slug dir. Keep it one line.
+- **`aind-common.sh` sets `-e`, so `report` does `set +e` before ever calling the resolver** — a
+  resolver returning non-zero (a legitimate "no match") would otherwise kill the phase. An offline
+  test that sources the script must `set +e` too, or call it as `if _claude_file; then …`.
 - **Worktree gotcha (bit us on `/aind:plan`): key discovery off the MAIN checkout (`_main_root`),
   never `$PWD`/`git --show-toplevel`.** Claude keys the transcript's project folder to the session's
   *launch* cwd — always the main checkout under drive-from-main — but `/aind:plan` and `/aind:implement`
