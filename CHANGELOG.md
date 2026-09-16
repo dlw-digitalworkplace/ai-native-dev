@@ -9,6 +9,21 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.26.0] — 2026-09-16
+
+### Added
+- **Local same-branch flow — `flow.mode: "local"` (D55).** An opt-in flow where the plan and the code
+  share **one story branch** and the plan is reviewed **in the working tree** (e.g. VS Code) instead of
+  a plan PR — for developers running the flow locally. `/aind:plan` commits `plans/<id>/plan.md` onto a
+  `<type>/<id>-<short-name>` branch (no plan PR); `/aind:approve-plan <id>` records approval after an
+  interactive confirmation;
+  `/aind:implement` continues on that same branch and opens a **single code PR** (plan + code). The code
+  PR, cold reviewer, review loop, and `/aind:complete` merge-then-tag are unchanged. Single-tree and
+  mutually exclusive with worktrees. Configured by `flow.mode` in `.claude/aind.settings.json` (default
+  `"pr"` — the standard two-PR flow, byte-identical to before). New `scripts/aind-flowmode.sh`; new
+  `aind-open-code-pr.sh` verbs `start-local` /
+  `resume-local`. `/aind:onboard` and `/aind:kickstart` now offer the flow-mode choice.
+
 ## [0.25.3] — 2026-09-04
 
 ### Fixed

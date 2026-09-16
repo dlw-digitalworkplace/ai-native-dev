@@ -124,7 +124,11 @@ and note it.
    emit a `deploy` skill just because deploy is common.
 4. **Create the config files** (use the `<name>.aind-draft` fallback if a target exists). You already
    gathered the operational values in step 3 (tracker + its config, code host, repo target,
-   integration branch); also ask whether to **enable worktrees** (default: no) and whether to **track
+   integration branch); also ask the **flow mode** (default: `pr`
+   — the two-PR flow; `local` = plan+code share one branch, plan reviewed in the editor, approved with
+   `/aind:approve-plan <id>` which asks you to confirm; single-tree, **mutually exclusive with
+   worktrees**), whether to
+   **enable worktrees** (default: no) and whether to **track
    per-phase token/time telemetry** onto the work item (default: no — token detail is stored as a JSON
    attachment, and time as a duration total; for the `ado` tracker ask for a numeric duration field's
    reference name if yes; the `file` tracker needs none). Then **write** the files:
@@ -137,7 +141,9 @@ and note it.
      `trackerDir` (default `.aind/items`, or an absolute path). Set only the repo key matching the
      chosen host (`github.repo` **or** `ado.repo`); leave the other at its placeholder, and leave any
      not-yet-decided value at its placeholder. Set `worktree.enabled` per the answer; leave the rest of
-     the `worktree` block at its sample defaults. Set the `telemetry` block from the answer —
+     the `worktree` block at its sample defaults. Set `flow.mode` to `"local"` if the human chose the
+     local same-branch flow, else leave `"pr"` (if `local`, keep `worktree.enabled` `false` — mutually
+     exclusive). Set the `telemetry` block from the answer —
      `enabled: true` (and, for `ado`, `durationField` if the user gave one) when they opted in, else
      leave it `enabled: false` (inert). **This file is checked in** (shared config).
    - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the

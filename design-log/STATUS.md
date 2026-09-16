@@ -2,8 +2,37 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `../CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `../docs/plans/` for the planned-feature backlog and the sibling `D<N>` decision files in this folder for the decision record. The **Implementation status** matrix at the bottom of this file is the at-a-glance companion to the per-decision bullets above._
 
-## Current status (2026-08-06)
+## Current status (2026-09-16)
 
+- **Local same-branch flow — `flow.mode: local` (D55, 2026-09-16, offline-validated; live-validation
+  pending).** An opt-in flow where the **plan and the code share ONE story branch** and the plan is
+  **reviewed in the working tree** (VS Code) instead of a plan PR — for developers running the flow
+  locally, where a PR round-trip on a one-file plan is heavier than reading it in the editor. Only the
+  *plan* PR is removed: `/aind:plan` picks the `<type>/<id>-<short-name>` branch, commits
+  `plans/<id>/plan.md` onto it (no PR, no push — new verb `aind-open-code-pr.sh start-local`,
+  idempotent so a revision re-commits), and leaves the session on the branch; `/aind:approve-plan <id>`
+  records approval after an `AskUserQuestion` confirmation (no plan-PR-merge gate, no plan-branch
+  cleanup); `/aind:implement`
+  **continues on the same branch** (new verb `resume-local`, which rediscovers it by the `<type>/<id>-…`
+  convention — the one sanctioned exception to reach-branch-through-PR, since no PR exists yet) and
+  opens **one code PR** carrying plan + code. **The code PR, cold reviewer, review loop, and
+  `/aind:complete` merge-then-tag are all unchanged**; the status model is untouched. **Single-tree,
+  mutually exclusive with worktrees** (opposite session models). Mode resolved by new
+  `scripts/aind-flowmode.sh` from `.flow.mode → AIND_FLOW_MODE` (default `pr`, unknown → `pr`),
+  config-only so every command agrees. A **flow-level change (amends D1/D5/D10/D13/D7)** shipped opt-in +
+  **byte-identical when off** per the D14 principled-same-branch framework: it names what D5's
+  structural per-assumption gate gives up and how it's compensated (an `AskUserQuestion` confirmation at
+  approval + the plan rides in the code-PR diff for the cold reviewer + attended sparring resolves
+  assumptions live). Offline-validated (`bash -n`; a throwaway-repo smoke test of start-local
+  create/idempotent-revise, resume-local discovery, and the local plan-excluding empty-diff gate; the
+  `pr` path kept literal). **First live run** surfaced and fixed a resolver bug: the local-flow approval
+  originally took a typed `--confirm` CLI token, which made `/aind:approve-plan` the first command to
+  pass a **two-token `$ARGUMENTS`** through the D49 resolver; with an empty `${CLAUDE_PLUGIN_ROOT}`
+  (Copilot) the host dropped/split args and the resolver mis-read `--confirm` as the plugin root
+  (`R="--confirm"` → self-located a stale `.copilot` install). Fixed by making `/aind:approve-plan`
+  **single-positional again** and moving the local-flow confirmation to an **`AskUserQuestion` prompt**
+  (agent layer, can't corrupt the shell). **Live-validate next** end-to-end on a real story (plan →
+  local review → confirm → build → single code PR → complete).
 - **Create work items in Azure DevOps from `/aind:new-item` (D52, 2026-08-06, script path
   live-validated on a real Scrum project; full command run pending).** Reverses D46's stub, which declined ADO creation and told the human to
   author the story in the Boards UI first. `_ado_new` (in `aind-tracker.sh`) now takes
@@ -443,6 +472,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Cross-cutting | Create a work item — `/aind:new-item` (both trackers) | ✅ | 🟡 | Guided-Q&A story creation on **either** backend (D52 completes D46): the file backend scaffolds a markdown item; the ADO backend posts a populated Boards story (title/description/acceptance/predecessor deps + `Ready for intake` tag) via `_ado_new`, honoring the optional `.ado.workItemType` (default `User Story`), and hands back the ADO URL. Suggests, never starts the flow. Offline-validated; ADO-create live-validation pending. |
 | Cross-cutting | Native ADO State mirror — `/aind:map-states` | ✅ | ✅ | Optional (ADO tracker only): maps each AIND status onto an existing native ADO State so the board reflects the flow (D43). Adopts existing states — never creates or forces new ones; stored as `stateMap` in `aind.settings.json`. |
 | Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
+| Cross-cutting | Local same-branch flow — opt-in `flow.mode: local` | ✅ | ◻️ | Plan + code on ONE branch, plan reviewed in the working tree (no plan PR); `/aind:plan` commits the plan (`start-local`), `/aind:approve-plan <id>` approves after an AskUserQuestion confirmation, `/aind:implement` continues on the branch (`resume-local`) and opens the single code PR (D55). Opt-in via `flow.mode: "local"`; single-tree, mutually exclusive with worktrees; **byte-identical `pr` default**. Offline-validated; live-validation pending. |
 | Cross-cutting | Parallel work — opt-in git worktrees | ✅ | ✅ | Per-item git worktrees (D37) let one clone drive multiple stories at once. Opt-in via `worktree.enabled: true` in the shared `.claude/aind.settings.json`; `/aind:plan`→`<id>-plan` and `/aind:implement`→`<id>-impl` create a per-phase worktree, `/aind:approve-plan` and `/aind:complete` retire it. Portable git plumbing (`scripts/aind-worktree.sh`); **strict single-tree no-op when disabled.** Drive-from-main session model (D40); intake and dreaming stay single-tree by design. **Live-exercised** (parallel implement → merge → conflict-resolve → complete). |
 | Cross-cutting | Front-end — share `node_modules` across worktrees | ✅ | 🟡 | Optional `worktree.symlinkDirs` list in `aind.settings.json` (D39) shares heavyweight gitignored dirs (chiefly `node_modules`) across worktrees instead of re-installing per tree — a directory **junction** on Windows (no admin) / symlink on Unix, linked in on `ensure` and **safely unlinked before teardown**. Shared state (documented trade-off) — **pnpm recommended** where per-branch isolation matters. **No-op when absent/empty.** Offline-validated; live-validation pending. |
 | Cross-cutting | Usage telemetry — per-phase raw tokens + time | ✅ | ✅ | Optional `telemetry` block in `.claude/aind.settings.json` (`enabled` + one numeric `durationField`). Each phase brackets its work with `aind-usage.sh begin`/`report`: a **per-model, per-token-type** breakdown + wall-clock over the phase's timestamp window from the host's on-disk session events. **Raw usage only — no cost** (pricing offline). Token breakdown → an append-only JSON attachment on the work item; time → the numeric field. Host-aware collector covers Claude (full breakdown) and Copilot (output tokens only). Best-effort; inert until opted in (D42). Live-validated end-to-end. **Session-file resolution fixed in 0.25.3 (D54):** until then a repo whose path contained a **dot or a space** resolved to no transcript at all, so every phase in it silently recorded nothing. |

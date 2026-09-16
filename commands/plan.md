@@ -1,34 +1,47 @@
 ---
-description: Create — or, on a re-run, revise — the implementation plan for an Intake-approved ADO story, delivered as a GitHub plan PR.
+description: Create — or, on a re-run, revise — the implementation plan for an Intake-approved ADO story, delivered as a plan PR (pr flow) or a locally-reviewed plan on the story branch (local flow).
 argument-hint: "<work-item-id> [attended|headless]"
 allowed-tools: Bash, Read, Glob, Grep, Write, AskUserQuestion
 ---
 
 # /plan — Phase 1 planning & plan-revision loop
 
-You are the **AIND planner agent**. For story `<id>` you either **create** the initial plan PR, or —
-if one already exists — **revise** it in place by folding in the PR's review feedback. Pick the
-mode first; never open a second PR for the same story. **How you resolve a genuine choice depends on
-the run mode (step 1.5):** in a **headless** run you never block — proceed on a reasonable assumption
-and record it as a thread; in an **attended** run you *co-form* the plan, asking the genuine choices
-live and recording the answers as decisions. Either way the plan artifact is identical — only where
-the answers come from differs.
+You are the **AIND planner agent**. For story `<id>` you either **create** the initial plan, or —
+on a re-run — **revise** it in place. **The delivery depends on the flow mode (resolved in section
+0):** in the default **`pr`** flow the plan is a **plan PR** with resolvable assumption threads; in
+the **`local`** same-branch flow the plan is **committed to the story branch and reviewed in the
+working tree** (VS Code), with no plan PR — the plan and the eventual code live on **one branch**.
+Never open a second PR / create a second story branch for the same story. **How you resolve a genuine
+choice also depends on the run mode (step 1.5):** in a **headless** run you never block — proceed on a
+reasonable assumption and record it (a thread in `pr`, plan prose in `local`); in an **attended** run
+you *co-form* the plan, asking the genuine choices live. Either way the plan artifact is identical —
+only where the answers come from, and how it's delivered, differ.
 
 Work item: **$ARGUMENTS** — the first whitespace token is the work-item id (referred to as `<id>`
-below); an optional second token (`attended` / `headless`) sets the run mode (step 1.5).
+below); an optional `attended`/`headless` token sets the run mode (step 1.5). The flow mode
+(`pr`/`local`) is a project setting resolved from config in section 0.
 
 ## 0. Pick the mode
-```bash
-bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "${A%% *}" status' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
-```
-- Prints a PR number + URL → an open plan PR already exists → **Revise mode (section B)**.
-- Says "no open plan PR" (exits 9) → **Create mode (section A)**.
 
-**Stamp the phase start (telemetry)** now, before either mode — best-effort usage telemetry that
+**First, resolve the flow mode** — `pr` (default) or `local`:
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-flowmode.sh"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+
+**Stamp the phase start (telemetry)** now, before either flow — best-effort usage telemetry that
 records nothing unless the project opted in, and never blocks planning:
 ```bash
 bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" begin "${A%% *}" planner' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
 ```
+
+- **Flow is `local`** → go to **Section C — Local same-branch flow** (below sections A and B).
+  Sections A and B are the **`pr` flow only**.
+- **Flow is `pr`** → detect create vs revise:
+  ```bash
+  bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-plan-pr.sh" "${A%% *}" status' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+  ```
+  - Prints a PR number + URL → an open plan PR already exists → **Revise mode (section B)**.
+  - Says "no open plan PR" (exits 9) → **Create mode (section A)**.
 
 ---
 
@@ -47,7 +60,9 @@ bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_R
 > Then author to **`$WT/plans/<id>/plan.md`**. The PR/thread scripts operate in that worktree
 > automatically, and thread `file:line` anchors stay the repo-relative `plans/<id>/plan.md`. If
 > worktrees are **not** enabled, ignore this box and use `plans/<id>/plan.md` in the main checkout as
-> before.
+> before. **In the `local` flow this box does not apply** — local mode is single-tree by design (the
+> story branch lives in your main checkout so you review the plan in your editor); Section C never
+> uses a worktree, even if `worktree.enabled` is set.
 
 ## A. Create mode (first run)
 
@@ -317,6 +332,69 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
 
 ---
 
+## C. Local same-branch flow (`flow.mode = local`)
+
+The plan and the eventual code live on **one story branch**; the plan is reviewed in your working
+tree, with **no plan PR**. This is **single-tree** — you stay on the story branch in the main
+checkout. Create and revise are the **same path**: committing the plan is idempotent, so a re-run just
+re-commits an edited plan on the same branch (there are no PR threads to fold — the human steers you
+directly, or edits `plans/<id>/plan.md` themselves).
+
+**C1. Precondition + detect create vs revise.** Load the story and confirm it carries
+`AIND status - Intake approved` (a fresh plan) **or** `AIND status - Plan ready for review` (a
+revision). If neither, stop and tell the user. Then check whether a story branch already exists:
+```bash
+bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" resume-local "${A%% *}"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+```
+- Prints a branch name (and checks it out) → a plan already exists on it → **revise**: read that
+  branch's `plans/<id>/plan.md` and edit it per the user's steering.
+- Exits with "no local story branch" → **create**: author the plan fresh. On a fresh create, mark it
+  in-progress (skip on a revise — the tag stays `Plan ready for review`):
+  ```bash
+  bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-workitem.sh" "${A%% *}"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+  bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "${A%% *}" "Generating plan"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+  ```
+
+**C2. Run mode + author the plan.** Resolve the run mode and author **exactly as in Section A steps
+1.5–4** — the same codebase grounding, the same fixed plan template written to `plans/<id>/plan.md`,
+the same simplicity bias, the same **Assumptions & open questions** discipline, and (attended) the same
+live **sparring** (step 4.5). **The only difference:** there is **no PR**, so **assumptions are not
+posted as threads** — every genuine either/or that survives sparring stays as **prose** under
+*Assumptions & open questions* for the human to read and decide in the editor. (Attended mode is
+recommended in this flow for assumption-heavy stories, since it resolves them live rather than leaving
+un-gated prose.) Write the plan to `plans/<id>/plan.md` in your main checkout.
+
+**C3. Commit the plan to the story branch (no PR).** On a **create**, pick a branch name from the
+convention `<type>/<id>-<short-name>` (e.g. `feat/<id>-csv-export`) — the same name the build phase
+continues on. On a **revise**, the script reuses the existing branch (the name you pass is ignored if
+one already exists). Then:
+```bash
+bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" start-local "${A%% *}" "<branch>"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+```
+This creates (or reuses) the branch, commits `plans/<id>/`, and leaves you **on the story branch** —
+no push, no PR.
+
+**C4. Transition to review:**
+```bash
+bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "${A%% *}" "Plan ready for review"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+```
+
+**C5. Emit a lesson** if the run taught you something reusable — exactly as **Section A step 7** (emit
+nothing if there's no genuine lesson).
+
+**C6. Report.** Tell the user the plan is committed on `<branch>` and ready to review **locally** at
+`plans/<id>/plan.md` (open it in the editor / `git diff` it) — then approve with
+`/aind:approve-plan <id>` (it asks you to confirm the review). Note there is **no plan PR** in this
+flow, and that the plan and the code will share this one branch (the code PR opens at the end of
+`/aind:implement`).
+
+**C7. Record consumption (telemetry)** — best-effort, as **Section A step 9**:
+```bash
+bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-usage.sh" report "${A%% *}" planner' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+```
+
+---
+
 ## Stuck-state
 If you genuinely cannot produce a viable plan (e.g. the story is too underspecified to plan
 against even with reasonable assumptions), **do not** emit a bad plan or open a PR full of
@@ -334,6 +412,9 @@ A story that is simply not ready is an intake-stage problem — say so rather th
 ## Notes
 - The plan is **permanent living documentation** — it stays in the repo next to the code it
   produces. Write it to be read later, not as a throwaway.
-- One story = one plan PR on the `aind/plan/<id>` branch. Revisions iterate that PR (re-run
-  `/aind:plan`); they never open a second PR and never move the status tag (coarse phase tag vs.
-  fine-grained PR iteration are kept separate).
+- **`pr` flow:** one story = one plan PR on the `aind/plan/<id>` branch. Revisions iterate that PR
+  (re-run `/aind:plan`); they never open a second PR and never move the status tag (coarse phase tag
+  vs. fine-grained PR iteration are kept separate).
+- **`local` flow:** one story = one story branch `<type>/<id>-<short-name>` carrying the committed
+  plan, reviewed in the working tree; there is no plan PR. Revisions re-commit the edited plan on the
+  same branch and never move the status tag. The build phase continues on this same branch.

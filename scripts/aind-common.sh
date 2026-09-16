@@ -25,6 +25,10 @@
 #                                                             /aind:map-states, read by aind-status.sh)
 #                                 .planning.mode           -> AIND_PLAN_MODE (optional; auto|attended|
 #                                                             headless — the /aind:plan run mode default)
+#                                 .flow.mode               -> AIND_FLOW_MODE (optional; pr|local —
+#                                                             pr is the default two-PR flow; local runs
+#                                                             plan+code on one branch, plan reviewed
+#                                                             in the working tree, no plan PR)
 #                                 .research.dir            -> AIND_RESEARCH_DIR (optional; where
 #                                                             /aind:research writes findings; default
 #                                                             <main-checkout>/.aind/research)
@@ -107,6 +111,19 @@ aind_org() { echo "${AIND_ADO_ORG%/}"; }
 # PR, never by reconstructing this name to find an artifact — this is only used where the branch is
 # being created/checked out by its own phase.
 aind_plan_branch() { echo "${AIND_PLAN_BRANCH_PREFIX:-aind/plan/}${1}"; }
+
+# Discover the local story branch for a work item BY CONVENTION — <type>/<id>-<short-name>.
+# This is the one place the framework reconstructs a branch from an id rather than reaching it through
+# a PR: the LOCAL same-branch flow (flow.mode=local) commits the plan to the story branch before any
+# PR exists, so there is no PR handle to carry between /aind:plan and /aind:implement. It is safe
+# because the id-scoped code-branch convention is unique per item (same regex aind-open-code-pr.sh
+# enforces on create). Echoes the single matching local branch, or empty if none; a caller that finds
+# >1 (which the create-time no-clobber guard prevents) should treat it as an error.
+aind_find_story_branch() {
+  local id="$1"
+  git for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null \
+    | grep -E "^[a-z]+/${id}-[A-Za-z0-9._-]+$" || true
+}
 
 # --- Lessons stream (dreaming phase) ------------------------------------------------------------
 # Lessons-learned records live on a dedicated, long-lived branch that never merges into the
@@ -213,6 +230,7 @@ aind_autosource_env() {
           # stateMap is an object, not a scalar — surface it as a compact JSON string.
           aind_export_from_settings AIND_STATE_MAP                "$sf" '(.stateMap // empty) | tojson'
           aind_export_from_settings AIND_PLAN_MODE                "$sf" '.planning.mode'
+          aind_export_from_settings AIND_FLOW_MODE                "$sf" '.flow.mode'
           # Pre-story research: where /aind:research writes its findings (default resolved by
           # aind-research.sh when unset).
           aind_export_from_settings AIND_RESEARCH_DIR             "$sf" '.research.dir'

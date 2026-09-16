@@ -25,6 +25,7 @@
     <div class="grouphead">Config</div>
     <a href="#config">Overview</a>
     <a href="#cfg-settings">aind.settings.json</a>
+    <a href="#cfg-flow">flow block</a>
     <a href="#cfg-worktree">worktree block</a>
     <a href="#cfg-telemetry">telemetry block</a>
     <a href="#cfg-env">aind.env</a>
@@ -112,6 +113,9 @@
         <tr><td><code>planning.mode</code></td><td><code>AIND_PLAN_MODE</code></td>
           <td>Optional. Default mode for <code>/aind:plan</code>: <code>auto</code>,
             <code>attended</code>, or <code>headless</code>.</td></tr>
+        <tr><td><code>flow.mode</code></td><td><code>AIND_FLOW_MODE</code></td>
+          <td>Optional. <code>pr</code> (default) or <code>local</code> — see the
+            <a href="#cfg-flow">flow block</a> below.</td></tr>
         <tr><td><code>research.dir</code></td><td><code>AIND_RESEARCH_DIR</code></td>
           <td>Optional. Where <a href="#cmd-research"><code>/aind:research</code></a> writes its
             markdown findings (default <code>.aind/research</code>, gitignored). May be an absolute
@@ -134,6 +138,31 @@
   "github": { "repo": "&lt;owner&gt;/&lt;repo&gt;" },
   "integrationBranch": "main"
 }</code></pre>
+
+    <h3 id="cfg-flow">flow block (review style)</h3>
+    <p>Choose where the plan is reviewed. The default <code>pr</code> flow is the standard two-PR
+    pipeline: <code>/aind:plan</code> opens a <strong>plan PR</strong> (assumptions become resolvable
+    threads), you approve + merge it, then <code>/aind:implement</code> opens a separate
+    <strong>code PR</strong>. Best for team, asynchronous review.</p>
+    <p>The <code>local</code> flow is for developers running the flow locally who would rather review
+    the plan in their editor than through a PR. The plan and the code share <strong>one branch</strong>:
+    <code>/aind:plan</code> commits <code>plans/&lt;id&gt;/plan.md</code> onto a
+    <code>&lt;type&gt;/&lt;id&gt;-&lt;name&gt;</code> branch (no plan PR) and leaves you on it, so you
+    read the plan in your working tree (e.g. VS Code); you approve with
+    <code>/aind:approve-plan &lt;id&gt;</code> (it asks you to confirm the review); then
+    <code>/aind:implement</code> continues on the <strong>same branch</strong> and opens a
+    <strong>single code PR</strong> containing the plan and the code. The cold reviewer, the review loop, and <code>/aind:complete</code> are identical to the
+    <code>pr</code> flow — only the plan PR is removed.</p>
+    <pre><code>"flow": {
+  "mode": "local"   <span class="cmt">// "pr" (default) or "local"</span>
+}</code></pre>
+    <p>The <code>local</code> flow is <strong>single-tree</strong> — you work on the story branch in
+    your main checkout — so it is <strong>mutually exclusive with worktrees</strong>: enable one or the
+    other, not both. Because local review has no merge-blocking per-assumption gate, prefer
+    <code>attended</code> <a href="#cfg-settings"><code>planning.mode</code></a> for
+    assumption-heavy stories (it resolves open questions live), and the confirmation prompt at approval
+    is your explicit attestation that you read the plan. Absent or <code>"pr"</code> keeps the standard
+    two-PR flow.</p>
 
     <h3 id="cfg-worktree">worktree block (parallel work)</h3>
     <p>Opt in to AIND-owned git worktrees so one clone can drive several stories at once — implement
@@ -293,6 +322,9 @@
       a thread); <code>attended</code> co-forms the plan live (a short spar over the key assumptions);
       the plan artifact is identical either way. The argument wins over
       <a href="#cfg-settings"><code>planning.mode</code></a>.</p>
+      <p><strong>Flow:</strong> in the <a href="#cfg-flow"><code>local</code> flow</a>
+      (<code>flow.mode: "local"</code>) there is no plan PR — the plan is committed to the story branch
+      and reviewed in your editor.</p>
       <pre><code>/aind:plan 1234
 /aind:plan 1234 attended</code></pre>
     </div>
@@ -300,12 +332,15 @@
     <div class="refcard" id="cmd-approve-plan">
       <div class="rc-head"><span class="rc-name">/aind:approve-plan &lt;id&gt;</span></div>
       <div class="rc-meta"><span class="pill">phase 2 close-out</span><span class="pill">human-run</span></div>
-      <p>Run after you have approved <strong>and merged</strong> the plan PR. Approval is a human act;
-      this command only records the result: it confirms the plan PR is merged (refuses otherwise —
-      the branch's resolve-all-comments rule guarantees each assumption was addressed), sets status to
-      <code>Ready for implementation</code>, and cleans up the plan branch. Approving also ratifies
-      the planner's test strategy. If plan review surfaced a story-level problem, don't approve —
-      close the plan PR and re-tag the story <code>Ready for intake</code>.</p>
+      <p>Records plan approval — a human act — as a status transition. In the default <code>pr</code>
+      flow, run it after you have approved <strong>and merged</strong> the plan PR: it confirms the PR
+      is merged (refuses otherwise — the branch's resolve-all-comments rule guarantees each assumption
+      was addressed) and cleans up the plan branch. In the <a href="#cfg-flow"><code>local</code>
+      flow</a> there is no plan PR, so it <strong>asks you to confirm</strong> you reviewed
+      <code>plans/&lt;id&gt;/plan.md</code> in your editor before recording approval (the story branch is
+      kept for the build). Either way it sets status to <code>Ready for implementation</code> and
+      ratifies the planner's test strategy. If plan review surfaced a story-level problem, don't
+      approve — re-tag the story <code>Ready for intake</code>.</p>
       <pre><code>/aind:approve-plan 1234</code></pre>
     </div>
 
@@ -323,6 +358,9 @@
       verdict, a touch-up), replies on threads, and re-reviews. Status stays
       <code>In implementation</code> throughout; scope ends at reviewer approval or a human tiebreak —
       it does not merge.</p>
+      <p>In the <a href="#cfg-flow"><code>local</code> flow</a> it builds on the <strong>same story
+      branch</strong> the plan lives on (rather than cutting a new one) and opens a single code PR
+      carrying plan + code; the review loop and everything after are identical.</p>
       <pre><code>/aind:implement 1234</code></pre>
     </div>
 
