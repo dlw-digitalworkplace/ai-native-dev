@@ -205,7 +205,9 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
   <div class="callout tip">
     <span class="ic">+</span>
     <span class="ct"><b>Optional features</b>, all off by default and configured in
-    <code>aind.settings.json</code>: <a href="docs.html#cfg-worktree">git-worktree parallelism</a>
+    <code>aind.settings.json</code>: the <a href="docs.html#cfg-flow">local same-branch flow</a>
+    (review the plan in your editor instead of a plan PR — plan and code on one branch),
+    <a href="docs.html#cfg-worktree">git-worktree parallelism</a>
     (drive several stories from one clone), <a href="docs.html#cfg-telemetry">usage telemetry</a>
     (per-phase raw token + time onto the work item), and the
     <a href="docs.html#cmd-map-states">native ADO State mirror</a>. See the Config reference for
@@ -258,6 +260,11 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
   blocks the merge until threads resolve. Merge, then <code>/aind:approve-plan</code>. Finally run
   <code>/aind:implement</code> and confirm it opens a code PR while the status stays
   <code>In implementation</code>.</p>
+  <p>Prefer to review the plan in your editor rather than a PR? Turn on the
+  <a href="docs.html#cfg-flow">local same-branch flow</a> (<code>flow.mode: "local"</code>): the plan is
+  committed to the story branch (no plan PR), you approve with
+  <code>/aind:approve-plan &lt;id&gt;</code> (it asks you to confirm), and <code>/aind:implement</code>
+  continues on the same branch to a single code PR.</p>
 
   <hr>
 

@@ -248,6 +248,13 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
 - If tracker = `ado`: the **ADO org URL** and **project**, if not derivable.
 - Confirm the **code host** when the remote was ambiguous.
 - Whether to **enable worktrees** for parallel work (default: no).
+- The **flow mode** (default: `pr`). **`pr`** — the standard two-PR flow (plan reviewed as a plan PR,
+  code as a code PR); best for team/async review. **`local`** — plan and code share one branch and the
+  plan is reviewed **in the editor** (no plan PR), approved with `/aind:approve-plan <id>` (it asks you
+  to confirm);
+  best for local, solo work. Note **`local` is single-tree and mutually exclusive with worktrees** — if
+  the human wants both, explain they must pick one (recommend `local` for local review, worktrees for
+  parallelism).
 - Whether to **track per-phase token/time telemetry** onto the work item (default: no). The token
   breakdown is stored as a JSON **attachment** (an ADO work-item attachment, or a file under the
   item store's `attachments/`); **time** accumulates into a duration total. For the `ado` tracker, if
@@ -266,7 +273,9 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
   the in-repo default `.aind/items` otherwise) and leave the `ado` block at its placeholders (unused).
   Set only the repo key matching the chosen host (`github.repo` **or** `ado.repo`); leave the other at
   its placeholder. Set `worktree.enabled` per the answer; leave the rest of the `worktree` block at its
-  sample defaults. Set the `telemetry` block from the answer: if the user opted in, set `enabled: true`
+  sample defaults. Set `flow.mode` to `"local"` if the human chose the local same-branch flow,
+  otherwise leave it `"pr"` (and if `local`, ensure `worktree.enabled` is `false` — mutually
+  exclusive). Set the `telemetry` block from the answer: if the user opted in, set `enabled: true`
   (and, for the `ado` tracker, `durationField` to their field's `refName` if they gave one); otherwise
   leave it `enabled: false` (telemetry stays inert). **This file is checked in** (shared config).
 - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the

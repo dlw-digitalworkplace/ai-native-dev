@@ -42,7 +42,9 @@ project content above is the primary guidance.
 - **Plan location.** Plans live at `/plans/<work-item-id>/plan.md` and are permanent living
   documentation — never delete them after the code ships.
 - **Reach branches through PRs.** Never construct or assume a branch name to find an artifact;
-  resolve via the PR and the `AIND-LINKS` block. The work-item ID is the join value.
+  resolve via the PR and the `AIND-LINKS` block. The work-item ID is the join value. *(The optional
+  `local` flow is the one sanctioned exception — before its code PR exists, the story branch is found
+  by the `<type>/<id>-…` convention; once the PR exists, the PR-as-handle rule resumes.)*
 - **Don't author stories.** Intake suggests fixes; the human owns the story text.
 
 ### AIND configuration
@@ -71,6 +73,11 @@ never edits your prose.
 docs site at https://dlw-digitalworkplace.github.io/ai-native-dev/docs.html and the sample settings
 file for details):
 - **Worktrees** (`worktree.enabled: true`) — work several stories in parallel from one clone.
+- **Local same-branch flow** (`flow.mode: "local"`) — plan and code share **one branch** and the plan
+  is reviewed **in your editor** (no plan PR); `/aind:approve-plan <id>` records approval (it asks you
+  to confirm the review).
+  Best for local, solo work; single-tree, so **mutually exclusive with worktrees**. Default `"pr"`
+  keeps the two-PR flow.
 - **Usage telemetry** (`telemetry.enabled: true`) — per-phase raw token/time recorded onto the work
   item (raw numbers only; pricing done offline).
 - **Native-State mirror** (`stateMap`, **ADO tracker only**) — mirror AIND status onto the work

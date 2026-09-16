@@ -34,14 +34,26 @@ Work item: **$ARGUMENTS**
 > --porcelain` shows changes you didn't intend there, you edited the wrong tree — stop and move the
 > work into the worktree. (Commits/pushes go through the worktree, so a stray main-tree edit would be
 > silently *missing* from the PR — catch it early.) If worktrees are **not** enabled, ignore this box
-> and work in the main checkout as before.
+> and work in the main checkout as before. **In the `local` flow this box does not apply** — local
+> mode is single-tree, so you build on the story branch **in your main checkout** (never a worktree),
+> even if `worktree.enabled` is set.
 
 ## 0. Pick the mode
+
+**First, resolve the flow mode** — `pr` (default) or `local`. In the `local` flow the plan already
+lives on the story branch, so build mode **continues on that same branch** instead of cutting a fresh
+one (details in A3); everything else — the review loop, revise mode, close-out — is identical:
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-flowmode.sh"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+
+**Then detect build vs revise** (flow-independent — it keys off whether a code PR exists yet):
 ```bash
 bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-revise-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" status
 ```
 - Prints a PR number + URL → an open code PR already exists → **Revise mode (section B)**. Note the PR
-  number; the review loop needs it.
+  number; the review loop needs it. *(In the `local` flow this is a re-run after the code PR was opened
+  — revise mode is unchanged, because once the PR exists the branch is reached through it.)*
 - Says "no open code PR" (exits 9) → **Build mode (section A)**.
 - Any other error (e.g. more than one open PR matches) → relay it and stop; never open a second PR for
   the same story.
@@ -67,9 +79,12 @@ bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(
 bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-status.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS" "In implementation"
 ```
 
-### A2. Ground from the merged plan
-Read the spec at `plans/$ARGUMENTS/plan.md` — it merged to the integration branch as living documentation
-and is the source of truth for this story. It carries the **Task breakdown**, any **Data
+### A2. Ground from the plan
+**`local` flow:** the plan was **not** merged to integration — it lives on the **story branch**. Do
+A3's `resume-local` step **first** to check that branch out, then read the plan from it. **`pr` flow:**
+the plan merged to integration, so it's already present; read it, then do A3.
+
+Read the spec at `plans/$ARGUMENTS/plan.md` — the source of truth for this story (living documentation). It carries the **Task breakdown**, any **Data
 contracts**, the **Testing recommendations** (the test strategy — whether to test, at what altitude,
 and the must-cover list with each case's expected outcome), and the **Definition of done** you
 implement against. Then, before coding:
@@ -85,9 +100,20 @@ If the plan is missing, or is too underspecified to implement against even on re
 assumptions, stop — see **Stuck-state**.
 
 ### A3. Start the code branch
-Pick a branch name from the convention **`<type>/$ARGUMENTS-<short-name>`** — `<type>` is
-`feat`/`fix`/`chore`/`refactor`/… matching the work, `<short-name>` a few kebab-case words
-(e.g. `feat/$ARGUMENTS-csv-export`). Then start the branch off the integration branch:
+
+**`local` flow → resume the existing story branch (do NOT start a new one).** The plan already lives on
+`<type>/$ARGUMENTS-<short-name>` (committed by `/aind:plan`), and the build continues on it. Check it
+out — the command prints the branch name:
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" resume-local "$@"' _ "${CLAUDE_PLUGIN_ROOT}" "$ARGUMENTS"
+```
+Capture the printed `<branch>`; you'll pass it to `open` in A7. Then implement in the **main checkout**
+(single-tree — no worktree). Skip the `start` call below.
+
+**`pr` flow → start a fresh code branch.** Pick a branch name from the convention
+**`<type>/$ARGUMENTS-<short-name>`** — `<type>` is `feat`/`fix`/`chore`/`refactor`/… matching the work,
+`<short-name>` a few kebab-case words (e.g. `feat/$ARGUMENTS-csv-export`). Then start the branch off
+the integration branch:
 ```bash
 bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" start "$ARGUMENTS" "<branch>"
 ```
@@ -149,11 +175,15 @@ Before opening the PR, do a final pass over your own work:
   *code* or a genuinely wrong test — never weakening an assertion to make a real failure disappear.)
 
 ### A7. Open the code PR
+Pass the flow you resolved in section 0 as the trailing argument (`pr` or `local`) — in the `local`
+flow this tells `open` there is no plan PR (the plan rides in this PR's diff) and to check for code
+**beyond** the committed plan:
 ```bash
-bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" open "$ARGUMENTS" "<branch>" "<story title>"
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-open-code-pr.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" open "$ARGUMENTS" "<branch>" "<story title>" "<flow>"
 ```
 This pushes the branch and opens a PR targeting the integration branch, linked to the work item
-(`AB#$ARGUMENTS`) and carrying the `AIND-LINKS` block (work item, plan path, plan-PR URL). It prints the PR
+(`AB#$ARGUMENTS`) and carrying the `AIND-LINKS` block (work item, plan path, and — in the `pr` flow —
+plan-PR URL). In the `local` flow the plan.md commit is part of this PR's diff. It prints the PR
 URL — **capture the PR number from it** (the trailing `/pull/<n>`); the review loop needs it. The
 status tag **stays `In implementation`** for everything that follows — the code PR owns all review
 iteration; do **not** move the tag during review. Now go to the **Code review loop** below.
@@ -393,10 +423,14 @@ For a **merge conflict** (a reviewer `merge:integration` finding, or one you hit
 ## Notes
 - The merged plan is the spec — implement to it, not around it. If you believe the plan itself is
   wrong, note it in the PR for the reviewer rather than silently diverging.
-- One story = one code branch = one code PR. The PR is the handle for the branch — later steps
-  reach your work through it, never by reconstructing the branch name. Revisions re-run
-  `/aind:implement` (revise mode) and iterate that same PR; they never open a second PR and never
-  move the status tag (coarse phase tag vs. fine-grained PR iteration are kept separate).
+- One story = one code branch = one code PR. In the `pr` flow the PR is the handle for the branch —
+  later steps reach your work through it, never by reconstructing the branch name. In the `local` flow
+  the plan and code share one branch created at plan time; **before** the code PR exists, build mode
+  finds that branch by the `<type>/<id>-…` convention (`resume-local`) — the one place a branch is
+  reached by name rather than through a PR — and once the code PR is opened, everything reverts to the
+  PR-as-handle rule. Revisions re-run `/aind:implement` (revise mode) and iterate that same PR; they
+  never open a second PR and never move the status tag (coarse phase tag vs. fine-grained PR iteration
+  are kept separate).
 - In revise mode, apply **only what the human directed** — a picked suggestion, a tiebreak verdict, a
   touch-up. You do not act on undirected suggestions or re-implement freely: the human decides what
   changes, you execute.

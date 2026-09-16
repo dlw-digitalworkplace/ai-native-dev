@@ -22,6 +22,9 @@
   "planning": {
     "mode": "auto"
   },
+  "flow": {
+    "mode": "pr"
+  },
   "research": {
     "dir": ".aind/research"
   },
