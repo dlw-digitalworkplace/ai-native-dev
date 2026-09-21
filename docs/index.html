@@ -230,7 +230,7 @@
     <div class="titlewrap">
       <div class="eyebrow">AI-Native Dev Flow · Plan + Build + Dream</div>
       <h1>One story, <span class="dim">two phases, three gates</span> — plus a dreaming loop</h1>
-      <div class="sub">An agentic pipeline on Claude Code (or GitHub Copilot CLI), with work items on Azure DevOps Boards or local files and pull requests on GitHub or Azure DevOps Repos, plus a cross-story dreaming phase that learns from its exhaust. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
+      <div class="sub">An agentic pipeline on Claude Code (or GitHub Copilot CLI), with work items on Azure DevOps Boards or local files and pull requests on GitHub or Azure DevOps Repos, plus a cross-story dreaming phase that learns from its exhaust — and optional pre-story research that feeds new-item drafting before the flow begins. Tap any block to see what it does, who runs it, and which decisions govern it.</div>
     </div>
     <div class="statuswrap">
       <div class="lbl">AIND status tag</div>
@@ -269,6 +269,7 @@
    DATA MODEL — every node, grounded in the design docs
    ============================================================ */
 const PHASE = {
+  pre:    {name:'Before the flow', color:'var(--cold)'},
   plan:   {name:'Plan phase',   color:'var(--plan)'},
   build:  {name:'Build phase',  color:'var(--build)'},
   dream:  {name:'Dreaming phase',color:'var(--dream)'},
@@ -286,6 +287,7 @@ const TEMP = {
 
 // status palette per state (matches the chip accent)
 const STATUS = {
+  'No work item yet — pre-flow':   'var(--cold)',
   'Ready for intake':        'var(--plan)',
   'Intake declined':         'var(--gate)',
   'Intake approved':         'var(--plan)',
@@ -299,13 +301,30 @@ const STATUS = {
 };
 
 const NODES = {
+  /* ---- BEFORE THE FLOW (optional pre-story) ---- */
+  research:{
+    kind:'proc', phase:'pre', temp:'warm', shape:'rect',
+    title:'Research agent', role:'optional · explores approaches',
+    status:'No work item yet — pre-flow',
+    body:`<p><strong>An optional thinking aid that runs before any story exists.</strong> Given a topic, the research agent explores possible technical approaches and records what it found as a <strong>markdown findings file</strong> the human can act on — package versions, official docs, alternatives, trade-offs, and a recommendation.</p><p>Two properties keep it honest: it is <strong>grounded in the codebase</strong> (the project's real stack and conventions steer the research, so it never proposes a library the project rules out), and it is <strong>current</strong> (it uses web search to check the latest reality and cites every source, so findings don't rest on stale memory).</p><p>It <strong>suggests</strong>; it never decides. Output is a DRAFT the human owns — it writes nothing to the work-item tracker, opens no PR, moves no status, and never creates a story itself. It sits entirely <strong>before intake</strong>: no status, no gate.</p>`,
+    decisions:[['D48','Optional pre-flow research; grounded, current, suggests — never a phase.']],
+    related:['newitem','story']
+  },
+  newitem:{
+    kind:'proc', phase:'pre', temp:'warm', shape:'rect',
+    title:'New-item agent drafts a story', role:'optional · guided Q&A',
+    status:'Ready for intake',
+    body:`<p><strong>An optional guided way to author a work item.</strong> Through a short Q&amp;A the new-item agent gathers the story's title, description, and acceptance criteria, then lets the tracker create it (assigning the id) and hands it back for the human to review — it never invents requirements and never starts the flow itself.</p><p>It works on <strong>either tracker</strong>: the file backend scaffolds one markdown file per story; the ADO backend creates the story directly in Azure DevOps Boards, at full parity. Findings from a prior <em>/aind:research</em> run can inform what you ask it to draft.</p><p>The created item lands at <em>Ready for intake</em> — the same state a hand-authored story reaches when its author submits it — so it flows straight into the intake gate. This is <strong>suggest, don't assert</strong> applied to story creation: a draft awaiting the human, not a story the agent pushed into the flow.</p>`,
+    decisions:[['D46','Pluggable tracker: drafts a file item or an ADO story.'],['D52','New-item creates the ADO story directly, at parity with the file backend.']],
+    related:['research','story','intake']
+  },
   story:{
     kind:'terminal', phase:'terminal', temp:'human', shape:'round',
     title:'Story created', role:'entry',
     status:'Ready for intake',
-    body:`<p>A <strong>user story</strong> is the unit of work, authored by a developer or tech lead. It carries a title, intent, and acceptance criteria, and lives in the project's <strong>work-item tracker</strong> — either Azure DevOps Boards or a local markdown file per item, a per-project choice that the rest of the flow is blind to.</p><p>The human submits it for scoring by setting its status to <em>Ready for intake</em>. This is the single entry point to the whole flow.</p>`,
+    body:`<p>A <strong>user story</strong> is the unit of work, authored by a developer or tech lead. It carries a title, intent, and acceptance criteria, and lives in the project's <strong>work-item tracker</strong> — either Azure DevOps Boards or a local markdown file per item, a per-project choice that the rest of the flow is blind to.</p><p>It can be written by hand, or drafted through the optional <em>/aind:new-item</em> agent (itself optionally informed by an <em>/aind:research</em> run). Either way the human submits it for scoring by setting its status to <em>Ready for intake</em>. This is the single entry point to the flow — everything before it is optional pre-work.</p>`,
     decisions:[['D1','Intake runs first; the story gate is unskippable.'],['D46','Pluggable work-item tracker: ADO Boards or a local file.']],
-    related:['intake']
+    related:['newitem','research','intake']
   },
   intake:{
     kind:'gate', phase:'plan', temp:'auto', shape:'rect',
@@ -478,6 +497,10 @@ const NODES = {
 const W = 940;
 // lane reference: phase rail ~28 | far-left loop lanes 70-150 | left nodes ~200 | spine 480 | right nodes ~770
 const SPINE = 480;
+// The optional pre-flow preamble (research -> new item) sits above the story milestone.
+// The main flow's coordinates below are authored relative to the old top; we shift them all
+// down by PREFLOW_DY to open room, then add the two pre-flow nodes at the un-shifted top.
+const PREFLOW_DY = 138;
 const L = {
   story:      {x:SPINE,y:34,  w:196,h:46},
   intake:     {x:SPINE,y:122, w:216,h:58},
@@ -496,19 +519,31 @@ const L = {
   escalate:   {x:775, y:986, w:172,h:62, align:'r'},
   merged:     {x:SPINE,y:1110,w:200,h:48},
   // ---- dreaming phase: a horizontal row below the build spine (non-linear) ----
-  emithub:    {x:120, y:1282,w:188,h:66, align:'c'},
-  dreamer:    {x:368, y:1282,w:188,h:66, align:'c'},
+  // gaps between tiles are sized to fit the connector labels ('on cadence', 'propose')
+  emithub:    {x:100, y:1282,w:188,h:66, align:'c'},
+  dreamer:    {x:376, y:1282,w:188,h:66, align:'c'},
   dreampr:    {x:606, y:1282,w:176,h:66, align:'c'},
-  dreamdecide:{x:830, y:1278,w:178,h:96, diamond:true},
-  parklot:    {x:368, y:1404,w:200,h:60, align:'c'}
+  dreamdecide:{x:856, y:1278,w:178,h:96, diamond:true},
+  parklot:    {x:376, y:1404,w:200,h:60, align:'c'}
 };
-const CANVAS_H = 1490;
+// shift the whole flow down to make room for the pre-flow preamble
+for(const _id in L){ L[_id].y += PREFLOW_DY; }
+// pre-flow preamble — optional, before the flow; authored at the un-shifted top.
+// y=54 leaves the band label (baseline ~34) its own row above the tiles; research sits
+// far enough left of the spine-aligned new-item tile for the arrow + label to clear both.
+L.research = {x:196,  y:54, w:196,h:56, align:'c'};
+L.newitem  = {x:SPINE,y:54, w:212,h:56};
+const CANVAS_H = 1490 + PREFLOW_DY;
 
 /* edges: [from,to, type, label, side, cat]
    type: 'flow' normal, 'loop' dashed back-edge
    cat:  undefined = forward (steel), 'rework' = rejection/send-back (rust), 'fail' = fail/retry (amber)
    route: how the edge is drawn (see renderEdge). lane: explicit x for vertical-travel loops. */
 const EDGES = [
+  // ---- pre-flow preamble (optional) ----
+  ['research','newitem',{route:'H',label:'hand off'}],
+  ['newitem','story',{route:'V',label:'creates item'}],
+
   // ---- main spine (straight vertical, all clear) ----
   ['story','intake',{route:'V'}],
   ['intake','planner',{route:'V',label:'ready'}],
@@ -581,9 +616,10 @@ function buildSVG(){
   </defs>`;
 
   // phase swimlanes — full-width tinted bands BEHIND everything (can't be crossed)
-  s += phaseBand('PLAN PHASE', 100, 522, 'var(--plan)');
-  s += phaseBand('BUILD PHASE', 600, 1190, 'var(--build)');
-  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1230, 1470, 'var(--dream)');
+  s += phaseBand('BEFORE THE FLOW · OPTIONAL PRE-STORY', 12, 126, 'var(--cold)');
+  s += phaseBand('PLAN PHASE', 100+PREFLOW_DY, 522+PREFLOW_DY, 'var(--plan)');
+  s += phaseBand('BUILD PHASE', 600+PREFLOW_DY, 1190+PREFLOW_DY, 'var(--build)');
+  s += phaseBand('DREAMING PHASE · NON-LINEAR · CROSS-STORY', 1230+PREFLOW_DY, 1470+PREFLOW_DY, 'var(--dream)');
 
   // edges (under nodes, over the bands)
   EDGES.forEach(e=> s += renderEdge(e));
@@ -764,7 +800,7 @@ function renderEdge(e){
 
   }else if(r==='spineToDreamHub'){ // merged (spine) drops straight into emithub's TOP
     const a=diamondSide(A,'down'); const b=diamondSide(B,'up');
-    const turnY=b.y-30;              // drop to just above the hub, then slide across to its centre
+    const turnY=b.y-64;              // turn in the clear gap ABOVE the dreaming band, then slide across, so the label clears the band title
     path=`M${a.x},${a.y} L${a.x},${turnY} L${b.x},${turnY} L${b.x},${b.y}`;
     lx=(a.x+b.x)/2; ly=turnY-9;
 
@@ -890,6 +926,7 @@ function select(id){
   // meta pills
   html+=`<div class="meta">`;
   html+=`<span class="pill"><span class="pdot" style="background:${tier.color}"></span>${tier.label}</span>`;
+  if(n.phase==='pre') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--cold) 50%,var(--line));color:var(--cold)">Optional · pre-flow</span>`;
   if(n.phase==='dream') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--dream) 50%,var(--line));color:var(--dream)">Cross-story</span>`;
   if(n.kind==='gate') html+=`<span class="pill" style="border-color:color-mix(in srgb,var(--gate) 50%,var(--line));color:var(--gate)">Gate</span>`;
   if(n.kind==='branch') html+=`<span class="pill">Branch</span>`;
@@ -929,8 +966,8 @@ function roleTag(n){ return n.role? `· ${esc(n.role)}`:''; }
 
 function statusRow(st){
   const c=STATUS[st]||'var(--text-faint)';
-  // dreaming-phase nodes don't move the per-story AIND tag — drop the prefix
-  if(st && st.startsWith('No per-story tag')){
+  // pre-flow (no work item yet) and dreaming-phase nodes have no per-story AIND tag — drop the prefix
+  if(st && (st.startsWith('No per-story tag') || st.startsWith('No work item'))){
     return `<div class="statusrow"><span class="dot" style="background:${c}"></span>${esc(st)}</div>`;
   }
   return `<div class="statusrow"><span class="dot" style="background:${c}"></span><span class="pfx">AIND status —</span> ${esc(st)}</div>`;
@@ -947,6 +984,9 @@ function setStatus(st){
   if(st && st.startsWith('No per-story tag')){
     if(pfx) pfx.style.display='none';
     txt.textContent='no per-story tag · cross-story';
+  }else if(st && st.startsWith('No work item')){
+    if(pfx) pfx.style.display='none';
+    txt.textContent='no work item yet · pre-flow';
   }else{
     if(pfx) pfx.style.display='';
     txt.textContent=st;
