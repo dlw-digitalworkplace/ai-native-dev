@@ -221,18 +221,38 @@ bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_R
      B."* Never pose a yes/no against an unnamed alternative ("Prefer the alternative?", "OK?",
      "Agree?"). This applies to **every** thread you open, in create **and** revise mode.
 
-4.5. **Spar the assumptions (attended, non-trivial only).** Before opening the PR, resolve the
-   drafted **Assumptions & open questions** *live* instead of threading them cold. Present them as
-   one `AskUserQuestion` batch — they are already phrased as explicit either/ors (step 4), so this is
-   a **channel change, not new question machinery**. For each item:
-   - **Answered** → rewrite it into the plan body as a decision with a one-line provenance note
-     (*decided in planning with the dev*), and **remove it** from the *Assumptions & open questions*
-     list.
-   - **Deferred / unanswered** → leave it in the list; it becomes a resolvable thread in step 5,
-     exactly as in headless mode.
-   Keep it to **one batch** by default (2–5 items is the norm); open a second only if an answer
-   invalidates other items. If `AskUserQuestion` is unavailable, skip sparring and thread everything
-   (the headless path). Headless runs skip this step entirely. Revise mode (section B) is unchanged.
+4.5. **Spar the assumptions (attended, non-trivial only), in rounds.** Before opening the PR,
+   resolve the drafted **Assumptions & open questions** *live*, in up to **4 rounds**, instead of
+   threading them cold in one shot. Each round is one `AskUserQuestion` batch over the current
+   **frontier** — every question that is answerable right now — so this stays a **channel change,
+   not new question machinery**, in every round.
+
+   - **Round 1's frontier = the full drafted list** from step 4. Present it as one batch (2–5 items
+     is the norm, as before).
+   - **Fold the round's answers in, per item:**
+     - **Answered** → rewrite it into the plan body as a decision with a one-line provenance note
+       (*decided in planning with the dev*), and **remove it** from *Assumptions & open questions*.
+     - **Deferred / unanswered** → leave it in the list, untouched. It is **not** re-asked in a
+       later round — it becomes a resolvable thread in step 5, exactly as in headless mode.
+   - **Re-scan for newly-visible questions — don't re-audit the plan.** After folding a round's
+     answers in, look **only** at the plan areas those specific answers touch — task breakdown,
+     data contracts, AC coverage, non-goals — for an either/or question that only became askable
+     because of an answer just given (e.g. picking one data shape now forces a choice on how a
+     downstream task consumes it). This is a targeted follow-up, never a fresh pass over the whole
+     plan and never an open-ended "is this the right idea" question outside those four areas. If an
+     answer contradicts a still-deferred item, resolve that as part of this same scan rather than as
+     a separate mechanism. Phrase every new question as an explicit either/or (step 4). Whatever
+     this scan finds becomes the **next round's frontier**.
+   - **Stop when either is true:** a round's re-scan finds **no** new questions (frontier empty —
+     stop, even on round 1), or **4 rounds have run**. Whichever hits first ends the loop; do not
+     run a 5th round to "double check." Everything still under *Assumptions & open questions* when
+     the loop stops — deferred items and, if the cap was hit, whatever is still open — falls back to
+     the existing behavior unchanged: it stays in the list and is threaded in step 5 exactly as
+     today. Hitting the cap is not an error and needs no special note to the dev beyond the normal
+     report (step 8).
+   - If `AskUserQuestion` is unavailable, skip sparring entirely (checked once, before round 1) and
+     thread everything (the headless path). Headless runs skip this step entirely. Revise mode
+     (section B) is unchanged.
 
 5. **Open the plan PR** and post the threads (use the `aind-plan-pr` skill):
    ```bash
