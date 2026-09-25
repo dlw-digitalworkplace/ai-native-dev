@@ -2,8 +2,22 @@
 
 _Fluid project state: what is built, what is validated, what is next. The stable, set-in-stone rules live in `../CLAUDE.md` — update THIS file as work lands, never bake status into the rules. See `../docs/plans/` for the planned-feature backlog and the sibling `D<N>` decision files in this folder for the decision record. The **Implementation status** matrix at the bottom of this file is the at-a-glance companion to the per-decision bullets above._
 
-## Current status (2026-09-16)
+## Current status (2026-09-25)
 
+- **Plain-language writing guide + `writing.level` (D56, 2026-09-25, offline-validated; first
+  live run partial).** Reviewers found AIND's text hard to read (long sentences, buried ask).
+  Every text-producing command and agent now runs `aind-writing.sh` first and follows the printed
+  guide (`writing/guide.md`): ask first, one idea per sentence, common words, `Found:`/`Assumed:`,
+  and a **Done / Needs you / Next** block at the end of each run. **English only** (an output-language
+  setting was tried live and removed). Tuned per project by `writing.level`
+  (`plain`/`standard`/`technical`, default `standard`), plus an optional `.claude/writing-guide.md`
+  (glossary, words to avoid) that wins on conflict — deliberately outside `rules/` so the reviewer
+  doesn't treat it as a code rule. Onboard and kickstart ask for the level; preflight reports it; the
+  reviewer's Bash hook allows the read-only resolver. Config layer only. First live `/aind:plan` run:
+  console followed the guide, the plan didn't → `/aind:plan` step 3 now names two readers (human
+  approver + coder) and points back at the guide. **Live-validate next:** re-run `/aind:plan` with
+  `level: plain`, then `/aind:intake` + `/aind:implement`. A warn-only script lint is the
+  named-not-built follow-up.
 - **Local same-branch flow — `flow.mode: local` (D55, 2026-09-16, offline-validated; live-validation
   pending).** An opt-in flow where the **plan and the code share ONE story branch** and the plan is
   **reviewed in the working tree** (VS Code) instead of a plan PR — for developers running the flow
@@ -473,6 +487,7 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 | Cross-cutting | Native ADO State mirror — `/aind:map-states` | ✅ | ✅ | Optional (ADO tracker only): maps each AIND status onto an existing native ADO State so the board reflects the flow (D43). Adopts existing states — never creates or forces new ones; stored as `stateMap` in `aind.settings.json`. |
 | Cross-cutting | Code host — GitHub **or** Azure DevOps Repos | ✅ | ✅ | Pluggable code host (D36): `AIND_CODE_HOST=github\|ado` selects where the code + PRs live. A forge-adapter (`scripts/aind-forge.sh`) dispatches every PR/comment/thread operation to `gh` or `az repos` + the ADO PR Threads REST API (reusing the ADO PAT); commands, agents, and skills are unchanged. **Live-validated end-to-end on ADO Repos** (plan → build → review → complete) and on GitHub. |
 | Cross-cutting | Local same-branch flow — opt-in `flow.mode: local` | ✅ | ◻️ | Plan + code on ONE branch, plan reviewed in the working tree (no plan PR); `/aind:plan` commits the plan (`start-local`), `/aind:approve-plan <id>` approves after an AskUserQuestion confirmation, `/aind:implement` continues on the branch (`resume-local`) and opens the single code PR (D55). Opt-in via `flow.mode: "local"`; single-tree, mutually exclusive with worktrees; **byte-identical `pr` default**. Offline-validated; live-validation pending. |
+| Cross-cutting | Plain-language writing guide + `writing.level` | ✅ | 🟡 | Every text-producing command/agent loads `aind-writing.sh` (default guide + `writing.level` + optional `.claude/writing-guide.md`); English only (D56). Offline-validated; first live plan run led to a step-3 fix; re-validation pending. |
 | Cross-cutting | Parallel work — opt-in git worktrees | ✅ | ✅ | Per-item git worktrees (D37) let one clone drive multiple stories at once. Opt-in via `worktree.enabled: true` in the shared `.claude/aind.settings.json`; `/aind:plan`→`<id>-plan` and `/aind:implement`→`<id>-impl` create a per-phase worktree, `/aind:approve-plan` and `/aind:complete` retire it. Portable git plumbing (`scripts/aind-worktree.sh`); **strict single-tree no-op when disabled.** Drive-from-main session model (D40); intake and dreaming stay single-tree by design. **Live-exercised** (parallel implement → merge → conflict-resolve → complete). |
 | Cross-cutting | Front-end — share `node_modules` across worktrees | ✅ | 🟡 | Optional `worktree.symlinkDirs` list in `aind.settings.json` (D39) shares heavyweight gitignored dirs (chiefly `node_modules`) across worktrees instead of re-installing per tree — a directory **junction** on Windows (no admin) / symlink on Unix, linked in on `ensure` and **safely unlinked before teardown**. Shared state (documented trade-off) — **pnpm recommended** where per-branch isolation matters. **No-op when absent/empty.** Offline-validated; live-validation pending. |
 | Cross-cutting | Usage telemetry — per-phase raw tokens + time | ✅ | ✅ | Optional `telemetry` block in `.claude/aind.settings.json` (`enabled` + one numeric `durationField`). Each phase brackets its work with `aind-usage.sh begin`/`report`: a **per-model, per-token-type** breakdown + wall-clock over the phase's timestamp window from the host's on-disk session events. **Raw usage only — no cost** (pricing offline). Token breakdown → an append-only JSON attachment on the work item; time → the numeric field. Host-aware collector covers Claude (full breakdown) and Copilot (output tokens only). Best-effort; inert until opted in (D42). Live-validated end-to-end. **Session-file resolution fixed in 0.25.3 (D54):** until then a repo whose path contained a **dot or a space** resolved to no transcript at all, so every phase in it silently recorded nothing. |

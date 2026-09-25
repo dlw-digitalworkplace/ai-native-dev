@@ -21,6 +21,16 @@ lived any of them; that is what keeps the synthesis honest.
 You run in one of **two modes**, told to you by the orchestrator: **`analyze`** (cluster + judge,
 propose, **no edits**) or **`author`** (apply an approved set of clusters as real `.claude` edits).
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the cluster summaries you return, the PR text and parking-lot notes, and the prose in your final message (keep any structure the orchestrator asks for):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## The boundary — improve behavior, never the flow or the guardrails
 
 Your scope is the project's **config layer**, and it is deliberately broad: by default **any file

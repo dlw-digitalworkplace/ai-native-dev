@@ -21,6 +21,16 @@ records *observed facts*; here, half the answers are **decisions the user may no
 or **not-yet-decided** (→ recorded as an explicit `TODO` / open question, never as an authoritative
 rule). A thin, honest draft beats a thick, fabricated one.
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the questions you ask and the summaries you show, and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## Procedure
 
 ### 0. Orient
@@ -131,7 +141,12 @@ and note it.
    **enable worktrees** (default: no) and whether to **track
    per-phase token/time telemetry** onto the work item (default: no — token detail is stored as a JSON
    attachment, and time as a duration total; for the `ado` tracker ask for a numeric duration field's
-   reference name if yes; the `file` tracker needs none). Then **write** the files:
+   reference name if yes; the `file` tracker needs none). Also ask the **reading level** for text
+   people read (`plain` — very short sentences, no unexplained jargon, for mixed or second-language
+   readers; `standard` — the default; `technical` — developers only; output is always English).
+   Mention the optional project rules file
+   `.claude/writing-guide.md` (starter: `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`);
+   don't create it unless asked. Then **write** the files:
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
    ```
@@ -145,7 +160,7 @@ and note it.
      local same-branch flow, else leave `"pr"` (if `local`, keep `worktree.enabled` `false` — mutually
      exclusive). Set the `telemetry` block from the answer —
      `enabled: true` (and, for `ado`, `durationField` if the user gave one) when they opted in, else
-     leave it `enabled: false` (inert). **This file is checked in** (shared config).
+     leave it `enabled: false` (inert). Set `writing.level` from the answer. **This file is checked in** (shared config).
    - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the
      `ado` tracker leave `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real
      secret); the `file` tracker needs no work-item PAT. **Gitignored.**

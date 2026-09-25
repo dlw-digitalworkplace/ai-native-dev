@@ -14,6 +14,16 @@ owns the story text.
 This works on **either tracker**: the **file** backend scaffolds one markdown file per story; the
 **ADO** backend creates the story directly in Azure DevOps Boards. Step 1 tells you which.
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the questions you ask and the story text you draft (title, description, acceptance criteria), and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## 1. Detect the tracker backend
 ```bash
 bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-tracker.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}" kind

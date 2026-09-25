@@ -12,6 +12,16 @@ record your reasoning as a **signed** comment, and set the story's `AIND status`
 
 Work item: **$ARGUMENTS**
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the verdict comment (keep the rubric table; make each FAIL reason one short sentence that says what to fix), and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## Procedure
 
 **Stamp the phase start (telemetry)** before anything else — best-effort usage telemetry that records

@@ -39,6 +39,7 @@ if [[ -z "${AIND_ADO_ORG:-}" ]]; then
         _pf_set AIND_INTEGRATION_BRANCH '.integrationBranch'
         _pf_set AIND_PLAN_BRANCH_PREFIX '.planBranchPrefix'
         _pf_set AIND_LESSONS_BRANCH     '.lessonsBranch'
+        _pf_set AIND_WRITING_LEVEL      '.writing.level'
         unset -f _pf_set
       fi
       break
@@ -189,6 +190,19 @@ elif [[ -n "$_settings" ]] && ! have jq; then
   warning "jq is REQUIRED to read the worktree config from aind.settings.json — cannot determine worktree status"
 else
   manual "worktrees not enabled (worktree.enabled not true in .claude/aind.settings.json) — single-tree mode; that's fine"
+fi
+
+echo
+echo "Writing guide (human-facing text — optional):"
+_wlevel="$(printf '%s' "${AIND_WRITING_LEVEL:-standard}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+case "$_wlevel" in
+  plain|standard|technical) ok "writing level: $_wlevel" ;;
+  *) warning "writing.level '$_wlevel' is not plain|standard|technical — agents will use 'standard'" ;;
+esac
+if [[ -n "$_settings" && -f "$(dirname "$_settings")/writing-guide.md" ]]; then
+  ok "project writing rules found: $(dirname "$_settings")/writing-guide.md"
+else
+  manual "no .claude/writing-guide.md — agents use the plugin's default writing guide; that's fine"
 fi
 
 echo

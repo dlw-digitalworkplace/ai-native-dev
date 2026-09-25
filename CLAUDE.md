@@ -43,11 +43,12 @@ own `.claude/` (rules, edited rubric, project skills) on top. The two hosts shar
 .claude-plugin/plugin.json   manifest (name: aind)
 commands/   onboard, kickstart, research, new-item, intake, plan, approve-plan, implement, complete, dream   (human entry points; namespaced /aind:*)
 skills/     aind-workitem, aind-status, aind-comment, aind-plan-pr, aind-preflight
-scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D46); aind-usage.sh = per-phase usage telemetry (D42); aind-research.sh = pre-story research findings paths (D48)
+scripts/    bash mechanics over az + gh + curl/jq (the deterministic layer); aind-forge.sh = the GitHub/ADO code-host adapter (D36); aind-tracker.sh = the ADO-Boards/file work-item tracker adapter (D46); aind-usage.sh = per-phase usage telemetry (D42); aind-research.sh = pre-story research findings paths (D48); aind-writing.sh = prints the effective writing guide (D56)
 hooks/      hooks.claude.json + check-claude-comment.sh (Claude); hooks.copilot.json + check-copilot-comment.{ps1,sh} (Copilot)  — signing enforcement, per-tool format
 .github/plugin/plugin.json   Copilot CLI manifest (-> hooks.copilot.json); Claude uses .claude-plugin/plugin.json
 rubric/intake-rubric.seed.md                            (D11 core; onboarding copies to project)
-project-template/  CLAUDE.md, aind.settings.sample.json, aind.env.sample, rules/_TEMPLATE.md   (what a project copies in)
+writing/guide.md    default writing guide for human-facing text, read at runtime (D56; project adds .claude/writing-guide.md)
+project-template/  CLAUDE.md, aind.settings.sample.json, aind.env.sample, writing-guide.md, rules/_TEMPLATE.md   (what a project copies in)
 agents/     reviewer.md (cold code-PR reviewer, D26); dreamer.md (cold lessons synthesiser, D30)
 docs/       index.html + getting-started.html + docs.html + assets/aind.css   (the user-facing site, GitHub Pages)
 design-log/ D<N>-<slug>.md decisions + README.md index + design-doc.md (how-it-works) + STATUS.md (current status)

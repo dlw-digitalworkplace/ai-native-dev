@@ -21,6 +21,16 @@ Work item: **$ARGUMENTS** — the first whitespace token is the work-item id (re
 below); an optional `attended`/`headless` token sets the run mode (step 1.5). The flow mode
 (`pr`/`local`) is a project setting resolved from config in section 0.
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the plan file (`plans/<id>/plan.md` — its prose, not the template headings), every assumption thread, reply and comment, and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## 0. Pick the mode
 
 **First, resolve the flow mode** — `pr` (default) or `local`:
@@ -113,9 +123,15 @@ bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_R
    inventing new ones. Where the rules describe a multi-project / deployment topology, respect it —
    each task should land in the right project/unit.
 
-3. **Write the plan** to `plans/<id>/plan.md` with these fixed headings. Write for a coding agent
-   that was **not** part of this discussion — name concrete files, signatures, and data shapes so
-   it never has to re-derive a decision. Bias toward the **simplest change that satisfies the
+3. **Write the plan** to `plans/<id>/plan.md` with these fixed headings. The plan has **two
+   readers**. A **human** reads it first and approves it — so the *Context*, *Keep it simple*,
+   *AC coverage*, *Assumptions & open questions*, *Considerations* and *Testing recommendations*
+   sections, and the lead sentence of every section, must be easy to follow for a reviewer who is
+   not a developer. A **coding agent** that was **not** part of this discussion acts on it later —
+   so name concrete files, signatures, and data shapes, and it never has to re-derive a decision.
+   Serve both with the writing guide you loaded at the start (its reading level and *Technical
+   documents* rules): precision comes from exact names in backticks, not from long or dense
+   sentences. Bias toward the **simplest change that satisfies the
    acceptance criteria**: reuse before building, and add no abstraction, configurability, or
    generalization the story doesn't call for — size the solution to the work, not to what's
    imaginable:
@@ -273,7 +289,7 @@ change — it stays `Plan ready for review` (iteration lives inside the PR).
    <worktree>/plans/<id>/plan.md`) — edit the plan *there*, not in the main checkout.
 
 2. **Revise the plan.** Read the current `plans/<id>/plan.md` together with the feedback, then edit
-   the plan to address **every `[OPEN]` item** — reviewer comments and unanswered assumptions
+   the plan (following the writing guide loaded at the start, as in create mode) to address **every `[OPEN]` item** — reviewer comments and unanswered assumptions
    alike. Keep the **Assumptions & open questions** section honest: update or drop items the
    feedback has settled, and add any genuinely new question your revision introduces. When the
    feedback changes the shape of the work, update the **Keep it simple**, **Task breakdown** (tasks,
@@ -362,7 +378,9 @@ live **sparring** (step 4.5). **The only difference:** there is **no PR**, so **
 posted as threads** — every genuine either/or that survives sparring stays as **prose** under
 *Assumptions & open questions* for the human to read and decide in the editor. (Attended mode is
 recommended in this flow for assumption-heavy stories, since it resolves them live rather than leaving
-un-gated prose.) Write the plan to `plans/<id>/plan.md` in your main checkout.
+un-gated prose.) Write the plan to `plans/<id>/plan.md` in your main checkout, following the
+writing guide loaded at the start — the human reads it in the editor, so the *Assumptions & open
+questions* prose must be as easy to answer as a thread would be.
 
 **C3. Commit the plan to the story branch (no PR).** On a **create**, pick a branch name from the
 convention `<type>/<id>-<short-name>` (e.g. `feat/<id>-csv-export`) — the same name the build phase

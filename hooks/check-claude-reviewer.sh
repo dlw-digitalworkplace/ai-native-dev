@@ -2,7 +2,7 @@
 # check-claude-reviewer.sh — Claude Code PreToolUse(Bash) hook.
 # Enforces the AIND reviewer's read-only contract. The cold reviewer subagent (agent_type
 # "aind-reviewer") reviews by READING the diff; its ONLY sanctioned Bash is the plugin's
-# aind-review-pr.sh. Any other Bash command from the reviewer — editing files, `git commit`/`push`,
+# aind-review-pr.sh (plus the read-only aind-writing.sh, which prints the writing guide). Any other Bash command from the reviewer — editing files, `git commit`/`push`,
 # or running the project's build/lint/test/run commands — is BLOCKED (exit 2).
 #
 # Scoping is by agent identity: the hook is session-wide, but it acts ONLY when the calling agent is
@@ -32,10 +32,11 @@ fi
 # Fail open for anyone who is not the reviewer.
 [[ "$AGENT" == "aind-reviewer" ]] || exit 0
 
-# Reviewer: allow only the sanctioned review script; block everything else.
-if printf '%s' "$CMD" | grep -q 'aind-review-pr\.sh'; then
+# Reviewer: allow only the sanctioned review script and the read-only writing guide; block
+# everything else.
+if printf '%s' "$CMD" | grep -qE 'aind-(review-pr|writing)\.sh'; then
   exit 0
 fi
 
-echo "BLOCKED: the AIND reviewer is read-only — it reviews by reading the diff and may run only aind-review-pr.sh. Do not edit files, commit, push, or run build/lint/test/run commands; report issues as findings (file:line) for the coder to fix." >&2
+echo "BLOCKED: the AIND reviewer is read-only — it reviews by reading the diff and may run only aind-review-pr.sh (and aind-writing.sh). Do not edit files, commit, push, or run build/lint/test/run commands; report issues as findings (file:line) for the coder to fix." >&2
 exit 2

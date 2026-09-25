@@ -9,6 +9,21 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.27.0] — 2026-09-25
+
+### Added
+- **Plain-language writing guide + `writing.level` (D56).** Every command and agent that writes
+  text people read (work-item comments, PR bodies and threads, plan files, console messages) now
+  loads a built-in writing guide first: ask first, short sentences, common words, facts vs
+  assumptions, and a **Done / Needs you / Next** summary at the end of each run. Output is always
+  English. Set the reading level with `writing.level` in `.claude/aind.settings.json` (`plain` |
+  `standard` (default) | `technical`), and add project rules (glossary, words to avoid) in an
+  optional `.claude/writing-guide.md` (starter in `project-template/writing-guide.md`). New
+  `scripts/aind-writing.sh` and `writing/guide.md`. `/aind:onboard` and `/aind:kickstart` ask for the
+  level; preflight reports it. `/aind:plan` now writes the plan for two readers — the human who
+  approves it and the coder who builds it. The reviewer's read-only Bash hook also allows the
+  writing script.
+
 ## [0.26.0] — 2026-09-16
 
 ### Added

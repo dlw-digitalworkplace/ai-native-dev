@@ -32,6 +32,9 @@
 #                                 .research.dir            -> AIND_RESEARCH_DIR (optional; where
 #                                                             /aind:research writes findings; default
 #                                                             <main-checkout>/.aind/research)
+#                                 .writing.level           -> AIND_WRITING_LEVEL (optional; plain|
+#                                                             standard|technical — reading level of
+#                                                             human-facing text, default standard)
 #                               (token detail is stored as a work-item attachment, not a field.)
 #                               (the .worktree block is read by aind-worktree.sh, not exported here.)
 #   .claude/aind.env            GITIGNORED secrets + per-user overrides (shell `export` lines):
@@ -234,6 +237,9 @@ aind_autosource_env() {
           # Pre-story research: where /aind:research writes its findings (default resolved by
           # aind-research.sh when unset).
           aind_export_from_settings AIND_RESEARCH_DIR             "$sf" '.research.dir'
+          # Writing guide: reading level for human-facing text (resolved by aind-writing.sh,
+          # which defaults it when unset).
+          aind_export_from_settings AIND_WRITING_LEVEL            "$sf" '.writing.level'
         fi
       fi
       return 0

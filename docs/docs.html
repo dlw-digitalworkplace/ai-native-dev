@@ -26,6 +26,7 @@
     <a href="#config">Overview</a>
     <a href="#cfg-settings">aind.settings.json</a>
     <a href="#cfg-flow">flow block</a>
+    <a href="#cfg-writing">writing block</a>
     <a href="#cfg-worktree">worktree block</a>
     <a href="#cfg-telemetry">telemetry block</a>
     <a href="#cfg-env">aind.env</a>
@@ -124,6 +125,10 @@
           <td>Optional, ADO tracker only. Maps each AIND status → a native ADO State so the board
             mirrors the flow. Produced by <a href="#cmd-map-states"><code>/aind:map-states</code></a>;
             empty = mirror off.</td></tr>
+        <tr><td><code>writing.level</code></td><td><code>AIND_WRITING_LEVEL</code></td>
+          <td>Optional. Reading level of text people read: <code>plain</code>,
+            <code>standard</code> (default) or <code>technical</code> — see the
+            <a href="#cfg-writing">writing block</a>.</td></tr>
         <tr><td><code>telemetry</code></td><td>—</td>
           <td>Optional block — see <a href="#cfg-telemetry">below</a>.</td></tr>
         <tr><td><code>worktree</code></td><td>—</td>
@@ -163,6 +168,30 @@
     assumption-heavy stories (it resolves open questions live), and the confirmation prompt at approval
     is your explicit attestation that you read the plan. Absent or <code>"pr"</code> keeps the standard
     two-PR flow.</p>
+
+    <h3 id="cfg-writing">writing block (readable output)</h3>
+    <p>Every AIND command and agent follows a built-in <strong>writing guide</strong> for text people
+    read: work-item comments, PR bodies, review threads, plan files and console messages. It puts the
+    ask first (<em>What I need from you</em>), keeps sentences short, and ends each run with a
+    <strong>Done / Needs you / Next</strong> summary. Output is always in English. The
+    <code>writing</code> block sets the reading level:</p>
+    <pre><code>"writing": {
+  "level": "plain"    <span class="cmt">// "plain" | "standard" (default) | "technical"</span>
+}</code></pre>
+    <table>
+      <thead><tr><th>Level</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><code>plain</code></td><td>Mixed or non-technical reviewers, or readers with English
+          as a second language. Very short sentences, no unexplained jargon.</td></tr>
+        <tr><td><code>standard</code></td><td>A delivery team with testers and analysts. Short
+          sentences; terms outside the team's domain are explained.</td></tr>
+        <tr><td><code>technical</code></td><td>Developers only. Domain and code terms allowed.</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Project rules.</strong> Add an optional <code>.claude/writing-guide.md</code> (checked
+    in) for a glossary, words to avoid, or extra rules. Agents read it after the built-in guide, and
+    its rules win on conflict. A starter is in <code>project-template/writing-guide.md</code>.
+    <code>/aind:dream</code> can propose edits to it when lessons show text was unclear.</p>
 
     <h3 id="cfg-worktree">worktree block (parallel work)</h3>
     <p>Opt in to AIND-owned git worktrees so one clone can drive several stories at once — implement

@@ -19,7 +19,7 @@ Your independence is the whole point of this gate, so it is structural:
   transcript.
 - You **review; you do not fix.** You have no code-editing tools, and you **never** run
   `git commit` or `git push`. Report issues — the coder fixes them. This contract is
-  **hook-enforced**, not honour-system: your only permitted Bash command is `aind-review-pr.sh`; any
+  **hook-enforced**, not honour-system: your only permitted Bash commands are `aind-review-pr.sh` and the read-only `aind-writing.sh`; any
   attempt to edit files, commit, push, or run build/test commands is blocked. If a command is
   blocked, that is expected — turn what you were trying to do into a **finding** instead.
 
@@ -32,6 +32,16 @@ fresh session is not re-prompted per call:
 Read files with `Read`/`Grep`/`Glob` — do not `cat` them through Bash. **Your Bash access is for
 the plugin scripts only** — you review by reading the diff, not by running the project's
 build/lint/test/run commands (see Constraints §7).
+
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the PR summary, every finding thread and reply (each finding still cites `file:line` and its source), and the prose in your final message (keep its verdict format exactly):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
 
 ## 1. Re-ground (artifacts only)
 

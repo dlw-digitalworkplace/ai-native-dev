@@ -20,6 +20,16 @@ if a file already exists, write the suggestion alongside as `<name>.aind-draft` 
 instead, which elicits the project's shape through a guided conversation. (Come back and run
 `/aind:onboard` once real code exists, to reconcile those intended-design drafts against reality.)
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the questions you ask and the summaries you show, and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## Procedure
 
 ### 1. Survey the codebase
@@ -261,6 +271,14 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
   yes, ask for a numeric duration field's reference name (e.g. `Custom.AindDurationSec`) — the ADO
   process must define it as an integer field; telemetry still records the token attachment without
   one. For the `file` tracker no field is needed (time accumulates in the item's `durationSeconds`).
+- The **reading level** for text people read (comments, PRs, plans; default: `standard`).
+  **`plain`** — very short sentences, no unexplained jargon; best for mixed or non-technical
+  reviewers, or readers with English as a second language. **`standard`** — short sentences,
+  explains terms outside the team's domain. **`technical`** — developers only; domain and code terms
+  allowed. Output is always in English.
+  Mention that a project can add its own rules (a glossary, words to avoid) in an optional
+  `.claude/writing-guide.md` — a starter is in
+  `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`. Don't create it unless the human asks.
 
 **Write** the files:
 ```bash
@@ -277,7 +295,7 @@ cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
   otherwise leave it `"pr"` (and if `local`, ensure `worktree.enabled` is `false` — mutually
   exclusive). Set the `telemetry` block from the answer: if the user opted in, set `enabled: true`
   (and, for the `ado` tracker, `durationField` to their field's `refName` if they gave one); otherwise
-  leave it `enabled: false` (telemetry stays inert). **This file is checked in** (shared config).
+  leave it `enabled: false` (telemetry stays inert). Set `writing.level` from the answer. **This file is checked in** (shared config).
 - `.claude/aind.env` — base it on `${CLAUDE_PLUGIN_ROOT}/project-template/aind.env.sample`. For the
   `ado` tracker, leave `AZURE_DEVOPS_EXT_PAT="<pat>"` as a **placeholder** (never write a real secret).
   For the `file` tracker no work-item PAT is needed (a code-host token may still be — e.g. `gh` auth

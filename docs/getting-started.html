@@ -176,7 +176,7 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
   competing conventions it asks you to pick one. It finishes with a preflight checklist.</p>
   <p>It also <strong>creates and fills</strong> <code>.claude/aind.settings.json</code> and
   <code>.claude/aind.env</code> from a few guided questions (tracker, ADO org/project, code host,
-  worktrees, telemetry) and appends the <code>.gitignore</code> lines. No ADO/GitHub auth is needed
+  worktrees, telemetry, writing style) and appends the <code>.gitignore</code> lines. No ADO/GitHub auth is needed
   for this step. When it's done, <strong>review and edit the drafts</strong> (marked
   <code>AIND ONBOARDING DRAFT</code>) before committing.</p>
 
@@ -192,7 +192,7 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
   files under <code>.claude/</code>:</p>
   <ul>
     <li><code>.claude/aind.settings.json</code> — shared project config (tracker, ADO org/project,
-      code host, repo, integration branch, worktree/telemetry blocks). <strong>Checked in</strong>
+      code host, repo, integration branch, worktree/telemetry/writing blocks). <strong>Checked in</strong>
       so the whole team gets it.</li>
     <li><code>.claude/aind.env</code> — secrets + per-user overrides. <strong>Gitignored.</strong>
       Replace the <code>AZURE_DEVOPS_EXT_PAT="&lt;pat&gt;"</code> placeholder with a real PAT.</li>
@@ -211,7 +211,8 @@ copilot plugin install "C:/path/to/ai-native-dev"</code></pre>
     (drive several stories from one clone), <a href="docs.html#cfg-telemetry">usage telemetry</a>
     (per-phase raw token + time onto the work item), and the
     <a href="docs.html#cmd-map-states">native ADO State mirror</a>. See the Config reference for
-    each.</span>
+    each. If reviewers find the agents' text hard to read, set the
+    <a href="docs.html#cfg-writing">writing block</a> (reading level).</span>
   </div>
 
   <hr>
