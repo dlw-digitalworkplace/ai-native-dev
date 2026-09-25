@@ -9,6 +9,17 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.28.0] — 2026-09-25
+
+### Added
+- **Iterative plan-sparring rounds (D57).** `/aind:plan`'s attended "spar" step (D44) no longer
+  stops after one `AskUserQuestion` batch over the drafted assumptions. It now loops: each round
+  asks the current question frontier, folds the answers into the plan, then checks only the task
+  breakdown, data contracts, AC coverage, and non-goals the answers touched for any newly-askable
+  either/or question, and repeats until a round raises nothing new or **4 rounds** have run. Any
+  question still open when the loop stops is threaded exactly as before — headless mode, revise
+  mode, and the local same-branch flow are unchanged.
+
 ## [0.27.0] — 2026-09-25
 
 ### Added

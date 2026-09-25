@@ -348,7 +348,9 @@
       a second, never resolves threads — that's your merge gate). Sets status to
       <code>Plan ready for review</code>.</p>
       <p><strong>Run modes:</strong> <code>headless</code> never blocks (every genuine choice becomes
-      a thread); <code>attended</code> co-forms the plan live (a short spar over the key assumptions);
+      a thread); <code>attended</code> co-forms the plan live (an iterative spar, up to 4 rounds —
+      each round folds the answers in and asks back only the new either/or questions they raise,
+      stopping once a round raises none);
       the plan artifact is identical either way. The argument wins over
       <a href="#cfg-settings"><code>planning.mode</code></a>.</p>
       <p><strong>Flow:</strong> in the <a href="#cfg-flow"><code>local</code> flow</a>

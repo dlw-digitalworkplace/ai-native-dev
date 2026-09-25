@@ -4,6 +4,21 @@ _Fluid project state: what is built, what is validated, what is next. The stable
 
 ## Current status (2026-09-25)
 
+- **Plan sparring becomes an iterative round loop (D57, 2026-09-25, offline-reasoned; no live run
+  yet).** Extends D44's attended "spar" (step 4.5 of `/aind:plan`), which resolved the drafted
+  Assumptions & open questions as one fixed `AskUserQuestion` batch and stopped — even though its
+  own text already conceded a second batch might be needed. Step 4.5 now **loops**: each round asks
+  the current question **frontier**, folds answers into the plan (decided vs. still-deferred, exactly
+  as before), then re-scans **only** the plan areas those answers touch (task breakdown, data
+  contracts, AC coverage, non-goals) for a newly-askable either/or question — never a full re-audit
+  and never an open-ended "is this the right idea" question. The loop stops when a round's re-scan
+  finds nothing new or after **4 rounds**, whichever comes first; either ending falls back to today's
+  step-5 threading for whatever is still open, unchanged. Attended + non-trivial only — headless,
+  revise mode, and the local same-branch flow (which references step 4.5 by number) are all
+  untouched. No new skill (single-caller judgment, not reusable scripted mechanics) and no new config
+  key (the 4-round cap is fixed, not tunable). **Live-validate next:** run `/aind:plan` attended on a
+  story with a genuinely cascading assumption (an early either/or whose answer forces a follow-on
+  choice) and confirm the second round actually surfaces it.
 - **Plain-language writing guide + `writing.level` (D56, 2026-09-25, offline-validated; first
   live run partial).** Reviewers found AIND's text hard to read (long sentences, buried ask).
   Every text-producing command and agent now runs `aind-writing.sh` first and follows the printed
