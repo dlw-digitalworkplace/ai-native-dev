@@ -28,6 +28,9 @@
   "research": {
     "dir": ".aind/research"
   },
+  "writing": {
+    "level": "standard"
+  },
   "worktree": {
     "enabled": false,
     "worktreeRoot": ".claude/worktrees",

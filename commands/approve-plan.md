@@ -14,6 +14,16 @@ same-branch flow you reviewed `plans/<id>/plan.md` **locally in your editor** an
 
 Work item: **$ARGUMENTS** (the work-item id).
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — every comment and confirmation question, and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## 0. Resolve the flow mode
 ```bash
 bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-flowmode.sh"' _ "${CLAUDE_PLUGIN_ROOT}"

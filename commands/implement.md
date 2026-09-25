@@ -38,6 +38,16 @@ Work item: **$ARGUMENTS**
 > mode is single-tree, so you build on the story branch **in your main checkout** (never a worktree),
 > even if `worktree.enabled` is set.
 
+## Writing style
+
+Before you write anything a human reads, load the project's writing guide and follow it for this
+whole run — the code PR body, every thread reply, rebuttal and comment (the polish phase included), and your own console messages (end the run with its **Done / Needs you / Next** block):
+```bash
+bash -c 'R="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_ROOT:-}"; up="$(cygpath -u "${USERPROFILE:-$HOME}" 2>/dev/null)"; [ -d "$R/scripts" ] || R="$(ls -d "$up"/.copilot/installed-plugins/*/*ai-native-dev "$up"/.claude/plugins/*/*ai-native-dev 2>/dev/null | head -1)"; "$R/scripts/aind-writing.sh" "$@"' _ "${CLAUDE_PLUGIN_ROOT}"
+```
+It sets the reading level. It never blocks the run; if it prints only a
+warning, apply its short fallback rules.
+
 ## 0. Pick the mode
 
 **First, resolve the flow mode** — `pr` (default) or `local`. In the `local` flow the plan already
