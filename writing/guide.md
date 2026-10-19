@@ -28,6 +28,12 @@ understand it on the first read.
 8. **Be concrete.** Name the file, field, screen or value. Do not write "some parts" or "various
    components".
 9. **Keep it short.** Cut every sentence that does not help the reader decide or act.
+10. **Use active voice and present tense.** Write "The script writes the tag", not "The tag will
+    be written".
+11. **Use one term per concept.** Choose one word for a thing and keep it. Do not switch between
+    "work item", "story" and "ticket". If the project rules have a **Glossary**, use its *Use*
+    column and avoid the words in its *Not* column.
+12. **Do not use semicolons.** Split the sentence instead.
 
 ## Console messages
 
@@ -39,6 +45,29 @@ understand it on the first read.
   **Needs you:** <what the human must do now, or "nothing">
   **Next:** <the next command or step>
   ```
+
+## Procedural text
+
+Procedural text tells a reader what to do, step by step. It includes:
+
+- the plan's **Task breakdown** and **Definition of done**,
+- test or verify steps,
+- the "how to fix" part of a review finding,
+- the console `**Next:**` line.
+
+Write it about 80% of the way to ASD-STE100 Simplified Technical English:
+
+1. Start each step with a verb in the imperative: "Add", "Run", "Check".
+2. Give one instruction per step. Use a numbered list when the order matters.
+3. Keep each step to 20 words or fewer, or to the level's limit if that is shorter.
+4. Put a condition first: "If the build fails, run `npm ci`."
+5. Use the article: "the file", not "file". Do not use a noun as a verb.
+
+Names in backticks (files, functions, fields, commands, values) stay exact. The rules apply to the
+words around them.
+
+Do **not** use this style for rationale, *Considerations*, risks or trade-offs. Those follow the core
+rules only, because they need room for nuance. Label real uncertainty there as `Assumed:`.
 
 ## Reading level
 

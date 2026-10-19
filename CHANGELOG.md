@@ -9,6 +9,17 @@ decision ID (e.g. D23).
 
 > Versions before 0.4.0 were reconstructed retroactively from git history and the design log.
 
+## [0.29.0] — 2026-10-19
+
+### Added
+- **STE100-style procedural text + project glossary (D58).** The writing guide now asks for active
+  voice, one term per concept, and no semicolons in all text. A new *Procedural text* section applies
+  a light form of ASD-STE100 Simplified Technical English to step-by-step text only: plan tasks,
+  Definition of done, test steps, review fixes and the console `Next:` line. Each step starts with a
+  verb, has one instruction, and has 20 words or fewer. Rationale and risks keep normal prose.
+  `/aind:onboard` and `/aind:kickstart` now offer to seed a glossary in `.claude/writing-guide.md`
+  (created only if you accept), so every agent uses the same term for the same thing.
+
 ## [0.28.0] — 2026-09-25
 
 ### Added

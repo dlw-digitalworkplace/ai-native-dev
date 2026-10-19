@@ -82,7 +82,7 @@ file for details):
   item (raw numbers only; pricing done offline).
 - **Reading level** (`writing.level`: `plain` | `standard` | `technical`, default `standard`) — how
   simply agents write comments, PRs and plans. Add project writing rules (glossary, words to avoid)
-  in an optional `.claude/writing-guide.md`.
+  in an optional `.claude/writing-guide.md` — agents use its glossary terms, one term per concept.
 - **Native-State mirror** (`stateMap`, **ADO tracker only**) — mirror AIND status onto the work
   item's built-in ADO State so the board follows the flow; filled by `/aind:map-states` (off = `{}`
   or absent). Not applicable to the file tracker (its `state` field *is* the status).

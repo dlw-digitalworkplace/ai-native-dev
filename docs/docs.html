@@ -191,7 +191,12 @@
     <p><strong>Project rules.</strong> Add an optional <code>.claude/writing-guide.md</code> (checked
     in) for a glossary, words to avoid, or extra rules. Agents read it after the built-in guide, and
     its rules win on conflict. A starter is in <code>project-template/writing-guide.md</code>.
-    <code>/aind:dream</code> can propose edits to it when lessons show text was unclear.</p>
+    <code>/aind:dream</code> can propose edits to it when lessons show text was unclear.
+    <code>/aind:onboard</code> and <code>/aind:kickstart</code> offer to seed its glossary, so every
+    agent uses one term per concept.</p>
+    <p><strong>Step-by-step text.</strong> At every level, steps (plan tasks, Definition of done,
+    test steps, review fixes) follow a light form of ASD-STE100 Simplified Technical English: verb
+    first, one instruction per step, 20 words or fewer. Rationale and risks keep normal prose.</p>
 
     <h3 id="cfg-worktree">worktree block (parallel work)</h3>
     <p>Opt in to AIND-owned git worktrees so one clone can drive several stories at once — implement

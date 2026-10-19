@@ -38,6 +38,9 @@ else
 - One idea per sentence. Use bullets and tables. Keep paragraphs to 3 sentences or fewer.
 - Use common words. Explain any needed jargon once. No filler or hedging.
 - Label facts "Found:" and guesses "Assumed:".
+- Use active voice. Use one term per concept. Do not use semicolons.
+- Write steps (tasks, Definition of done, test steps) with a verb first, one instruction per step,
+  20 words or fewer.
 - End every phase in the console with "**Done:** / **Needs you:** / **Next:**" lines.
 - Always write in English.
 - Plans and PR bodies follow these rules too: keep technical names exact in backticks, and explain

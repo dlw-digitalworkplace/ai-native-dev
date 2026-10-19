@@ -144,9 +144,12 @@ and note it.
    reference name if yes; the `file` tracker needs none). Also ask the **reading level** for text
    people read (`plain` — very short sentences, no unexplained jargon, for mixed or second-language
    readers; `standard` — the default; `technical` — developers only; output is always English).
-   Mention the optional project rules file
-   `.claude/writing-guide.md` (starter: `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`);
-   don't create it unless asked. Then **write** the files:
+   Then **propose a project glossary** (agents use one term per concept; the glossary fixes which
+   one): 3–10 domain terms from the functional/domain lens of this conversation, with any synonyms
+   the human used for the same thing, as the *Use / Not / Meaning* table of
+   `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`. A term not yet decided becomes a
+   `TODO` row — never invent one. **Only if the human accepts**, create `.claude/writing-guide.md`
+   from that starter with the Glossary filled. Then **write** the files:
    ```bash
    cp "${CLAUDE_PLUGIN_ROOT}/rubric/intake-rubric.seed.md" .claude/intake-rubric.md
    ```
