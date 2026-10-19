@@ -4,7 +4,7 @@
   `scripts/aind-writing.sh`, `project-template/writing-guide.md`; the settings loader, preflight,
   onboard/kickstart, the reviewer Bash hook, and the docs site
 - **Date:** 2026-09-25
-- **Status:** Active — offline-validated; live-validation pending
+- **Status:** Active — offline-validated; live-validation pending. Amended by D58 (STE-style procedural text + glossary seeding)
 
 ## Decision
 **Every AIND command and agent that writes text a human reads loads one plugin-owned writing guide

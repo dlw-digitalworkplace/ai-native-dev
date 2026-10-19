@@ -130,8 +130,8 @@ bash -c 'R="$1"; shift; A="$1"; shift; [ -d "$R/scripts" ] || R="${AIND_PLUGIN_R
    not a developer. A **coding agent** that was **not** part of this discussion acts on it later —
    so name concrete files, signatures, and data shapes, and it never has to re-derive a decision.
    Serve both with the writing guide you loaded at the start (its reading level and *Technical
-   documents* rules): precision comes from exact names in backticks, not from long or dense
-   sentences. Bias toward the **simplest change that satisfies the
+   documents* rules, plus its *Procedural text* rules for the task breakdown and Definition of
+   done): precision comes from exact names in backticks, not from long or dense sentences. Bias toward the **simplest change that satisfies the
    acceptance criteria**: reuse before building, and add no abstraction, configurability, or
    generalization the story doesn't call for — size the solution to the work, not to what's
    imaginable:

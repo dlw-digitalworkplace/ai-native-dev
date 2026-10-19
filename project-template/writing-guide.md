@@ -8,7 +8,8 @@ The reading level is set in .claude/aind.settings.json ("writing.level"), not he
 
 ## Glossary
 
-Use these terms, so every comment and plan uses the same words.
+Use these terms, so every comment and plan uses the same words. Agents write the *Use* term and
+avoid the synonyms in the *Not* column.
 
 | Use | Not | Meaning |
 |---|---|---|

@@ -276,9 +276,13 @@ drop samples). Use the `<name>.aind-draft` fallback if a target already exists.
   reviewers, or readers with English as a second language. **`standard`** — short sentences,
   explains terms outside the team's domain. **`technical`** — developers only; domain and code terms
   allowed. Output is always in English.
-  Mention that a project can add its own rules (a glossary, words to avoid) in an optional
-  `.claude/writing-guide.md` — a starter is in
-  `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`. Don't create it unless the human asks.
+  Then **propose a project glossary** — agents use one term per concept, and the glossary fixes
+  which one. From the scan, pick 3–10 domain terms (entity/model names, core concepts) and any
+  synonyms the code or docs use for the same thing (e.g. `Order` vs "purchase" vs "basket"). Show
+  them as the starter's *Use / Not / Meaning* table. **Only if the human accepts** (edits welcome),
+  create `.claude/writing-guide.md` from `${CLAUDE_PLUGIN_ROOT}/project-template/writing-guide.md`
+  with that Glossary filled and the other sections left as placeholders. If they decline, don't
+  create it — mention it can be added later.
 
 **Write** the files:
 ```bash
